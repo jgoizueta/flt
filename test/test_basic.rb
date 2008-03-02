@@ -2,17 +2,22 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 
 def exp(x,c=nil)
   i, lasts, s, fact, num = 0, 0, 1, 1, 1
-  Decimal.local_context(c) do |context|
-    context.precision += 2
-    while s != lasts
-      lasts = s    
-      i += 1
-      fact *= i
-      num *= x     
-      s += num / fact   
+  Decimal.local_context(c) do |context|   
+    # result context    
+    Decimal.local_context do |context|    
+      # working context      
+      context.precision += 2
+      context.rounding = Decimal::ROUND_HALF_EVEN
+      while s != lasts
+        lasts = s    
+        i += 1
+        fact *= i
+        num *= x     
+        s += num / fact   
+      end
     end
+    +s
   end
-  return +s
 end
 
   def exp1(x, c=nil)

@@ -35,6 +35,12 @@ class Decimal
         
     end
     attr_accessor :rounding, :precision
+    def digits
+      self.precision
+    end
+    def digits=(n)
+      self.precision=n
+    end
     
     def assign(options)
       @rounding = options[:rounding] unless options[:rounding].nil?
@@ -75,15 +81,15 @@ class Decimal
 
     # TO DO:
     # Ruby-style:
-    #  ceil floor round truncate
+    #  ceil floor truncate round
     #  ** power
     # GDAS
-    #  reduce/normalize is meaningless here
-    #  quantize, rescale, scaleb
+    #  reduce/normalize: cannot be done with BigDecimal
+    #  scaleb quantize, rescale: the latter two cannot be done with BigDecimal
     #  power
-    #  exp log10 logb ln
+    #  logb exp log10 ln
     #  remainder_near
-    #  fma (not meaninful with BigDecimal bogus rounding)
+    #  fma: (not meaninful with BigDecimal bogus rounding)
     
     def sqrt(x)
       compute { Decimal(x._value.sqrt(@precision)) }
@@ -145,7 +151,12 @@ class Decimal
   
   # Context constructor
   def Decimal.Context(options={})
-    Decimal::Context.new(options)
+    case options
+      when Context
+        options
+      else
+        Decimal::Context.new(options)
+    end
   end
   
   # The current context (thread-local).
@@ -168,8 +179,9 @@ class Decimal
     else  
       Decimal.context = c unless c.nil?    
     end
-    yield Decimal.context
+    result = yield Decimal.context
     Decimal.context = keep
+    result
   end
     
   def initialize(v)
@@ -328,6 +340,7 @@ class Decimal
     !finite?
   end
   
+  # particular methods
   
   # number of digits (without trailing zeros)
   def number_of_digits 
@@ -342,7 +355,7 @@ class Decimal
     @value.exponent
   end
   
-  def scientific_exponent
+  def scientific_exponent # adjusted exponent / scale
     fractional_exponent - 1
   end
 
@@ -373,5 +386,10 @@ end
 
 # Decimal constructor
 def Decimal(v)
-  Decimal.new(v)
+  case v
+    when Decimal
+      v
+    else
+      Decimal.new(v)
+  end
 end  

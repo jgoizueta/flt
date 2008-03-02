@@ -44,3 +44,12 @@ What Decimal currently does not implement:
     only one digit beyond the rounding point is considered, which makes ... and .. incorrect
     also results are not correctly rounded, eg. 1E100-1E-100        
 
+
+Limitations of the BigDecimal edition:
+-bogus rounding (half_even & half_down) only looks at one extra digit
+-not all operation correctly rounded (sqrt,exp,log...)(even +/- : 1E100-1E-100 with ROUND_DOWN)
+-normalized numbers (exponent always adjusted)
+-no real fma
+-no signal flags (could be implemented)
+-difference in signal/flags
+
