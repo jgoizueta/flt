@@ -79,15 +79,46 @@ class Decimal
     end
 
 
+    def reduce(x)
+      # nop: BigDecimals are always in reduced form
+      x
+    end
+    
+    # Adjusted exponent of x returned as a Decimal value.
+    def logb(x)
+      compute { Decimal(x.adjusted_exponent) }
+    end
+
+    # x*(radix**y) y must be an integer
+    def scaleb(x, y)
+      compute { Decimal(Decimal(x)._value * (BigDecimal('10')**y.to_i)) }
+    end
+    
+    # Exponent in relation to the significand as an integer
+    # normalized to precision digits. (minimum exponent)
+    def normalized_integral_exponent(x)
+      x.integral_exponent - (precision - x.number_of_digits)
+    end
+
+    # Significand normalized to precision digits
+    # x == normalized_integral_significand(x) * radix**(normalized_integral_exponent)
+    def normalized_integral_significand(x)
+      x.integral_significand*(10**(precision - x.number_of_digits))
+    end
+    
+    def to_normalized_int_scale(x)
+      [x.sign*normalized_integral_significand(x), normalized_integral_exponent(x)]
+    end
+
+
     # TO DO:
     # Ruby-style:
     #  ceil floor truncate round
     #  ** power
     # GDAS
-    #  reduce/normalize: cannot be done with BigDecimal
     #  scaleb quantize, rescale: the latter two cannot be done with BigDecimal
     #  power
-    #  logb exp log10 ln
+    #  exp log10 ln
     #  remainder_near
     #  fma: (not meaninful with BigDecimal bogus rounding)
     
@@ -193,7 +224,7 @@ class Decimal
       when Integer
         @value = BigDecimal(v.to_s)
       when Rational
-        @value = Decimal.new(x.numerator)/Decimal.new(x.denominator)
+        @value = BigDecimal.new(v.numerator.to_s)/BigDecimal.new(v.denominator.to_s)
       else
         @value = BigDecimal(v)
     end
@@ -308,10 +339,30 @@ class Decimal
     (context || Decimal.context).remainder_near(self,other)
   end
 
+  def reduce(context=nil)
+    (context || Decimal.context).reduce(self)
+  end
+
+  def logb(context=nil)
+    (context || Decimal.context).logb(self)
+  end
+
+  def scaleb(s, context=nil)
+    (context || Decimal.context).scaleb(self, s)
+  end
+
+
+  def to_i
+    @value.to_i
+  end
 
   def to_s(context=nil)
     (context || Decimal.context).to_string(self)
   end    
+  
+  def inspect
+    "Decimal('#{self}')"
+  end
   
   def <=>(other)
     case other
@@ -340,25 +391,32 @@ class Decimal
     !finite?
   end
   
-  # particular methods
   
-  # number of digits (without trailing zeros)
-  def number_of_digits 
+  # Exponent of the magnitude of the most significant digit of the operand 
+  def adjusted_exponent
+    @value.exponent - 1
+  end
+  
+  def scientific_exponent
+    adjusted_exponent
+  end
+  # Exponent as though the significand were a fraction (the decimal point before its first digit)
+  def fractional_exponent
+    # scientific_exponent + 1
+    @value.exponent
+  end  
+    
+  # Number of digits in the significand
+  def number_of_digits
     @value.split[1].size
   end
   
+  # Significand as an integer
   def integral_significand
     @value.split[1].to_i
   end
   
-  def fractional_exponent
-    @value.exponent
-  end
-  
-  def scientific_exponent # adjusted exponent / scale
-    fractional_exponent - 1
-  end
-
+  # Exponent of the significand as an integer
   def integral_exponent
     fractional_exponent - number_of_digits
   end

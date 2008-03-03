@@ -50,7 +50,7 @@ and the revised IEEE 7554 standard will be coded.
 The use of BigDecimal implies some limitations (deviations from the standards):
 - Bogus rounding (half_even & half_down) only looks at one extra digit
 - Not all operation correctly rounded (sqrt,exp,log...)(even +/- : 1E100-1E-100 with ROUND_DOWN)
-- Normalized numbers (exponent always adjusted)
+- Always in reduced form (no trailing zeros are kept)
 - No real fma
 - No signal flags (but could be implemented)
 - Deviations in signal/flags from the standards

@@ -162,6 +162,61 @@ class TestBasic < Test::Unit::TestCase
     assert_equal Decimal('-0.3'), Decimal('3.6').remainder_near(Decimal('1.3'))
 
 
+   assert_equal 2, Decimal('123.4567').adjusted_exponent
+   assert_equal 2, Decimal('123.45670').adjusted_exponent
+   assert_equal 2, Decimal.context.scaleb('1.2345670',2).adjusted_exponent
+   assert_equal 2, Decimal.context.scaleb('1.2345670',Decimal('2')).adjusted_exponent   
+   assert_equal Decimal(2), Decimal.context.logb(Decimal('123.4567'))   
+   assert_equal Decimal(2), Decimal.context.logb(Decimal('123.45670'))   
+   assert_equal 3, Decimal('123.4567').fractional_exponent
+   assert_equal 3, Decimal('123.45670').fractional_exponent
+
+   assert_equal(-7, Decimal.context.normalized_integral_exponent(Decimal('123.4567')))
+   assert_equal(1234567000, Decimal.context.normalized_integral_significand(Decimal('123.4567')))
+   
+   assert_equal 7, Decimal('123.4567').number_of_digits
+   # assert_equal 9, Decimal('123.45670').number_of_digits # not with BigDecimal
+   assert_equal 7, Decimal('123.45670').reduce.number_of_digits
+   
+   assert_equal 1234567, Decimal('123.4567').integral_significand
+   #assert_equal 12345670, Decimal('123.45670').integral_significand # not with BigDecimal
+   assert_equal 1234567, Decimal('123.45670').reduce.integral_significand
+
+   assert_equal 2, Decimal('-123.4567').adjusted_exponent
+   assert_equal 2, Decimal('-123.45670').adjusted_exponent
+   assert_equal 2, Decimal.context.scaleb('-1.2345670',2).adjusted_exponent
+   assert_equal 2, Decimal.context.scaleb('-1.2345670',Decimal('2')).adjusted_exponent   
+   assert_equal Decimal(2), Decimal.context.logb(Decimal('-123.4567'))   
+   assert_equal Decimal(2), Decimal.context.logb(Decimal('-123.45670'))   
+   assert_equal 3, Decimal('-123.4567').fractional_exponent
+   assert_equal 3, Decimal('-123.45670').fractional_exponent
+
+   assert_equal(-7, Decimal.context.normalized_integral_exponent(Decimal('-123.4567')))
+   assert_equal(1234567000, Decimal.context.normalized_integral_significand(Decimal('-123.4567')))
+   
+   assert_equal 7, Decimal('-123.4567').number_of_digits
+   # assert_equal 9, Decimal('123.45670').number_of_digits # not with BigDecimal
+   assert_equal 7, Decimal('-123.45670').reduce.number_of_digits
+
+   assert_equal(1234567, Decimal('-123.4567').integral_significand)
+   #assert_equal(12345670, Decimal('-123.45670').integral_significand) # not with BigDecimal
+   assert_equal(1234567, Decimal('-123.45670').reduce.integral_significand)
+   
+   x = Decimal('123.4567')
+   assert_equal x, Decimal(x.integral_significand)*10**x.integral_exponent
+   assert_equal x, Decimal(Decimal.context.normalized_integral_significand(x))*10**Decimal.context.normalized_integral_exponent(x)
+   
+   assert_equal x, Decimal.context.scaleb(x.integral_significand, x.integral_exponent)
+   assert_equal x, Decimal.context.scaleb(Decimal.context.normalized_integral_significand(x),Decimal.context.normalized_integral_exponent(x))
+   
+   x = Decimal('-123.4567')
+   assert_equal x.abs, Decimal(x.integral_significand)*10**x.integral_exponent
+   assert_equal x.abs, Decimal(Decimal.context.normalized_integral_significand(x))*10**Decimal.context.normalized_integral_exponent(x)
+   
+   assert_equal x.abs, Decimal.context.scaleb(x.integral_significand, x.integral_exponent)
+   assert_equal x.abs, Decimal.context.scaleb(Decimal.context.normalized_integral_significand(x),Decimal.context.normalized_integral_exponent(x))
+   
+   
   end
   
   def test_exp
