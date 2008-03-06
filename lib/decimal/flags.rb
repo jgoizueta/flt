@@ -267,6 +267,15 @@ class Flags
     txt
   end  
   
+  
+  def ==(other)
+    if @values && other.values && @values.object_id==other.values.object_id
+      bits == other.bits
+    else
+      to_a.map{|s| s.to_s}.sort == other.to_a.map{|s| s.to_s}.sort
+    end
+  end
+  
   private
   def check(flag)
     raise InvalidFlagType,"Flags must be defined as symbols; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol)

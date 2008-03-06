@@ -52,7 +52,6 @@ The use of BigDecimal implies some limitations (deviations from the standards):
 - Not all operation correctly rounded (sqrt,exp,log...)(even +/- : 1E100-1E-100 with ROUND_DOWN)
 - Always in reduced form (no trailing zeros are kept)
 - No real fma
-- No signal flags (but could be implemented)
 - Deviations in signal/flags from the standards
 
 We could have three different implementations of the same Decimal API:

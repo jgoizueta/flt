@@ -1,10 +1,3 @@
-# quick & dirty Decimal implemention using BigDecimal to experiment with the interface
-# development plan:
-# -experiment and define API with this BigDecimal based implementation
-# -write compliant implementation (use tests from decNumber) either by porting the Python code
-#  or by writing an extension using decNumber (or do both, using the pure ruby version if
-#  decNumber is not available or cannot compile extensions)
-
 require 'bigdecimal'
 require 'forwardable'
 require 'rational'
@@ -72,7 +65,7 @@ class Decimal
       assign options
         
     end
-    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps
+    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :quiet, :signal_flags
     def digits
       self.precision
     end

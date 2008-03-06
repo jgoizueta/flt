@@ -19,8 +19,15 @@ class TestFlags < Test::Unit::TestCase
     g = Decimal::Flags(f.values)
     g.bits = f.bits
     assert_equal "Decimal::Flags[flag_one, flag_two] (0x3)", g.inspect
+    assert g==f
     g.set!
     assert_equal "Decimal::Flags[flag_one, flag_two, flag_three] (0x7)", g.inspect
+    assert g!=f
+    
+    assert Decimal::Flags(:flag_one, :flag_three)==Decimal::Flags(:flag_three, :flag_one)
+    assert Decimal::Flags(:flag_one, :flag_three)!=Decimal::Flags(:flag_one)
+    
+    
   end
   
 end
