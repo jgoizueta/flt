@@ -8,6 +8,7 @@ config/requirements.rb
 lib/decimal.rb
 lib/decimal/version.rb
 lib/decimal/decimal.rb
+lib/decimal/flags.rb
 log/debug.log
 script/destroy
 script/destroy.cmd
@@ -20,5 +21,7 @@ tasks/deployment.rake
 tasks/environment.rake
 tasks/website.rake
 test/test_base.rb
+test/test_flags.rb
 test/test_multithreading.rb
+test/test_dectest.rb
 test/test_helper.rb
