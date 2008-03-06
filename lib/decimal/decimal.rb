@@ -14,6 +14,7 @@ require 'monitor'
 # Decimal arbitrary precision floating point number.
 class Decimal
   
+  # TO DO: use Flags for rounding modes (and a hash from symbols to BigDecimal constants)
   ROUND_HALF_EVEN = BigDecimal::ROUND_HALF_EVEN
   ROUND_HALF_DOWN = BigDecimal::ROUND_HALF_DOWN
   ROUND_HALF_UP = BigDecimal::ROUND_HALF_UP
@@ -22,6 +23,32 @@ class Decimal
   ROUND_DOWN = BigDecimal::ROUND_DOWN
   ROUND_UP = BigDecimal::ROUND_UP
   
+ 
+  class Exception < StandardError
+    attr :context
+    def initialize(context=nil)
+      @context = context
+    end
+  end
+  
+  class InvalidOperation < Exception
+  end
+  
+  class DivisionByZero < Exception
+  end
+  
+  class Inexact < Exception
+  end
+  
+  class Overflow < Exception
+  end
+  
+  class Underflow < Exception
+  end
+
+  EXCEPTIONS = FlagValues(:invalid_operation, :division_by_zero, :inexact, :overflow, :underflow)
+
+
   # The context defines the arithmetic context: rounding mode, precision,...
   # Decimal.context is the current (thread-local) context.
   class Context
@@ -29,12 +56,18 @@ class Decimal
       
       # default context:
       @rounding = ROUND_HALF_EVEN
-      @precision = 16
+      @precision = 28
       
+      @emin = -999999999
+      @emax =  999999999
+      
+      @flags = Decimal::Flags(EXCEPTIONS)
+      @traps = Decimal::Flags(EXCEPTIONS)
+            
       assign options
         
     end
-    attr_accessor :rounding, :precision
+    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps
     def digits
       self.precision
     end
@@ -42,9 +75,14 @@ class Decimal
       self.precision=n
     end
     
+    def self.Flags(*values)
+      Decimal::Flags(EXCEPTIONS,*values)
+    end
+    
     def assign(options)
       @rounding = options[:rounding] unless options[:rounding].nil?
       @precision = options[:precision] unless options[:precision].nil?        
+      @traps = Flags(options[:rounding]) unless options[:rounding].nil?
     end
     
     def add(x,y)
@@ -116,7 +154,7 @@ class Decimal
     #  ceil floor truncate round
     #  ** power
     # GDAS
-    #  scaleb quantize, rescale: the latter two cannot be done with BigDecimal
+    #  quantize, rescale: cannot be done with BigDecimal
     #  power
     #  exp log10 ln
     #  remainder_near
@@ -142,7 +180,7 @@ class Decimal
     # General Decimal Arithmetic Specification integer division
     def divide_int(x,y)
       # compute { Decimal(x._value/y._value).truncate }      
-      compute(ROUND_DOWN) { Decimal((x._value/y._value).truncate) }      
+      compute(:rounding=>ROUND_DOWN) { Decimal((x._value/y._value).truncate) }      
     end
     # General Decimal Arithmetic Specification remainder
     def remainder(x,y)
@@ -156,6 +194,17 @@ class Decimal
       end
     end
     
+    
+    def zero(sign=+1)
+      Decimal("#{sign<0 ? '-' : '+'}0")
+    end
+    def infinity(sign=+1)
+      compute(:traps=>0) { Decimal(BigDecimal(sign.to_s)/BigDecimal('0')) }
+    end
+    def nan
+      compute(:traps=>0) { Decimal(BigDecimal('0')/BigDecimal('0')) }
+    end
+        
 
     protected
     @@compute_lock = Monitor.new  
@@ -163,18 +212,73 @@ class Decimal
     # the rounding mode and precision defined in the context.
     # Since the BigDecimal rounding mode and precision is a global resource,
     # a lock must be used to prevent other threads from modifiying it.
-    def compute(rnd=nil,prc=nil)
-      rnd ||= @rounding
-      prc ||= @precision
+        
+    # TO DO:
+    # implement UPDATE_FLAGS
+    # decide how to store flags & traps: integer (bit_field) - constants or Set of exc. classes
+    #        Decimal::EXCEPTION_NAN || Decimal::EXCEPTION_OVERFLOW
+    #        Decimal::FLAG_NAN || Decimal::FLAG_OVERFLOW              vs Set.new[NanException, OverflowException]
+    UPDATE_FLAGS = false
+    
+    def compute(options={})
+      rnd = options[:rounding] || @rounding
+      prc = options[:precision] || options[:digits] || @precision
+      trp = Context::Flags(options[:traps] || @traps)
       result = nil
       @@compute_lock.synchronize do
-        keep_round_mode = BigDecimal.mode(BigDecimal::ROUND_MODE)
-        keep_limit = BigDecimal.limit
-        BigDecimal.limit prc 
+        keep_limit = BigDecimal.limit(prc)
+        keep_round_mode = BigDecimal.mode(BigDecimal::ROUND_MODE, rnd)
         BigDecimal.mode BigDecimal::ROUND_MODE, rnd
-        result = yield
+        if trp.any? || UPDATE_FLAGS
+          keep_exceptions = BigDecimal.mode(BigDecimal::EXCEPTION_ALL)
+          BigDecimal.mode(BigDecimal::EXCEPTION_ALL, true)
+        end
+        begin
+          result = yield
+        rescue FloatDomainError=>err
+          case err.message
+            when "(VpDivd) Divide by zero"
+              @flags << :division_by_zero
+              raise DivisionByZero if trp[:division_by_zero]
+              result = infinity
+            when "exponent overflow", "Computation results to 'Infinity'", "Computation results to '-Infinity'", "Exponent overflow"
+              @flags << :overflow
+              raise Overflow if trp[:overflow]
+              result = infinity            
+            when "(VpDivd) 0/0 not defined(NaN)", "Computation results to 'NaN'(Not a Number)", "Computation results to 'NaN'",  "(VpSqrt) SQRT(NaN or negative value)",
+                  "(VpSqrt) SQRT(negative value)"
+              @flags << :invalid_operation
+              raise InvalidOperation if trp[:invalid_operation]
+              result = nan                         
+            when "BigDecimal to Float conversion"
+              @flags << :invalid_operation
+              raise InvalidOperation if trp[:invalid_operation]
+              result = nan                         
+            when "Exponent underflow"
+              @flags << :underflow
+              raise Undrflow if trp[:underflow]
+              result = zero            
+          end
+        end
         BigDecimal.limit keep_limit
         BigDecimal.mode BigDecimal::ROUND_MODE, keep_round_mode            
+        if trp.any? || UPDATE_FLAGS
+          [BigDecimal::EXCEPTION_NaN, BigDecimal::EXCEPTION_INFINITY, BigDecimal::EXCEPTION_UNDERFLOW,
+           BigDecimal::EXCEPTION_OVERFLOW, BigDecimal::EXCEPTION_ZERODIVIDE].each do |exc|
+             value =  ((keep_exceptions & exc)!=0)
+             BigDecimal.mode(exc, value)               
+          end
+        end
+      end   
+      e = result.adjusted_exponent
+      if e>@emax 
+        result = infinity(result.sign)
+        @flags << :infinity
+        raise Overflow if trp[:overflow]
+      elsif e<@emin
+        result = zero(result.sign)
+        @flags << :underflow
+        raise Overflow if trp[:underflow]
       end
       result
     end          
@@ -213,6 +317,16 @@ class Decimal
     result = yield Decimal.context
     Decimal.context = keep
     result
+  end
+    
+  def Decimal.zero(sign=+1, c=nil)
+    (c || context).zero(sign)
+  end
+  def Decimal.infinity(sign=+1, c=nil)
+    (c || context).infinity(sign)
+  end
+  def Decimal.nan
+    (c || context).nan
   end
     
   def initialize(v)

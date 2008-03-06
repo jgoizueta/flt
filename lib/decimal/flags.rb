@@ -1,0 +1,250 @@
+require 'enumerator'
+
+class Decimal # acts as a namespace here
+
+# This class assigns bit-values to a set of symbols
+# so they can be used as flags and stored as an integer.
+#   fv = FlagValues.new(:flag1, :flag2, :flag3)
+#   puts fv[:flag3]
+#   fv.each{|f,v| puts "#{f} -> #{v}"}
+class FlagValues
+  
+  #include Enumerator
+  
+  # The flag symbols must be passed; values are assign in increasing order.
+  #   fv = FlagValues.new(:flag1, :flag2, :flag3)
+  #   puts fv[:flag3]
+  def initialize(*flags)
+    @flags = {}
+    value = 1
+    flags.each do |flag|
+      @flags[flag] = value      
+      value <<= 1
+    end    
+  end
+
+  # Get the bit-value of a flag
+  def [](flag)
+    @flags[flag]
+  end    
+  
+  # Return each flag and its bit-value
+  def each(&blk)
+    if blk.arity==2
+      @flags.to_a.sort_by{|f,v|v}.each(&blk)
+    else
+      @flags.to_a.sort_by{|f,v|v}.map{|f,v|f}.each(&blk)
+    end
+  end
+  
+  def size
+    @flags.size
+  end  
+  
+end
+
+# This class stores a set of flags. It can be assign a FlagValues
+# object (using values= or passing to the constructor) so that
+# the flags can be store in an integer (bits).
+class Flags
+  
+  # When a Flag object is created, the initial flags to be set can be passed,
+  # and also a FlagValues. If a FlagValues is passed an integer can be used
+  # to define the flags.
+  #    Flags.new(:flag1, :flag3, FlagValues.new(:flag1,:flag2,:flag3))
+  #    Flags.new(5, FlagValues.new(:flag1,:flag2,:flag3))
+  def initialize(*flags)
+    @values = nil
+    @flags = {}
+    
+    v = 0
+    
+    flags.each do |flag|
+      case flag
+        when FlagValues
+          @values = flag
+        when Symbol
+          @flags[flag] = true
+        when Integer
+          v |= flag
+        when Flags
+          @values = flag.values
+          @flags = flag.to_h
+        else
+          raise "Invalid flag type"          
+      end
+    end
+    
+    if v!=0
+      raise "Invalid flag type" if @values.nil?
+      self.bits = v
+    end
+    
+  end
+  
+  # Clears of flags
+  def clear!
+    @flags = {}
+  end
+  
+  # Sets all flags
+  def set!
+    if @values
+      self.bits = (1<<@values.size)-1
+    else
+      raise "No flag values defined"
+    end
+  end
+  
+  # Assign the flag bit values
+  def values=(fv)
+    @values = fv
+  end
+  
+  # Retrieves the flag bit values
+  def values
+    @values
+  end
+  
+  # Retrieves the flags as a bit-vector integer. Values must have been assigned.
+  def bits
+    if @values
+      i = 0
+      @flags.each do |f,v|      
+        bit_val = @values[f]
+        i |= bit_val if v && bit_val
+      end
+      i
+    else
+      raise "No flag values defined"
+    end
+  end
+  
+  # Sets the flags as a bit-vector integer. Values must have been assigned.
+  def bits=(i)
+    if @values
+      clear!
+      @values.each do |f,v|
+        @flags[f]=true if (i & v)!=0
+      end
+    else
+      raise "No flag values defined"
+    end
+  end
+  
+  # Retrieves the flags as a hash.
+  def to_h
+    @flags
+  end
+  
+  # Same as bits
+  def to_i
+    bits
+  end
+  
+  # Retrieve the setting (true/false) of a flag
+  def [](flag)
+    @flags[flag]
+  end
+  
+  # Modifies the setting (true/false) of a flag.
+  def []=(flag,value)
+    @flags[flag] = value
+  end
+  
+  # Sets (makes true) one or more flags
+  def set(*flags)
+    flags.each do |flag|
+      @flags[flag] = true
+    end
+  end
+
+  # Clears (makes false) one or more flags
+  def clear(*flags)
+    flags.each do |flag|
+      @flags[flag] = false
+    end
+  end
+
+  # Sets (makes true) one or more flags (passes as an array)
+  def << (flags)
+    if flags.kind_of?(Array)
+      set(*flags)
+    else
+      set(flags)
+    end
+  end
+  
+  # Iterate on each flag/setting pair.
+  def each(&blk)
+    if @values
+      @values.each do |f,v|
+        blk.call(f,@flags[f])
+      end
+    else
+      @flags.each(&blk)    
+    end
+  end
+  
+  # Iterate on each set flag
+  def each_set
+    each do |f,v|
+      yield f if v
+    end
+  end
+  
+  # Iterate on each cleared flag
+  def each_clear
+    each do |f,v|
+      yield f if !v
+    end
+  end
+  
+  # returns true if any flag is set
+  def any?
+    if @values
+      bits != 0
+    else
+      to_a.size>0
+    end
+  end
+  
+  # Returns the true flags as an array
+  def to_a
+    a = []
+    each_set{|f| a << f}
+    a    
+  end
+  
+  def to_s
+    to_a.map{|f| f.to_s}.join(', ')
+  end
+  
+  def inspect
+    txt = "#{self.class.to_s}[#{to_s}]"
+    txt << " (0x#{bits.to_s(16)})" if @values    
+    txt
+  end  
+  
+end
+
+# Constructor for FlagValues
+def self.FlagValues(*params)
+  if params.size==1 && params.first.kind_of?(FlagValues)
+    params.first
+  else
+    FlagValues.new(*params)
+  end
+end
+
+# Constructor for Flags
+def self.Flags(*params)
+  if params.size==1 && params.first.kind_of?(Flags)
+    params.first
+  else
+    Flags.new(*params)
+  end
+end
+
+end
+

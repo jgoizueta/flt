@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 
 def exp(x,c=nil)
   i, lasts, s, fact, num = 0, 0, 1, 1, 1
-  Decimal.local_context(c) do |context|   
+  Decimal.local_context(c) do
     # result context    
     Decimal.local_context do |context|    
       # working context      
