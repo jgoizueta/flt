@@ -11,6 +11,12 @@ class FlagValues
   
   #include Enumerator
   
+  class InvalidFlagError < StandardError
+  end
+  class InvalidFlagTypeError < StandardError
+  end
+  
+  
   # The flag symbols must be passed; values are assign in increasing order.
   #   fv = FlagValues.new(:flag1, :flag2, :flag3)
   #   puts fv[:flag3]
@@ -18,6 +24,7 @@ class FlagValues
     @flags = {}
     value = 1
     flags.each do |flag|
+      raise InvalidFlagType,"Flags must be defined as symbols; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol)
       @flags[flag] = value      
       value <<= 1
     end    
@@ -25,7 +32,9 @@ class FlagValues
 
   # Get the bit-value of a flag
   def [](flag)
-    @flags[flag]
+    v = @flags[flag]
+    raise InvalidFlagError, "Invalid flag: #{flag}" unless v    
+    v
   end    
   
   # Return each flag and its bit-value
@@ -41,12 +50,25 @@ class FlagValues
     @flags.size
   end  
   
+  def all_flags_value
+    (1 << size) - 1
+  end
+  
 end
 
 # This class stores a set of flags. It can be assign a FlagValues
 # object (using values= or passing to the constructor) so that
 # the flags can be store in an integer (bits).
 class Flags
+  
+  class Error < StandardError
+  end
+  class InvalidFlagError < Error
+  end
+  class InvalidFlagValueError < Error
+  end
+  class InvalidFlagTypeError < Error
+  end
   
   # When a Flag object is created, the initial flags to be set can be passed,
   # and also a FlagValues. If a FlagValues is passed an integer can be used
@@ -71,13 +93,18 @@ class Flags
           @values = flag.values
           @flags = flag.to_h
         else
-          raise "Invalid flag type"          
+          raise InvalidFlagType, "Invalid flag type for: #{flag.inspect}"          
       end
     end
     
     if v!=0
-      raise "Invalid flag type" if @values.nil?
+      raise InvalidFlagType, "Integer flag values need flag bit values to be defined" if @values.nil?
       self.bits = v
+    end
+    
+    if @values
+      # check flags
+      @flags.each_key{|flag| check flag}
     end
     
   end
@@ -90,9 +117,9 @@ class Flags
   # Sets all flags
   def set!
     if @values
-      self.bits = (1<<@values.size)-1
+      self.bits = @values.all_flags_value
     else
-      raise "No flag values defined"
+      raise Error,"No flag values defined"
     end
   end
   
@@ -116,19 +143,20 @@ class Flags
       end
       i
     else
-      raise "No flag values defined"
+      raise Error,"No flag values defined"
     end
   end
   
   # Sets the flags as a bit-vector integer. Values must have been assigned.
   def bits=(i)
     if @values
+      raise Error, "Invalid bits value #{i}" if i<0 || i>@values.all_flags_value
       clear!
       @values.each do |f,v|
         @flags[f]=true if (i & v)!=0
       end
     else
-      raise "No flag values defined"
+      raise Error,"No flag values defined"
     end
   end
   
@@ -144,17 +172,29 @@ class Flags
   
   # Retrieve the setting (true/false) of a flag
   def [](flag)
+    check flag
     @flags[flag]
   end
   
   # Modifies the setting (true/false) of a flag.
   def []=(flag,value)
+    check flag
+    case value
+      when true,1
+        value = true
+      when false,0,nil
+        value = false
+      else
+        raise InvalidFlagValueError, "Invalid value: #{value.inspect}"
+    end
     @flags[flag] = value
+    value
   end
   
   # Sets (makes true) one or more flags
   def set(*flags)
     flags.each do |flag|
+      check flag      
       @flags[flag] = true
     end
   end
@@ -162,6 +202,7 @@ class Flags
   # Clears (makes false) one or more flags
   def clear(*flags)
     flags.each do |flag|
+      check flag
       @flags[flag] = false
     end
   end
@@ -225,6 +266,13 @@ class Flags
     txt << " (0x#{bits.to_s(16)})" if @values    
     txt
   end  
+  
+  private
+  def check(flag)
+    raise InvalidFlagType,"Flags must be defined as symbols; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol)
+    @values[flag] if @values # raises an invalid flag error if flag is invalid
+    true    
+  end
   
 end
 
