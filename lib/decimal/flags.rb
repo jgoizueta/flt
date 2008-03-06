@@ -93,12 +93,12 @@ class Flags
           @values = flag.values
           @flags = flag.to_h
         else
-          raise InvalidFlagType, "Invalid flag type for: #{flag.inspect}"          
+          raise InvalidFlagTypeError, "Invalid flag type for: #{flag.inspect}"          
       end
     end
     
     if v!=0
-      raise InvalidFlagType, "Integer flag values need flag bit values to be defined" if @values.nil?
+      raise InvalidFlagTypeError, "Integer flag values need flag bit values to be defined" if @values.nil?
       self.bits = v
     end
     
@@ -194,16 +194,32 @@ class Flags
   # Sets (makes true) one or more flags
   def set(*flags)
     flags.each do |flag|
-      check flag      
-      @flags[flag] = true
+      if flag.kind_of?(Flags)
+        #if @values && other.values && compatible_values(other_values)
+        #  self.bits |= other.bits
+        #else
+          flags.concat other.to_a
+        #end
+      else
+        check flag      
+        @flags[flag] = true
+      end
     end
   end
 
   # Clears (makes false) one or more flags
   def clear(*flags)
     flags.each do |flag|
-      check flag
-      @flags[flag] = false
+      if flag.kind_of?(Flags)
+        #if @values && other.values && compatible_values(other_values)
+        #  self.bits &= ~other.bits
+        #else
+          flags.concat other.to_a
+        #end
+      else
+        check flag
+        @flags[flag] = false
+      end
     end
   end
 
@@ -269,18 +285,25 @@ class Flags
   
   
   def ==(other)
-    if @values && other.values && @values.object_id==other.values.object_id
+    if @values && other.values && compatible_values?(other.values)
       bits == other.bits
     else
       to_a.map{|s| s.to_s}.sort == other.to_a.map{|s| s.to_s}.sort
     end
   end
   
+  
+  
   private
   def check(flag)
     raise InvalidFlagType,"Flags must be defined as symbols; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol)
     @values[flag] if @values # raises an invalid flag error if flag is invalid
     true    
+  end
+  
+  def compatible_values?(v)
+    #@values.object_id==v.object_id
+    @values == v
   end
   
 end

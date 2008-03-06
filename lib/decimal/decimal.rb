@@ -53,8 +53,8 @@ class Decimal
       @rounding = ROUND_HALF_EVEN
       @precision = 28
       
-      @emin = -999999999
-      @emax =  999999999
+      @emin = -99999999 
+      @emax =  99999999 # BigDecimal misbehaves with expoonents such as 999999999
       
       @flags = Decimal::Flags(EXCEPTIONS)
       @traps = Decimal::Flags(EXCEPTIONS)
@@ -279,7 +279,8 @@ class Decimal
       if result.finite?
         e = result.adjusted_exponent
         if e>@emax 
-          result = infinity(result.sign)
+          #result = infinity(result.sign)
+          result = nan
           @flags << :overflow if @signal_flags && !quiet
           raise Overflow if trp[:overflow]
         elsif e<@emin
@@ -287,8 +288,8 @@ class Decimal
           @flags << :underflow if @signal_flags && !quiet
           raise Overflow if trp[:underflow]
         end
-      #elsif @signal_flags && !quiet
-        
+      elsif @signal_flags && !quiet
+        @flags << :invalid_operation if result.nan?        
       end
       result
     end          
@@ -366,7 +367,7 @@ class Decimal
   def Decimal.infinity(sign=+1, c=nil)
     (c || context).infinity(sign)
   end
-  def Decimal.nan
+  def Decimal.nan(c=nil)
     (c || context).nan
   end
     
@@ -381,6 +382,7 @@ class Decimal
       when Rational
         @value = BigDecimal.new(v.numerator.to_s)/BigDecimal.new(v.denominator.to_s)
       else
+        # v = 'NaN' if v=='?'
         @value = BigDecimal(v)
     end
   end
@@ -538,8 +540,11 @@ class Decimal
   include Comparable
   
   extend Forwardable
-  [:finite?, :infinite?, :nan?, :zero?, :nonzero?].each do |m|
+  [:infinite?, :nan?, :zero?, :nonzero?].each do |m|
     def_delegator :@value, m, m
+  end
+  def finite?
+    _value.finite? || _value.zero?
   end
   
   def special?
