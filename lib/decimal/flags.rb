@@ -258,11 +258,11 @@ class Flags
   end
   
   def to_s
-    to_a.map{|f| f.to_s}.join(', ')
+    "[#{to_a.map{|f| f.to_s}.join(', ')}]"
   end
   
   def inspect
-    txt = "#{self.class.to_s}[#{to_s}]"
+    txt = "#{self.class.to_s}#{to_s}"
     txt << " (0x#{bits.to_s(16)})" if @values    
     txt
   end  

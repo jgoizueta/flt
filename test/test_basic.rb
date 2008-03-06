@@ -216,11 +216,57 @@ class TestBasic < Test::Unit::TestCase
    assert_equal x.abs, Decimal.context.scaleb(x.integral_significand, x.integral_exponent)
    assert_equal x.abs, Decimal.context.scaleb(Decimal.context.normalized_integral_significand(x),Decimal.context.normalized_integral_exponent(x))
    
+   Decimal.context.precision = 3
+   Decimal.context.rounding = :half_up
+   assert_equal "100.0", (+Decimal('100.4')).to_s
+   assert_equal "101.0", (+Decimal('101.4')).to_s
+   assert_equal "101.0", (+Decimal('100.5')).to_s
+   assert_equal "102.0", (+Decimal('101.5')).to_s
+   assert_equal "-101.0", (+Decimal('-100.5')).to_s
+   assert_equal "-102.0", (+Decimal('-101.5')).to_s
+   assert_equal "-100.0", (+Decimal('-100.4')).to_s
+   assert_equal "-101.0", (+Decimal('-101.4')).to_s
+   Decimal.context.rounding = :half_even
+   assert_equal "100.0", (+Decimal('100.5')).to_s
+   # assert_equal "101.0", (+Decimal('100.51')).to_s # not with BigDecimal
+   assert_equal "101.0", (+Decimal('100.6')).to_s # not with BigDecimal
+   assert_equal "102.0", (+Decimal('101.5')).to_s
+   assert_equal "101.0", (+Decimal('101.4')).to_s
+   assert_equal "-100.0", (+Decimal('-100.5')).to_s
+   assert_equal "-102.0", (+Decimal('-101.5')).to_s
+   assert_equal "-101.0", (+Decimal('-101.4')).to_s
+   Decimal.context.rounding = :half_down
+   assert_equal "100.0", (+Decimal('100.5')).to_s
+   assert_equal "101.0", (+Decimal('101.5')).to_s
+   assert_equal "-100.0", (+Decimal('-100.5')).to_s
+   assert_equal "-101.0", (+Decimal('-101.5')).to_s
+   Decimal.context.rounding = :down
+   assert_equal "100.0", (+Decimal('100.9')).to_s
+   assert_equal "101.0", (+Decimal('101.9')).to_s
+   assert_equal "-100.0", (+Decimal('-100.9')).to_s
+   assert_equal "-101.0", (+Decimal('-101.9')).to_s
+   Decimal.context.rounding = :up
+   assert_equal "101.0", (+Decimal('100.1')).to_s
+   assert_equal "102.0", (+Decimal('101.1')).to_s
+   assert_equal "-101.0", (+Decimal('-100.1')).to_s
+   assert_equal "-102.0", (+Decimal('-101.1')).to_s
+   Decimal.context.rounding = :floor
+   assert_equal "100.0", (+Decimal('100.9')).to_s
+   assert_equal "101.0", (+Decimal('101.9')).to_s
+   assert_equal "-101.0", (+Decimal('-100.9')).to_s
+   assert_equal "-102.0", (+Decimal('-101.9')).to_s
+   Decimal.context.rounding = :ceiling
+   assert_equal "101.0", (+Decimal('100.1')).to_s
+   assert_equal "102.0", (+Decimal('101.1')).to_s
+   assert_equal "-100.0", (+Decimal('-100.1')).to_s
+   assert_equal "-101.0", (+Decimal('-101.1')).to_s
+
    
   end
   
   def test_exp
     Decimal.context.precision = 100
+    Decimal.context.rounding = :half_even
     e_100 = "2.718281828459045235360287471352662497757247093699959574966967627724076630353547594571382178525166427"
     assert_equal e_100, exp(Decimal(1)).to_s
     assert_equal Decimal(e_100), exp(Decimal(1))

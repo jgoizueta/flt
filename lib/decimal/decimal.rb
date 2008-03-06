@@ -14,7 +14,6 @@ require 'monitor'
 # Decimal arbitrary precision floating point number.
 class Decimal
   
-  # TO DO: use Flags for rounding modes (and a hash from symbols to BigDecimal constants)
   ROUND_HALF_EVEN = BigDecimal::ROUND_HALF_EVEN
   ROUND_HALF_DOWN = BigDecimal::ROUND_HALF_DOWN
   ROUND_HALF_UP = BigDecimal::ROUND_HALF_UP
@@ -22,8 +21,11 @@ class Decimal
   ROUND_CEILING = BigDecimal::ROUND_CEILING
   ROUND_DOWN = BigDecimal::ROUND_DOWN
   ROUND_UP = BigDecimal::ROUND_UP
+  ROUND_05UP = nil
+   
+  class Error < StandardError
+  end
   
- 
   class Exception < StandardError
     attr :context
     def initialize(context=nil)
@@ -63,6 +65,9 @@ class Decimal
       
       @flags = Decimal::Flags(EXCEPTIONS)
       @traps = Decimal::Flags(EXCEPTIONS)
+      
+      @signal_flags = true # no flags updated if false
+      @quiet = false # no traps or flags updated if ture
             
       assign options
         
@@ -83,6 +88,8 @@ class Decimal
       @rounding = options[:rounding] unless options[:rounding].nil?
       @precision = options[:precision] unless options[:precision].nil?        
       @traps = Flags(options[:rounding]) unless options[:rounding].nil?
+      @signal_flags = options[:signal_flags] unless options[:signal_flags].nil?
+      @quiet = options[:quiet] unless options[:quiet].nil?
     end
     
     def add(x,y)
@@ -199,39 +206,42 @@ class Decimal
       Decimal("#{sign<0 ? '-' : '+'}0")
     end
     def infinity(sign=+1)
-      compute(:traps=>0) { Decimal(BigDecimal(sign.to_s)/BigDecimal('0')) }
+      compute(:quiet=>true) { Decimal(BigDecimal(sign.to_s)/BigDecimal('0')) }
     end
     def nan
-      compute(:traps=>0) { Decimal(BigDecimal('0')/BigDecimal('0')) }
+      compute(:quiet=>true) { Decimal(BigDecimal('0')/BigDecimal('0')) }
     end
         
 
     protected
+            
     @@compute_lock = Monitor.new  
     # Use of BigDecimal is done in blocks passed to this method, which sets
     # the rounding mode and precision defined in the context.
     # Since the BigDecimal rounding mode and precision is a global resource,
     # a lock must be used to prevent other threads from modifiying it.
-        
-    # TO DO:
-    # implement UPDATE_FLAGS
-    # decide how to store flags & traps: integer (bit_field) - constants or Set of exc. classes
-    #        Decimal::EXCEPTION_NAN || Decimal::EXCEPTION_OVERFLOW
-    #        Decimal::FLAG_NAN || Decimal::FLAG_OVERFLOW              vs Set.new[NanException, OverflowException]
-    UPDATE_FLAGS = false
+    UPDATE_FLAGS = true
     
     def compute(options={})
-      rnd = options[:rounding] || @rounding
+      rnd = big_decimal_rounding(options[:rounding] || @rounding)
       prc = options[:precision] || options[:digits] || @precision
       trp = Context::Flags(options[:traps] || @traps)
+      quiet = options[:quiet] || @quiet
       result = nil
       @@compute_lock.synchronize do
         keep_limit = BigDecimal.limit(prc)
         keep_round_mode = BigDecimal.mode(BigDecimal::ROUND_MODE, rnd)
         BigDecimal.mode BigDecimal::ROUND_MODE, rnd
-        if trp.any? || UPDATE_FLAGS
-          keep_exceptions = BigDecimal.mode(BigDecimal::EXCEPTION_ALL)
+        keep_exceptions = BigDecimal.mode(BigDecimal::EXCEPTION_ALL)
+        if (trp.any? || @signal_flags) && !quiet
           BigDecimal.mode(BigDecimal::EXCEPTION_ALL, true)
+          BigDecimal.mode(BigDecimal::EXCEPTION_ALL, true)
+          BigDecimal.mode(BigDecimal::EXCEPTION_INFINITY, true)
+          BigDecimal.mode(BigDecimal::EXCEPTION_UNDERFLOW, true)
+        else 
+          BigDecimal.mode(BigDecimal::EXCEPTION_ALL, false)
+          BigDecimal.mode(BigDecimal::EXCEPTION_INFINITY, false)
+          BigDecimal.mode(BigDecimal::EXCEPTION_UNDERFLOW, false)
         end
         begin
           result = yield
@@ -240,49 +250,87 @@ class Decimal
             when "(VpDivd) Divide by zero"
               @flags << :division_by_zero
               raise DivisionByZero if trp[:division_by_zero]
-              result = infinity
-            when "exponent overflow", "Computation results to 'Infinity'", "Computation results to '-Infinity'", "Exponent overflow"
+              BigDecimal.mode(BigDecimal::EXCEPTION_ZERODIVIDE, false)
+              retry # to set the result value
+            when "exponent overflow", "Computation results to 'Infinity'", "Computation results to '-Infinity'", "Exponent overflow"            
               @flags << :overflow
               raise Overflow if trp[:overflow]
-              result = infinity            
+              BigDecimal.mode(BigDecimal::EXCEPTION_OVERFLOW, false)
+              retry # to set the result value
             when "(VpDivd) 0/0 not defined(NaN)", "Computation results to 'NaN'(Not a Number)", "Computation results to 'NaN'",  "(VpSqrt) SQRT(NaN or negative value)",
                   "(VpSqrt) SQRT(negative value)"
               @flags << :invalid_operation
               raise InvalidOperation if trp[:invalid_operation]
-              result = nan                         
+              #BigDecimal.mode(BigDecimal::EXCEPTION_NaN, false)
+              #retry # to set the result value
+              result = nan
             when "BigDecimal to Float conversion"
               @flags << :invalid_operation
               raise InvalidOperation if trp[:invalid_operation]
-              result = nan                         
+              result = nan
             when "Exponent underflow"
               @flags << :underflow
               raise Undrflow if trp[:underflow]
-              result = zero            
+              BigDecimal.mode(BigDecimal::EXCEPTION_UNDERFLOW, false)
+              retry # to set the result value
           end
         end
         BigDecimal.limit keep_limit
         BigDecimal.mode BigDecimal::ROUND_MODE, keep_round_mode            
-        if trp.any? || UPDATE_FLAGS
-          [BigDecimal::EXCEPTION_NaN, BigDecimal::EXCEPTION_INFINITY, BigDecimal::EXCEPTION_UNDERFLOW,
-           BigDecimal::EXCEPTION_OVERFLOW, BigDecimal::EXCEPTION_ZERODIVIDE].each do |exc|
-             value =  ((keep_exceptions & exc)!=0)
-             BigDecimal.mode(exc, value)               
-          end
+        [BigDecimal::EXCEPTION_NaN, BigDecimal::EXCEPTION_INFINITY, BigDecimal::EXCEPTION_UNDERFLOW,
+         BigDecimal::EXCEPTION_OVERFLOW, BigDecimal::EXCEPTION_ZERODIVIDE].each do |exc|
+           value =  ((keep_exceptions & exc)!=0)
+           BigDecimal.mode(exc, value)               
         end
       end   
-      e = result.adjusted_exponent
-      if e>@emax 
-        result = infinity(result.sign)
-        @flags << :infinity
-        raise Overflow if trp[:overflow]
-      elsif e<@emin
-        result = zero(result.sign)
-        @flags << :underflow
-        raise Overflow if trp[:underflow]
+      if result.finite?
+        e = result.adjusted_exponent
+        if e>@emax 
+          result = infinity(result.sign)
+          @flags << :overflow if @signal_flags && !quiet
+          raise Overflow if trp[:overflow]
+        elsif e<@emin
+          result = zero(result.sign)
+          @flags << :underflow if @signal_flags && !quiet
+          raise Overflow if trp[:underflow]
+        end
+      #elsif @signal_flags && !quiet
+        
       end
       result
     end          
+    
+    ROUNDING_MODES_NAMES = {  
+      :half_even=>ROUND_HALF_EVEN,
+      :half_up=>ROUND_HALF_UP,
+      :half_down=>ROUND_HALF_DOWN,
+      :floor=>ROUND_FLOOR,
+      :ceiling=>ROUND_CEILING,
+      :down=>ROUND_DOWN,
+      :up=>ROUND_UP,
+      :up05=>ROUND_05UP    
+    }
+    ROUNDING_MODES = [
+      ROUND_HALF_EVEN, 
+      ROUND_HALF_DOWN,
+      ROUND_HALF_UP,
+      ROUND_FLOOR,
+      ROUND_CEILING,
+      ROUND_DOWN,
+      ROUND_UP,
+      ROUND_05UP
+    ]
+    def big_decimal_rounding(m)
+      mode = m      
+      if mode.kind_of?(Symbol)
+        mode = ROUNDING_MODES_NAMES[mode]
+      end
+      raise Error,"Invalid rounding mode #{m.inspect}"  unless mode && ROUNDING_MODES.include?(mode)
+      mode
+    end
+    
   end
+  
   
   # Context constructor
   def Decimal.Context(options={})
