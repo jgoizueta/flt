@@ -5,7 +5,7 @@ class TestFlags < Test::Unit::TestCase
   
   def test_flags
     f = Decimal::Flags(:flag_one, :flag_three)
-    assert_equal "Decimal::Flags[flag_one, flag_three]",  f.inspect
+    assert_equal "[:flag_one, :flag_three]",  f.to_a.sort_by{|flg| flg.to_s}.inspect
     f.values = Decimal::FlagValues(:flag_one, :flag_two, :flag_three)
     assert_equal "Decimal::Flags[flag_one, flag_three] (0x5)", f.inspect
     f[:flag_two] = true
@@ -26,6 +26,7 @@ class TestFlags < Test::Unit::TestCase
     
     assert Decimal::Flags(:flag_one, :flag_three)==Decimal::Flags(:flag_three, :flag_one)
     assert Decimal::Flags(:flag_one, :flag_three)!=Decimal::Flags(:flag_one)
+
     
     
   end

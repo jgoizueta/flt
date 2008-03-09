@@ -88,4 +88,12 @@ decimal_fast.rb:
 So the user would require 'decimal_std' if standards-compilacne is preferred or 
 require 'decimal_fast' if speed is considered more important.
 
-  
+=Development status
+
+Two of the three planned Decimal alternatives are being developed: decimal.rb is the decimal-rb mentioned above
+and decimal_bd.rb is decimal-bd.
+
+For testing, FILTER must be used to select which alternative to test; to test the BigDecimal version the value
+--\ -bd must be assigned to it (EXPORT FILTER=--\ -bd) (SET FILTER=-- -bd in windows).
+
+

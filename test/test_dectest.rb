@@ -1,4 +1,5 @@
-require File.dirname(__FILE__) + '/../lib/decimal'
+#require File.dirname(__FILE__) + '/../lib/decimal'
+require File.dirname(__FILE__) + '/test_helper.rb'
 
 ROUNDINGS = {
   'ceiling' => Decimal::ROUND_CEILING,

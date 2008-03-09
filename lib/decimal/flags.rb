@@ -24,7 +24,7 @@ class FlagValues
     @flags = {}
     value = 1
     flags.each do |flag|
-      raise InvalidFlagType,"Flags must be defined as symbols; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol)
+      raise InvalidFlagType,"Flags must be defined as symbols or classes; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol) || flag.instance_of?(Class)
       @flags[flag] = value      
       value <<= 1
     end    
@@ -85,7 +85,7 @@ class Flags
       case flag
         when FlagValues
           @values = flag
-        when Symbol
+        when Symbol, Class
           @flags[flag] = true
         when Integer
           v |= flag
@@ -109,7 +109,7 @@ class Flags
     
   end
   
-  # Clears of flags
+  # Clears all flags
   def clear!
     @flags = {}
   end
@@ -193,6 +193,7 @@ class Flags
   
   # Sets (makes true) one or more flags
   def set(*flags)
+    flags = flags.first if flags.size==1 && flags.first.instance_of?(Array)
     flags.each do |flag|
       if flag.kind_of?(Flags)
         #if @values && other.values && compatible_values(other_values)
@@ -209,6 +210,7 @@ class Flags
 
   # Clears (makes false) one or more flags
   def clear(*flags)
+    flags = flags.first if flags.size==1 && flags.first.instance_of?(Array)
     flags.each do |flag|
       if flag.kind_of?(Flags)
         #if @values && other.values && compatible_values(other_values)
@@ -296,7 +298,8 @@ class Flags
   
   private
   def check(flag)
-    raise InvalidFlagType,"Flags must be defined as symbols; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol)
+    raise InvalidFlagType,"Flags must be defined as symbols or classes; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol) || flag.instance_of?(Class)
+    
     @values[flag] if @values # raises an invalid flag error if flag is invalid
     true    
   end
