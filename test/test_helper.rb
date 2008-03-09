@@ -1,5 +1,5 @@
 require 'test/unit'
-ARGV.shift if ARGV.first=='--' # for Ruby 1.9
+ARGV.shift if ARGV.first=='--' || ARGV.first=="\r" # for Ruby 1.9
 if !defined?(TESTING)
   if ARGV.first && ARGV.first.strip.downcase=='-bd'
     ARGV.shift
@@ -9,7 +9,7 @@ if !defined?(TESTING)
   else
     #STDERR.puts "TESTING RB"
     TESTING = :ruby
-    require File.dirname(__FILE__) + '/../lib/decimal'
+    require File.dirname(__FILE__) + '/../lib/decimal_rb'
   end
 end
 
