@@ -140,13 +140,15 @@ class Decimal
       @signal_flags = true # no flags updated if false
       @quiet = false # no traps or flags updated if ture
       
+      @capitals = true
+      
       #@ignore_flags = ...
             
       assign options
         
     end
     
-    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags
+    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags, :capitals
     
     def ignore_all_flags
       #@ignored_flags << EXCEPTIONS
@@ -362,7 +364,7 @@ class Decimal
     Decimal.new([sign, 0, :inf])
   end
   def Decimal.nan()
-    Decimal.new([+1, 0, :nan])
+    Decimal.new([+1, nil, :nan])
   end
 
   def _parser(txt)
@@ -425,7 +427,7 @@ class Decimal
         else
           if m.diag
             # NaN
-            @coeff = m.diag.to_i
+            @coeff = (m.diag.nil? || m.diag.empty?) ? nil : m.diag.to_i
             @exp = m.signal ? :snan : :nan
           else
             # Infinity
@@ -477,7 +479,7 @@ class Decimal
   end
   
   def nonzero?
-    @coeff>0 && finite?
+    special? || @coeff>0
   end
 
 
@@ -605,8 +607,53 @@ class Decimal
     # ...
   end
 
-  def to_s(context=nil)
+  def to_s(eng=false,context=nil)
     # (context || Decimal.context).to_string(self)
+    sgn = sign<0 ? '-' : ''
+    if special?
+      if exp==:inf
+        "#{sng}Infinity"
+      elsif exp==:nan
+        "#{sgn}NaN#{coeff}"
+      else # exp==:snan
+        "#{sgn}sNaN#{coeff}"
+      end
+    else
+      ds = @coeff.to_s
+      n_ds = ds.size
+      exp = integral_exponent
+      leftdigits = exp + n_ds
+      if exp<=0 && leftdigits>-6
+        dotplace = leftdigits
+      elsif !eng
+        dotplace = 1
+      elsif @coeff==0
+        dotplace = (leftdigits+1)%3 - 1
+      else
+        dotplace = (leftdigits-1)%3 + 1
+      end
+      
+      if dotplace <=0
+        intpart = '0'
+        fracpart = '.' + '0'*(-dotplace) + ds
+      elsif dotplace >= n_ds
+        intpart = ds + '0'*(dotplace - n_ds)
+        fracpart = ''
+      else
+        intpart = ds[0...dotplace]
+        fracpart = '.' + ds[dotplace..-1]
+      end
+      
+      if leftdigits == dotplace
+        e = ''
+      else
+        context ||= Decimal.context
+        e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
+      end
+      
+      sgn + intpart + fracpart + e
+        
+    end
   end    
   
   def inspect
@@ -616,8 +663,45 @@ class Decimal
   def <=>(other)
     case other
       when Decimal,Integer,Rational
-        # compare self with Decimal(other)
-        # ...
+        other = Decimal(other)
+        if self.special? || other.special?
+          if self.nan? || other.nan?
+            1
+          else
+            self.sign <=> other.sigh
+          end
+        else
+          if self.zero?
+            if other.zero?
+              0
+            else
+              -other.sign
+            end
+          elsif other.zero?
+            self.sign
+          elsif other.sign < self.sign
+            -1
+          elsif self.sign < other.sign
+            1
+          else
+            self_adjusted = self.adjusted_exponent
+            other_adjusted = other.adjusted_exponent
+            if self_adjusted == other_adjusted
+              self_padded,other_padded = self_adjusted,other_adjusted
+              d = self.exp - other.exp
+              if d>0
+                self_padded *= radix**d
+              else
+                other_padded *= radix**(-d)
+              end
+              (self_padded <=> other_padded)*self.sign
+            elsif self_adjusted > other_adjusted
+              self.sign
+            else
+              -self.sign
+            end                          
+          end
+        end
       else
         if defined? other.coerce
           x, y = other.coerce(self)
@@ -631,11 +715,24 @@ class Decimal
     (self<=>other) == 0
   end
   include Comparable
-  
+
+  def hash
+    if finite?
+      reduce.hash!      
+    else
+      super
+    end      
+  end
+  def hash!
+    super.hash
+  end
+
   # Digits of the significand as an array of integers
   def digits
     @coeff.to_s.split('').map{|d| d.to_i}
   end
+
+
 
   
   # Exponent of the magnitude of the most significant digit of the operand 
@@ -686,7 +783,23 @@ class Decimal
 
 
 
-
+  def _neg(context=nil)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end
+    if zero?
+      ans = copy_abs
+    else
+      ans = copy_negate
+    end
+    context ||= Decimal.context
+    ans._fix(context)
+  end
+    
+    
+    
+  end
 
       
     # adjust payload of a NaN to the context  
