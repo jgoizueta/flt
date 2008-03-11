@@ -16,6 +16,26 @@ class Decimal
   ROUND_UP = :up
   ROUND_05UP = :up05
    
+   
+  def self.radix
+    10
+  end
+
+  # radix**n for integral n; returns an integer
+  def self.int_radix_power(n)
+    10**n
+  end
+  
+  # x*(radix**n) for x,n integers; returns an integer
+  def self.int_mult_radix_power(x,n)
+    x * (10**n)
+  end  
+
+  # x/(radix**n) for x,n integers; returns an integer
+  def self.int_div_radix_power(x,n)
+    x / (10**n)
+  end  
+
   class Error < StandardError
   end
   
@@ -76,13 +96,13 @@ class Decimal
         if context.rounding == :ceiling
           Decimal.infinity(sign)
         else
-          Decimal([sign, radix**context.precision - 1, context.emax - context.precision + 1])
+          Decimal([sign, int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
         end
       elsif sign==-1
         if context_rounding == :floor
           Decimal.infinity(sign)
         else
-          Decimal([sign, radix**context.precision - 1, context.emax - context.precision + 1])
+          Decimal([sign, int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
         end
       end
     end
@@ -142,13 +162,15 @@ class Decimal
       
       @capitals = true
       
+      @clamp = false
+      
       #@ignore_flags = ...
             
       assign options
         
     end
     
-    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags, :capitals
+    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags, :capitals, :clamp
     
     def ignore_all_flags
       #@ignored_flags << EXCEPTIONS
@@ -181,6 +203,9 @@ class Decimal
     def prec=(n)
       self.precision = n
     end
+    def clamp?
+      @clamp
+    end
         
     def self.Flags(*values)
       Decimal::Flags(EXCEPTIONS,*values)
@@ -212,7 +237,7 @@ class Decimal
     end
     
     def add(x,y)
-      # ...
+      x.add(y,self)
     end
     def substract(x,y)
       # ...
@@ -245,15 +270,17 @@ class Decimal
       # ...
     end
     
+
     # Adjusted exponent of x returned as a Decimal value.
     def logb(x)
       Decimal(x.adjusted_exponent,self)
     end
-
+    
     # x*(radix**y) y must be an integer
     def scaleb(x, y)
       # x * radix**y
     end
+        
     
     # Exponent in relation to the significand as an integer
     # normalized to precision digits. (minimum exponent)
@@ -264,7 +291,7 @@ class Decimal
     # Significand normalized to precision digits
     # x == normalized_integral_significand(x) * radix**(normalized_integral_exponent)
     def normalized_integral_significand(x)
-      x.integral_significand*(10**(precision - x.number_of_digits))
+      x.integral_significand*(int_radix_power(precision - x.number_of_digits))
     end
     
     def to_normalized_int_scale(x)
@@ -381,7 +408,7 @@ class Decimal
       context = args.pop
     end
     context ||= Decimal.context
-    
+        
     case args.size
     when 3
       @sign, @coeff, @exp = args
@@ -441,7 +468,7 @@ class Decimal
         raise TypeError, "invalid argument #{arg.inspect}"
       end
     else
-      error ArgumentError, "wrong number of arguments (#{args.size} for 1 or 3)"
+      raise ArgumentError, "wrong number of arguments (#{args.size} for 1 or 3)"
     end                
   end
 
@@ -497,7 +524,7 @@ class Decimal
   def _bin_op(op, meth, other, context=nil)
     case other
       when Decimal,Integer,Rational
-        (context || Decimal.context).send meth, self, Decimal(other)
+        self.send meth, Decimal(other), context
       else
         x, y = other.coerce(self)
         x.send op, y
@@ -505,12 +532,14 @@ class Decimal
   end
   private :_bin_op
   
-  def -@(context=nil)
-    (context || Decimal.context).minus(self)
+  def -@(context=nil)    
+    #(context || Decimal.context).minus(self)
+    _neg(context)
   end
 
   def +@(context=nil)
-    (context || Decimal.context).plus(self)
+    #(context || Decimal.context).plus(self)
+    _pos(context)
   end
 
   def +(other, context=nil)
@@ -535,12 +564,87 @@ class Decimal
 
 
   def add(other, context=nil)
-    (context || Decimal.context).add(self,other)
+    
+    context ||= Decimal.context
+    
+    if self.special? || other.special?
+      ans = _check_nans(other,context)
+      return ans if ans
+      
+      if self.infinite?
+        if self.sign != other.sign && other.infinite?
+          return context.exception(InvalidOperation, '-INF + INF')
+        end
+        return Decimal(self)
+      end
+            
+      return Decimal(other) if other.infinite?
+    end
+      
+    exp = [self.integral_exponent, other.integral_exponent].min
+    negativezero = (context.rounding == ROUND_FLOOR && self.sign != other.sign)
+    
+    if self.zero? && other.zero?
+      sign = [self.sign, other.sign].max
+      sign = -1 if negativezero
+      ans = Decimal.new([sign, 0, exp])._fix(context)
+      return ans
+    end
+    
+    if self.zero?
+      exp = [exp, other.integral_exponent - context.precision - 1].max
+      return other._rescale(exp, context.rounding)._fix(context)
+    end
+    
+    if other.zero?
+      exp = [exp, self.integral_exponent - context.precision - 1].max
+      return self._rescale(exp, context.rounding)._fix(context)
+    end
+    
+    op1, op2 = Decimal._normalize(self, other, context.precision)
+
+    result_sign = result_coeff = result_exp = nil
+    if op1.sign != op2.sign      
+      return ans = Decimal.new([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.integral_significand == op2.integral_significand
+      op1,op2 = op2,op1 if op1.integral_significand < op2.integral_significand
+      result_sign = op1.sign      
+      op1,op2 = _copy_negate(op1), _copy_negate(op2) if result_sign < 0 
+    elsif op1.sign < 0 
+      result_sign = -1
+      op1,op2 = _copy_negate(op1), _copy_negate(op2)
+    else
+      result_sign = +1
+    end
+      
+    #puts "op1=#{op1.inspect} op2=#{op2.inspect}"
+
+
+    if op2.sign == +1
+      result_coeff = op1.integral_significand + op2.integral_significand
+    else
+      result_coeff = op1.integral_significand - op2.integral_significand
+    end
+          
+    result_exp = op1.integral_exponent
+        
+    #puts "->#{Decimal([result_sign, result_coeff, result_exp]).inspect}"
+        
+    return Decimal([result_sign, result_coeff, result_exp])._fix(context)
+                    
   end
   
+  
   def substract(other, context=nil)
-    (context || Decimal.context).substract(self,other)
+    
+    context ||= Decimal.context
+    
+    if self.special? || other.special?
+      ans = _check_nans(other,context)
+      return ans if ans
+    end
+    return add(other._copy_negate, context)
   end
+  
   
   def multiply(other, context=nil)
     (context || Decimal.context).multiply(self,other)
@@ -688,11 +792,11 @@ class Decimal
             other_adjusted = other.adjusted_exponent
             if self_adjusted == other_adjusted
               self_padded,other_padded = self_adjusted,other_adjusted
-              d = self.exp - other.exp
+              d = self.integral_exponent- other.integral_exponent
               if d>0
-                self_padded *= radix**d
+                self_padded *= int_radix_power(d)
               else
-                other_padded *= radix**(-d)
+                other_padded *= int_radix_power(-d)
               end
               (self_padded <=> other_padded)*self.sign
             elsif self_adjusted > other_adjusted
@@ -783,6 +887,7 @@ class Decimal
 
 
 
+
   def _neg(context=nil)
     if special?
       ans = _check_nans(context)
@@ -797,10 +902,198 @@ class Decimal
     ans._fix(context)
   end
     
+  def _pos(context=nil)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end
+    if zero?
+      ans = copy_abs
+    else
+      ans = Decimal.new(self)
+    end
+    context ||= Decimal.context
+    ans._fix(context)
+  end    
     
+  def _abs(round=true, context=nil)
+    return copy_abs if not round
     
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end
+    if sign>0
+      ans = _neg(context)
+    else
+      ans = _pos(context)
+    end
+    ans
   end
+    
+  def _fix(context)
+    puts "fix #{inspect}"
+    if special?
+      if nan?
+        return _fix_nan(context)
+      else
+        return Decimal.new(self)
+      end
+    end
+    
+    etiny = context.etiny
+    etop  = context.etop
+    if zero?
+      exp_max = context.clamp? ? context.emax : etop
+      new_exp = [[exp, etiny].max, exp_max].min
+      if new_exp!=exp
+        context.exception Clamped
+        return Decimal.new([sign,0,new_exp])
+      else
+        return Decimal.new(self)
+      end
+    end
+    
+    nd = number_of_digits
+    exp_min = nd + @exp - context.precision
+    if exp_min > etop
+      context.exception Inexact
+      context.exception Rounded
+      return context.exception(Overflow, 'above Emax', sign)
+    end
+    
+    self_is_subnormal = exp_min < etiny
+    
+    if self_is_subnormal
+      context.exception Subnormal
+      exp_min = etiny
+    end
+    
+    if @exp < exp_min
+      context.exception Rounded      
+      # dig is the digits number from 0 (MS) to number_of_digits-1 (LS)
+      # dg = numberof_digits-dig is from 1 (LS) to number_of_digits (MS)
+      dg = exp_min - @exp # dig = number_of_digits + exp - exp_min            
+      if dg > number_of_digits # dig<0 
+        d = Decimal.new([sign,1,exp_min-1])
+        dg = number_of_digits # dig = 0
+      else
+        d = Decimal.new(self)
+      end
+      changed = d._round(context.rounding, dg)
+      coeff = Decimal.int_div_radix_power(d.integral_significand, dg)
+      coeff += 1 if changed==1
+      ans = Decimal.new([sign, coeff, exp_min])
+      if changed!=0
+        context.exception Inexact
+        if self_is_subnormal
+          context.exception Underflow
+          if ans.zero?
+            context.exception Clamped
+          end
+        elsif ans.number_of_digits == context.precision+1
+          if ans.integral_exponent< etop
+            ans = Decimal.new([ans.sign, Decimal.int_div_radix_power(ans.integral_significand,1), ans.integral_exponent+1])
+          else
+            ans = context.exception(Overflow, 'above Emax', d.sign)
+          end
+        end
+      end
+      return ans
+    end
+    
+    if context.clamp? && exp>etop
+      context.exception Clamped
+      self_padded = int_mult_radix_power(exp-etop)
+      return Decimal.new([sign,self_padded,etop])
+    end
+    
+    return Decimal.new(self)
+                                        
+  end    
 
+  
+  ROUND_ARITHMETIC = true
+  
+  def _round(rounding, i)
+    send("_round_#{rounding}", i)
+  end
+  
+  def _round_down(i)
+    if ROUND_ARITHMETIC
+      (@coeff % Decimal.int_radix_power(i))==0 ? 0 : -1
+    else
+      d = @coeff.to_s
+      p = d.size - i
+      d[p..-1].match(/\A0+\Z/) ? 0 : -1
+    end
+  end
+  def _round_up(i)
+    -_round_down(i)
+  end
+  def _round_half_up(i)
+    if ROUND_ARITHMETIC
+      m = Decimal.int_radix_power(i)
+      if (@coeff%m) >= m/2
+        1
+      else
+        (@coeff % m)==0 ? 0 : -1
+      end
+    else
+      d = @coeff.to_s
+      p = d.size - i
+      if '56789'.include?(d[p,1])
+        1
+      else
+        d[p..-1].match(/^0+$/) ? 0 : -1
+      end      
+    end      
+      
+  end
+  
+  def _round_half_even(i)
+    if ROUND_ARITHMETIC
+      m = Decimal.int_radix_power(i)
+      m1 = Decimal.int_radix_power(i+1)
+      if (@coeff%m) == m/2 && ((@coeff/m1)%2)==0
+        -1
+      else
+        _round_half_up(i)
+      end        
+    else
+      d = @coeff.to_s
+      p = d.size - i
+      
+      if d[p..-1].match(/\A#{radix/2}0*\Z/) && (p==0 || ((d[p-1,1].to_i%2)==0))
+        -1
+      else
+        _round_half_up(i)
+      end
+            
+    end
+  end  
+    
+    
+  def _round_ceiling(i)
+    sign<0 ? _round_down(i) : -round_down(i)    
+  end
+  def _round_floor(i)
+    sign>0 ? _round_down(i) : -round_down(i)    
+  end
+  def _round_up05(i)
+    if ROUND_ARITHMETIC      
+      dg = (@coeff%int_radix_power(i+1))/int_radix_power(i)
+    else
+      d = @coeff.to_s
+      p = d.size - i
+      dg = (p>0) ? d[p-1,1].to_i : 0
+    end
+    if [0,radix/2].include?(dg)
+      -_round_down(i)
+    else
+      _round_down(i)
+    end  
+  end
       
     # adjust payload of a NaN to the context  
     def _fix_nan(context)      
@@ -831,6 +1124,60 @@ class Decimal
       
     end
 
+
+  def _rescale(exp,rounding)
+    
+    return Decimal.new(self) if special?
+    return Decimal.new([sign, 0, exp]) if zero?    
+    return Decimal.new([sign, coeff*int_radix_power(self.integral_exponent - exp), exp]) if self.integral_exponent > exp
+    nd = number_of_digits + self.integral_exponent - exp
+    if nd < 0 
+      slf = Decimal.new([sign, 1, exp-1])
+      nd = 0
+    else
+      slf =Decimal.new(self)
+    end
+    changed = slf._round(rounding, dg)
+    coeff = int_div_radix_power(@coeff, dg)
+    coeff += 1 if changed==1
+    Decimal.new([slf.sign, coeff, exp])
+    
+  end
+  
+  def Decimal._normalize(op1, op2, prec=0)
+    #puts "N: #{op1.inspect} #{op2.inspect} p=#{prec}"
+    if op1.integral_exponent < op2.integral_exponent
+      swap = true
+      tmp,other = op2,op1
+    else
+      swap = false
+      tmp,other = op1,op2
+    end
+    tmp_len = tmp.number_of_digits
+    other_len = other.number_of_digits
+    exp = tmp.integral_exponent + [-1, tmp_len - prec - 2].min
+    #puts "exp=#{exp}"
+    if other_len+other.integral_exponent-1 < exp      
+      other = Decimal.new([other.sign, 1, exp])
+      #puts "other = #{other.inspect}"
+    end
+    tmp = Decimal.new([tmp.sign, int_mult_radix_power(tmp.integral_significand, tmp.integral_exponent-other.integral_exponent), other.integral_exponent])
+    #puts "tmp=#{tmp.inspect}"
+    return swap ? [other, tmp] : [tmp, other]
+  end
+
+
+  def _copy_abs
+    Decimal.new([+1,@coeff,@exp])
+  end
+  
+  def _copy_negate
+    Decimal.new([-@sign,@coeff,@exp])
+  end
+    
+  def copy_sign(other)
+    Decimal.new([other.sign, self.integral_significand, self.integral_exponent])
+  end
 
   
 end
