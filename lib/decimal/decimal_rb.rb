@@ -240,25 +240,25 @@ class Decimal
       x.add(y,self)
     end
     def substract(x,y)
-      # ...
+      x.substract(y,self)
     end
     def multiply(x,y)
-      # ...
+      x.multiply(y,self)
     end
     def divide(x,y)
-      # ...
+      x.divide(y,self)
     end
     
     def abs(x)
-      # ...
+      x.abs(self)
     end
     
     def plus(x)
-      # ...
+      x._pos(self)
     end
     
     def minus(x)
-      # ...
+      x._neg(self)
     end
     
     def to_string(x)
@@ -422,10 +422,10 @@ class Decimal
       when Integer
         if arg>0
           @sign = +1
-          @int = arg
+          @coeff = arg
         else
           @sign = -1
-          @int = -arg
+          @coeff = -arg
         end
         @exp = 0
         
@@ -647,11 +647,78 @@ class Decimal
   
   
   def multiply(other, context=nil)
-    (context || Decimal.context).multiply(self,other)
+    context ||= Decimal.context
+    resultsign = self.sign * other.sign
+    if self.special? || other.special?
+      ans = _check_nans(other, context)
+      return ans if ans
+            
+      if self.infinite?
+        return context.exception(InvalidOperation,"(+-)INF * 0") if other.zero?
+        return Decimal.infinity(resultsign)        
+      end                
+      if other.infinity?
+        return context.exception(InvalidOperation,"0 * (+-)INF") if self.zero?
+        return Decimal.infinity(resultsign)        
+      end  
+    end
+    
+    resultexp = self.integral_exponent + other.integral_exponent
+    
+    return Decimal([resultsign, 0, resultexp])._fix(context) if self.zero? || other.zero?                        
+    #return Decimal([resultsign, other.integral_significand, resultexp])._fix(context) if self.integral_significand==1
+    #return Decimal([resultsign, self.integral_significand, resultexp])._fix(context) if other.integral_significand==1
+    
+    return Decimal([resultsign, other.integral_significand*self.integral_significand, resultexp])._fix(context)
+    
   end
   
   def divide(other, context=nil)
-    (context || Decimal.context).divide(self,other)
+    context ||= Decimal.context
+    resultsign = self.sign * other.sign
+    if self.special? || other.special?
+      ans = _check_nans(other, context)
+      return ans if ans
+      if self.infinite?
+        return context.exception(InvalidOperation,"(+-)INF/(+-)INF") if other.infinity?
+        return Decimal.infinity(resultsign)        
+      end                
+      if other.infinity?
+        context.exception(Clamped,"Division by infinity")
+        return Decimal.new([resultsign, 0, context.etiny])        
+      end  
+    end
+    
+    if other.zero?
+      return context.exception(DivisionUndefined, '0 / 0') if self.zero?
+      return context.raise.exception(DivisionByZero, 'x / 0', resultsign)
+    end
+    
+    if self.zero?
+      exp = self.integral_exponent - other.integral_exponent
+      coeff = 0
+    else
+      shift = other.number_of_digits - self.number_of_digits + context.precision + 1
+      exp = self.integral_exponent - other.integral_exponent - shift
+      if shift >= 0
+        coeff, remainder = (self.integral_significand*Decimal.int_radix_power(shift)).divmod(other.integral_significand)
+      else
+        coeff, remainder = self.integral_significand.divmod(other.integral_significand*Decimal.int_radix_power(-shift))
+      end        
+      if remainder != 0
+        coeff += 1 if (coeff%(Decimal.radix/2)) == 0
+      else
+        ideal_exp = self.integral_exponent - other.integral_exponent
+        while (exp < ideal_exp) && ((coeff % Decimal.radix)==0)
+          coeff /= 10
+          exp += 1
+        end        
+      end
+      
+    end
+      
+    return Decimal([resultsign, coeff, exp])._fix(context)  
+      
   end
   
   def abs(context=nil)
@@ -761,7 +828,9 @@ class Decimal
   end    
   
   def inspect
-    "Decimal('#{self}')"
+    #"Decimal('#{self}')"
+    #debug:
+    "Decimal('#{self}') [coeff:#{@coeff.inspect} exp:#{@exp.inspect} s:#{@sign.inspect}]"
   end
   
   def <=>(other)
@@ -791,12 +860,12 @@ class Decimal
             self_adjusted = self.adjusted_exponent
             other_adjusted = other.adjusted_exponent
             if self_adjusted == other_adjusted
-              self_padded,other_padded = self_adjusted,other_adjusted
-              d = self.integral_exponent- other.integral_exponent
+              self_padded,other_padded = self.integral_significand,other.integral_significand
+              d = self.integral_exponent - other.integral_exponent
               if d>0
-                self_padded *= int_radix_power(d)
+                self_padded *= Decimal.int_radix_power(d)
               else
-                other_padded *= int_radix_power(-d)
+                other_padded *= Decimal.int_radix_power(-d)
               end
               (self_padded <=> other_padded)*self.sign
             elsif self_adjusted > other_adjusted
@@ -932,7 +1001,6 @@ class Decimal
   end
     
   def _fix(context)
-    puts "fix #{inspect}"
     if special?
       if nan?
         return _fix_nan(context)

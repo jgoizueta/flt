@@ -175,11 +175,11 @@ class TestBasic < Test::Unit::TestCase
    assert_equal(1234567000, Decimal.context.normalized_integral_significand(Decimal('123.4567')))
    
    assert_equal 7, Decimal('123.4567').number_of_digits
-   # assert_equal 9, Decimal('123.45670').number_of_digits # not with BigDecimal
+   assert_equal 9, Decimal('123.45670').number_of_digits unless TESTING==:bd
    assert_equal 7, Decimal('123.45670').reduce.number_of_digits
    
    assert_equal 1234567, Decimal('123.4567').integral_significand
-   #assert_equal 12345670, Decimal('123.45670').integral_significand # not with BigDecimal
+   assert_equal 12345670, Decimal('123.45670').integral_significand unless TESTING==:bd
    assert_equal 1234567, Decimal('123.45670').reduce.integral_significand
 
    assert_equal 2, Decimal('-123.4567').adjusted_exponent
