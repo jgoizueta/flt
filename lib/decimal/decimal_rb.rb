@@ -267,7 +267,7 @@ class Decimal
 
 
     def reduce(x)
-      # ...
+      x.reduce(self)
     end
     
 
@@ -420,7 +420,7 @@ class Decimal
       when Decimal
         @sign, @coeff, @exp = arg.split
       when Integer
-        if arg>0
+        if arg>=0
           @sign = +1
           @coeff = arg
         else
@@ -498,7 +498,7 @@ class Decimal
   end
 
   def finite?
-    !spacial?
+    !special?
   end
   
   def zero?
@@ -568,7 +568,7 @@ class Decimal
     context ||= Decimal.context
     
     if self.special? || other.special?
-      ans = _check_nans(other,context)
+      ans = _check_nans(context,other)
       return ans if ans
       
       if self.infinite?
@@ -608,10 +608,10 @@ class Decimal
       return ans = Decimal.new([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.integral_significand == op2.integral_significand
       op1,op2 = op2,op1 if op1.integral_significand < op2.integral_significand
       result_sign = op1.sign      
-      op1,op2 = _copy_negate(op1), _copy_negate(op2) if result_sign < 0 
+      op1,op2 = copy_negate(op1), copy_negate(op2) if result_sign < 0 
     elsif op1.sign < 0 
       result_sign = -1
-      op1,op2 = _copy_negate(op1), _copy_negate(op2)
+      op1,op2 = copy_negate(op1), copy_negate(op2)
     else
       result_sign = +1
     end
@@ -639,10 +639,10 @@ class Decimal
     context ||= Decimal.context
     
     if self.special? || other.special?
-      ans = _check_nans(other,context)
+      ans = _check_nans(context,other)
       return ans if ans
     end
-    return add(other._copy_negate, context)
+    return add(other.copy_negate, context)
   end
   
   
@@ -650,7 +650,7 @@ class Decimal
     context ||= Decimal.context
     resultsign = self.sign * other.sign
     if self.special? || other.special?
-      ans = _check_nans(other, context)
+      ans = _check_nans(context,other)
       return ans if ans
             
       if self.infinite?
@@ -677,7 +677,7 @@ class Decimal
     context ||= Decimal.context
     resultsign = self.sign * other.sign
     if self.special? || other.special?
-      ans = _check_nans(other, context)
+      ans = _check_nans(context,other)
       return ans if ans
       if self.infinite?
         return context.exception(InvalidOperation,"(+-)INF/(+-)INF") if other.infinity?
@@ -691,7 +691,7 @@ class Decimal
     
     if other.zero?
       return context.exception(DivisionUndefined, '0 / 0') if self.zero?
-      return context.raise.exception(DivisionByZero, 'x / 0', resultsign)
+      return context.exception(DivisionByZero, 'x / 0', resultsign)
     end
     
     if self.zero?
@@ -722,15 +722,19 @@ class Decimal
   end
   
   def abs(context=nil)
-    (context || Decimal.context).abs(self)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end        
+    sign<0 ? _neg(context) : _pos(context)          
   end
 
   def plus(context=nil)
-    (context || Decimal.context).plus(self)
+    _pos(context)
   end
   
   def minus(context=nil)
-    (context || Decimal.context).minus(self)
+    _neg(context)
   end
 
   def sqrt(context=nil)
@@ -762,7 +766,26 @@ class Decimal
   end
 
   def reduce(context=nil)
-    (context || Decimal.context).reduce(self)
+    context ||= Decimal.context
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end        
+    dup = _fix(context)
+    return dup if dup.infinite?
+    
+    return Decimal.new([dup.sign, 0, 0]) if dup.zero?
+    
+    exp_max = context.clamp? ? context.etop : context.emax
+    end_d = nd = number_of_digits
+    exp = dup.integral_exponent
+    dgs = dup.digits
+    while dgs[end_d-1]==0 && exp < exp_max
+      exp += 1
+      end_d -= 1
+    end
+    return Decimal.new([dup.sign, dup.integral_significand/Decimal.int_radix_power(nd-end_d), exp])
+    
   end
 
   def logb(context=nil)
@@ -782,9 +805,9 @@ class Decimal
     # (context || Decimal.context).to_string(self)
     sgn = sign<0 ? '-' : ''
     if special?
-      if exp==:inf
-        "#{sng}Infinity"
-      elsif exp==:nan
+      if @exp==:inf
+        "#{sgn}Infinity"
+      elsif @exp==:nan
         "#{sgn}NaN#{coeff}"
       else # exp==:snan
         "#{sgn}sNaN#{coeff}"
@@ -1177,7 +1200,7 @@ class Decimal
       Decimal(self)
     end
 
-    def _check_nans(other=nil, context=nil)
+    def _check_nans(context=nil, other=nil)
       self_is_nan = self.nan?
       other_is_nan = other.nil? ? false : other.nan?
       if self.nan? || (other && other.nan?)
@@ -1235,11 +1258,11 @@ class Decimal
   end
 
 
-  def _copy_abs
+  def copy_abs
     Decimal.new([+1,@coeff,@exp])
   end
   
-  def _copy_negate
+  def copy_negate
     Decimal.new([-@sign,@coeff,@exp])
   end
     

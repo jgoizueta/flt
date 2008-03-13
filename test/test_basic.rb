@@ -85,14 +85,26 @@ class TestBasic < Test::Unit::TestCase
     assert_equal Decimal("11.0"), Decimal(11).abs
     assert_equal Decimal("11.0"), Decimal(-11).abs
     assert_equal Decimal("-11.0"), -Decimal(11)
-    
-    assert_equal [-11,0], Decimal("-11.0").to_int_scale
-    assert_equal [-11,-1], Decimal("-1.1").to_int_scale
-    assert_equal [-11,1], Decimal("-110").to_int_scale
-    assert_equal [11,0], Decimal("11.0").to_int_scale
-    assert_equal [11,-1], Decimal("1.1").to_int_scale
-    assert_equal [11,1], Decimal("110").to_int_scale
-    
+
+    assert_equal [-11,0], Decimal("-11").to_int_scale
+
+    unless TESTING==:bd
+      assert_equal [-110,-1], Decimal("-11.0").to_int_scale
+      assert_equal [-11,-1], Decimal("-1.1").to_int_scale
+      assert_equal [-110,0], Decimal("-110").to_int_scale
+      assert_equal [110,-1], Decimal("11.0").to_int_scale
+      assert_equal [11,-1], Decimal("1.1").to_int_scale
+      assert_equal [110,0], Decimal("110").to_int_scale
+    end
+
+    assert_equal [-11,0], Decimal("-11.0").reduce.to_int_scale
+    assert_equal [-11,-1], Decimal("-1.1").reduce.to_int_scale
+    assert_equal [-11,1], Decimal("-110").reduce.to_int_scale
+    assert_equal [11,0], Decimal("11.0").reduce.to_int_scale
+    assert_equal [11,-1], Decimal("1.1").reduce.to_int_scale
+    assert_equal [11,1], Decimal("110").reduce.to_int_scale
+
+
     assert_equal Decimal('2.1'), Decimal('2.1').remainder(Decimal('3'))
     assert_equal Decimal('-2.1'), Decimal('-2.1').remainder(Decimal('3'))
     assert_equal Decimal('2.1'), Decimal('2.1').remainder(Decimal('-3'))
@@ -305,7 +317,7 @@ class TestBasic < Test::Unit::TestCase
     assert pos.nonzero?
     assert neg.nonzero?
     
-    assert nan.sign.nil?
+    #assert nan.sign.nil?
     assert_equal(+1, inf_pos.sign)
     assert_equal(-1, inf_neg.sign)
     assert_equal(+1, zero_pos.sign)
