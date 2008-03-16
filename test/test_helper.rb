@@ -1,15 +1,4 @@
 require 'test/unit'
-ARGV.shift if ARGV.first=='--' || ARGV.first=="\r" # for Ruby 1.9
-if !defined?(TESTING)
-  if ARGV.first && ARGV.first.strip.downcase=='-bd'
-    ARGV.shift
-    #STDERR.puts "TESTING BD"
-    TESTING = :bd
-    require File.dirname(__FILE__) + '/../lib/decimal_bd'
-  else
-    #STDERR.puts "TESTING RB"
-    TESTING = :ruby
-    require File.dirname(__FILE__) + '/../lib/decimal_rb'
-  end
-end
-
+require File.dirname(__FILE__) + '/../lib/decimal_bd'
+require File.dirname(__FILE__) + '/../lib/decimal_rb'
+$implementations_to_test = [FPNum::BD, FPNum::RB]

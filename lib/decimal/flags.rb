@@ -1,6 +1,6 @@
 require 'enumerator'
 
-class Decimal # acts as a namespace here
+module FPNum # acts as a namespace here
 
 # This class assigns bit-values to a set of symbols
 # so they can be used as flags and stored as an integer.
@@ -311,8 +311,10 @@ class Flags
   
 end
 
+module_function
+
 # Constructor for FlagValues
-def self.FlagValues(*params)
+def FlagValues(*params)
   if params.size==1 && params.first.kind_of?(FlagValues)
     params.first
   else
@@ -321,13 +323,15 @@ def self.FlagValues(*params)
 end
 
 # Constructor for Flags
-def self.Flags(*params)
+def Flags(*params)
   if params.size==1 && params.first.kind_of?(Flags)
     params.first
   else
     Flags.new(*params)
   end
 end
+
+
 
 end
 

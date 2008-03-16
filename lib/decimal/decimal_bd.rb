@@ -4,9 +4,16 @@ require 'rational'
 require 'monitor'
 
 
+module FPNum
+module BD
+
+
 # Decimal arbitrary precision floating point number.
 class Decimal
   
+  extend FPNum # allows use of unqualified FlagValues(), Flags()
+  include BD # allows use of unqualified Decimal()
+
   ROUND_HALF_EVEN = BigDecimal::ROUND_HALF_EVEN
   ROUND_HALF_DOWN = BigDecimal::ROUND_HALF_DOWN
   ROUND_HALF_UP = BigDecimal::ROUND_HALF_UP
@@ -43,10 +50,17 @@ class Decimal
 
   EXCEPTIONS = FlagValues(:invalid_operation, :division_by_zero, :inexact, :overflow, :underflow)
 
+  def self.Flags(*values)
+    FPNum::Flags(EXCEPTIONS,*values)
+  end
+
 
   # The context defines the arithmetic context: rounding mode, precision,...
   # Decimal.context is the current (thread-local) context.
   class Context
+    
+    include BD # allows use of unqualified Decimal()
+    
     def initialize(options = {})
       
       # default context:
@@ -56,8 +70,8 @@ class Decimal
       @emin = -99999999 
       @emax =  99999999 # BigDecimal misbehaves with expoonents such as 999999999
       
-      @flags = Decimal::Flags(EXCEPTIONS)
-      @traps = Decimal::Flags(EXCEPTIONS)
+      @flags = Decimal.Flags()
+      @traps = Decimal.Flags()
       
       @signal_flags = true # no flags updated if false
       @quiet = false # no traps or flags updated if ture
@@ -73,14 +87,11 @@ class Decimal
       self.precision=n
     end
     
-    def self.Flags(*values)
-      Decimal::Flags(EXCEPTIONS,*values)
-    end
     
     def assign(options)
       @rounding = options[:rounding] unless options[:rounding].nil?
       @precision = options[:precision] unless options[:precision].nil?        
-      @traps = Flags(options[:rounding]) unless options[:rounding].nil?
+      @traps = Decimal.Flags(options[:rounding]) unless options[:rounding].nil?
       @signal_flags = options[:signal_flags] unless options[:signal_flags].nil?
       @quiet = options[:quiet] unless options[:quiet].nil?
     end
@@ -218,7 +229,7 @@ class Decimal
     def compute(options={})
       rnd = big_decimal_rounding(options[:rounding] || @rounding)
       prc = options[:precision] || options[:digits] || @precision
-      trp = Context::Flags(options[:traps] || @traps)
+      trp = Decimal.Flags(options[:traps] || @traps)
       quiet = options[:quiet] || @quiet
       result = nil
       @@compute_lock.synchronize do
@@ -338,12 +349,12 @@ class Decimal
   
   # The current context (thread-local).
   def Decimal.context
-    Thread.current['Decimal.context'] ||= Decimal::Context.new
+    Thread.current['FPNum::BD::Decimal.context'] ||= Decimal::Context.new
   end
   
   # Change the current context (thread-local).
   def Decimal.context=(c)
-    Thread.current['Decimal.context'] = c    
+    Thread.current['FPNum::BD::Decimal.context'] = c    
   end
   
   # Defines a scope with a local context. A context can be passed which will be
@@ -403,7 +414,8 @@ class Decimal
   def _bin_op(op, meth, other, context=nil)
     case other
       when Decimal,Integer,Rational
-        (context || Decimal.context).send meth, self, Decimal(other)
+        other = Decimal.new(other) unless other.instance_of?(Decimal)
+        (context || Decimal.context).send meth, self, other
       else
         x, y = other.coerce(self)
         x.send op, y
@@ -611,3 +623,7 @@ def Decimal(v)
       Decimal.new(v)
   end
 end  
+module_function :Decimal
+
+end
+end

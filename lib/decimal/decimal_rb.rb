@@ -4,8 +4,15 @@ require 'rational'
 require 'monitor'
 require 'ostruct'
 
+module FPNum
+module RB
+
+
 # Decimal arbitrary precision floating point number.
 class Decimal
+  
+  extend FPNum # allows use of unqualified FlagValues(), Flags()
+  include RB # allows use of unqualified Decimal()  
   
   ROUND_HALF_EVEN = :half_even
   ROUND_HALF_DOWN = :half_down
@@ -151,10 +158,17 @@ class Decimal
   
   EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal)
 
+  def self.Flags(*values)
+    FPNum::Flags(EXCEPTIONS,*values)
+  end    
+    
 
   # The context defines the arithmetic context: rounding mode, precision,...
   # Decimal.context is the current (thread-local) context.
   class Context
+    
+    include RB # allows use of unqualified Decimal()
+    
     def initialize(options = {})
       
       # default context:
@@ -216,14 +230,10 @@ class Decimal
       @clamp
     end
         
-    def self.Flags(*values)
-      Decimal::Flags(EXCEPTIONS,*values)
-    end    
-    
     def assign(options)
       @rounding = options[:rounding] unless options[:rounding].nil?
       @precision = options[:precision] unless options[:precision].nil?        
-      @traps = Flags(options[:rounding]) unless options[:rounding].nil?
+      @traps = Decimal::Flags(options[:rounding]) unless options[:rounding].nil?
       @signal_flags = options[:signal_flags] unless options[:signal_flags].nil?
       @quiet = options[:quiet] unless options[:quiet].nil?
     end
@@ -373,12 +383,12 @@ class Decimal
   
   # The current context (thread-local).
   def Decimal.context
-    Thread.current['Decimal.context'] ||= Decimal::Context.new
+    Thread.current['FPNum::RB::Decimal.context'] ||= Decimal::Context.new
   end
   
   # Change the current context (thread-local).
   def Decimal.context=(c)
-    Thread.current['Decimal.context'] = c    
+    Thread.current['FPNum::RB::Decimal.context'] = c    
   end
   
   # Defines a scope with a local context. A context can be passed which will be
@@ -688,6 +698,7 @@ class Decimal
   end
   
   def divide(other, context=nil)
+    
     context = Decimal.Context(context)
     resultsign = self.sign * other.sign
     if self.special? || other.special?
@@ -1625,3 +1636,7 @@ def Decimal(*args)
     Decimal.new(*args)
   end
 end  
+module_function :Decimal
+
+end
+end

@@ -2,13 +2,13 @@
 require File.dirname(__FILE__) + '/test_helper.rb'
 
 ROUNDINGS = {
-  'ceiling' => Decimal::ROUND_CEILING,
-  'down' => Decimal::ROUND_DOWN,
-  'floor' => Decimal::ROUND_FLOOR,
-  'half_down' => Decimal::ROUND_HALF_DOWN,
-  'half_even' => Decimal::ROUND_HALF_EVEN,
-  'half_up' => Decimal::ROUND_HALF_UP,
-  'up' => Decimal::ROUND_UP,
+  'ceiling' => :ceiling,
+  'down' => :down,
+  'floor' => :floor,
+  'half_down' => :half_down,
+  'half_even' => :half_even,
+  'half_up' => :half_up,
+  'up' => :up,
   '05up' => nil
 }
 FUNCTIONS = {
@@ -50,76 +50,79 @@ class TestBasic < Test::Unit::TestCase
   
   def test_dec
     
-    dir = File.join(File.dirname(__FILE__), 'dectest')
-    unless File.exists?(dir)
-      dir = File.join(File.dirname(__FILE__), 'dectest0')
-      dir = nil unless File.exists?(dir)
-    end
-    if dir
-      Dir[File.join(dir, '*.decTest')].each do |fn|
+    $implementations_to_test.each do |mod|
+    
+      dir = File.join(File.dirname(__FILE__), 'dectest')
+      unless File.exists?(dir)
+        dir = File.join(File.dirname(__FILE__), 'dectest0')
+        dir = nil unless File.exists?(dir)
+      end
+      if dir
+        Dir[File.join(dir, '*.decTest')].each do |fn|
+                
+          name = File.basename(fn,'.decTest').downcase
+          next if %w{ds dd dq}.include?(fn[0,2]) || 
+                   %w{decsingle decdouble decquad testall}.include?(fn)
+        
+          File.open(fn,'r') do |file|
+            file.each_line do |line|
+              next if line[0,2]=='--' || line.strip.empty?
               
-        name = File.basename(fn,'.decTest').downcase
-        next if %w{ds dd dq}.include?(fn[0,2]) || 
-                 %w{decsingle decdouble decquad testall}.include?(fn)
-      
-        File.open(fn,'r') do |file|
-          file.each_line do |line|
-            next if line[0,2]=='--' || line.strip.empty?
-            
-            if line.include?(' -> ')
-              # test
-              # to do :remove inline comments --... on the right of ->
-              sides = line.split('->')
-              lhs = sides.first.strip.split
-              id = lhs.first
-              funct = lhs[1].downcase
-              valstemp = lhs[2..-1]
-              rhs = sides.last.strip.split
-              ans = rhs.first
-              flags = rhs[1..-1].map{|f| FLAG_NAMES[f.downcase]}.compact
-              
-              funct = FUNCTIONS[funct]
-              if funct && !SKIP.include?(id)
-                # do test
-                msg = "Test #{id}: #{funct}(#{valstemp.join(',')}) = #{ans}"
-                valstemp.map!{|v| Decimal(unquote(v))}
-                expected = result = result_flags = nil
-                Decimal.local_context do |context|
-                  context.flags.clear!
-                  result = context.send(funct, *valstemp)
-                  expected = Decimal(unquote(ans))              
-                  result_flags = context.flags
-                end
-                expected_flags = Decimal::Context::Flags(*flags)
-                assert_equal expected.to_s, result.to_s, msg if ans!='?'
-                assert_equal expected_flags, result_flags, msg
-              end          
-              
-            elsif line.include?(':')
-              # directive
-              funct,value = line.split(':').map{|x| x.strip.downcase}
-              case funct
-                when 'rounding'
-                  value = ROUNDINGS[value]                                     
-                else
-                  value = value.to_i
-              end
-              if value.nil?
-                raise "error"
-                # to do: skip untill next valid value of same funct
-              else  
+              if line.include?(' -> ')
+                # test
+                # to do :remove inline comments --... on the right of ->
+                sides = line.split('->')
+                lhs = sides.first.strip.split
+                id = lhs.first
+                funct = lhs[1].downcase
+                valstemp = lhs[2..-1]
+                rhs = sides.last.strip.split
+                ans = rhs.first
+                flags = rhs[1..-1].map{|f| FLAG_NAMES[f.downcase]}.compact
+                
+                funct = FUNCTIONS[funct]
+                if funct && (mod!=FPNum::BD || !SKIP.include?(id))
+                  # do test
+                  msg = "Test #{id}: #{funct}(#{valstemp.join(',')}) = #{ans}"
+                  valstemp.map!{|v| mod::Decimal(unquote(v))}
+                  expected = result = result_flags = nil
+                  mod::Decimal.local_context do |context|
+                    context.flags.clear!
+                    result = context.send(funct, *valstemp)
+                    expected = mod::Decimal(unquote(ans))              
+                    result_flags = context.flags
+                  end
+                  expected_flags = mod::Decimal::Context::Flags(*flags)
+                  assert_equal expected.to_s, result.to_s, msg if ans!='?'
+                  assert_equal expected_flags, result_flags, msg
+                end          
+                
+              elsif line.include?(':')
+                # directive
+                funct,value = line.split(':').map{|x| x.strip.downcase}
                 case funct
-                  when 'rounding','precision'              
-                    Decimal.context.send "#{funct}=", value
-                  when 'maxexponent'
-                    Decimal.context.emax = value
-                  when 'minexponent'
-                    Decimal.context.emin = value
+                  when 'rounding'
+                    value = ROUNDINGS[value]                                     
+                  else
+                    value = value.to_i
                 end
-              end            
-            end        
-          end
-        end  
+                if value.nil?
+                  raise "error"
+                  # to do: skip untill next valid value of same funct
+                else  
+                  case funct
+                    when 'rounding','precision'              
+                      mod::Decimal.context.send "#{funct}=", value
+                    when 'maxexponent'
+                      mod::Decimal.context.emax = value
+                    when 'minexponent'
+                      mod::Decimal.context.emin = value
+                  end
+                end            
+              end        
+            end
+          end  
+        end
       end
     end
   end
