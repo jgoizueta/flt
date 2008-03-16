@@ -16,43 +16,53 @@ class Decimal
   ROUND_UP = :up
   ROUND_05UP = :up05
    
-   
+  # Numerical base of Decimal.
   def self.radix
     10
   end
 
-  # radix**n for integral n; returns an integer
+  # Integral power of the base: radix**n for integer n; returns an integer.
   def self.int_radix_power(n)
     10**n
   end
   
-  # x*(radix**n) for x,n integers; returns an integer
+  # Multiply by an integral power of the base: x*(radix**n) for x,n integer;
+  # returns an integer.
   def self.int_mult_radix_power(x,n)
     x * (10**n)
   end  
 
-  # x/(radix**n) for x,n integers; returns an integer
+  # Divide by an integral power of the base: x/(radix**n) for x,n integer;
+  # returns an integer.
   def self.int_div_radix_power(x,n)
     x / (10**n)
   end  
 
+
+  # Base class for errors
   class Error < StandardError
   end
   
+  # All exception conditions derive from this class.
   class Exception < StandardError
     attr :context
     def initialize(context=nil)
       @context = context
     end
+    
+    # Defines the value returned when trapping is inactive
+    # for the condition. The arguments are those passed to
+    # Context#exception after the message.
     def self.handle(context, *args)
     end    
   end
   
+  # Invalid operation exception.
   class InvalidOperation < Exception
     def self.handle(context=nil, *args)
       if args.size>0
         sign, coeff, exp = args.first.split
-        Decimal(sign, exp, :nan)._fix_nan
+        Decimal.new([sign, exp, :nan])._fix_nan(context)
       else
         Decimal.nan
       end
@@ -115,6 +125,7 @@ class Decimal
   class Underflow < Exception
   end
   
+  # Clamped exception: exponent changed to fit bounds.
   class Clamped < Exception
   end
   
@@ -163,9 +174,7 @@ class Decimal
       @capitals = true
       
       @clamp = false
-      
-      #@ignore_flags = ...
-            
+                  
       assign options
         
     end
@@ -261,10 +270,9 @@ class Decimal
       x._neg(self)
     end
     
-    def to_string(x)
-      # ...
+    def to_string(eng=false)
+      x.to_s(eng, self)
     end
-
 
     def reduce(x)
       x.reduce(self)
@@ -278,7 +286,7 @@ class Decimal
     
     # x*(radix**y) y must be an integer
     def scaleb(x, y)
-      # x * radix**y
+      Decimal(x).scaleb(y,self)      
     end
         
     
@@ -291,7 +299,7 @@ class Decimal
     # Significand normalized to precision digits
     # x == normalized_integral_significand(x) * radix**(normalized_integral_exponent)
     def normalized_integral_significand(x)
-      x.integral_significand*(int_radix_power(precision - x.number_of_digits))
+      x.integral_significand*(Decimal.int_radix_power(precision - x.number_of_digits))
     end
     
     def to_normalized_int_scale(x)
@@ -314,46 +322,50 @@ class Decimal
       # ...
     end
    
-    # Ruby-style integer division.
+    # Ruby-style integer division: (x/y).floor
     def div(x,y)
-      # ...
+      x.div(y,self)
     end
-    # Ruby-style modulo.
+    # Ruby-style modulo: x - y*div(x,y)
     def modulo(x,y)
-      # ...
+      x.modulo(y,self)
     end
-    # Ruby-style integer division and modulo.
+    # Ruby-style integer division and modulo: (x/y).floor, x - y*(x/y).floor
     def divmod(x,y)
-      # ...
+      x.divmod(y,self)
     end
             
-    # General Decimal Arithmetic Specification integer division
+    # General Decimal Arithmetic Specification integer division: (x/y).truncate
     def divide_int(x,y)
-      # ...
+      x.divide_int(y,self)
     end
-    # General Decimal Arithmetic Specification remainder
+    # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
     def remainder(x,y)
-      # ...
+      x.remainder(y,self)
     end
     # General Decimal Arithmetic Specification remainder-near
+    #  x - y*round_half_even(x/y)
     def remainder_near(x,y)
-      # ...
+      x.remainder_near(y,self)
     end
-    
-            
-
-    protected
-            
-    
+    # General Decimal Arithmetic Specification integer division and remainder:
+    #  (x/y).truncate, x - y*(x/y).truncate
+    def divrem(x,y)
+      x.divrem(y,self)
+    end
+              
     
   end
-  
-  
+    
   # Context constructor
-  def Decimal.Context(options={})
+  def Decimal.Context(options=:default)
     case options
+      when :default
+        Decimal.context.new
       when Context
         options
+      when nil
+        Decimal.context
       else
         Decimal::Context.new(options)
     end
@@ -394,20 +406,20 @@ class Decimal
     Decimal.new([+1, nil, :nan])
   end
 
-  def _parser(txt)
-    md = /^\s*([-+])?(?:(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE]([-+]?\d+))?|Inf(?:inity)?|(s)?NaN(\d*))\s*$/i.match(txt)
-    if md
-      OpenStruct.new :sign=>md[1], :int=>md[2], :frac=>md[3], :onlyfrac=>md[4], :exp=>md[5], 
-                     :signal=>md[6], :diag=>md[7]
-    end    
-  end
-
 
   def initialize(*args)    
+    context = nil
     if args.size>0 && args.last.instance_of?(Context)
-      context = args.pop
+      context ||= args.pop
+    elsif args.size>1 && args.last.instance_of?(Hash)
+      context ||= args.pop
+    elsif args.size==1 && args.last.instance_of?(Hash)
+      arg = args.last
+      args = [arg[:sign], args[:coefficient], args[:exponent]]
+      context ||= Context(arg) # TO DO: remove sign, coeff, exp form arg
     end
-    context ||= Decimal.context
+    
+    context = Decimal.Context(context)
         
     case args.size
     when 3
@@ -417,6 +429,7 @@ class Decimal
     when 1              
       arg = args.first
       case arg
+        
       when Decimal
         @sign, @coeff, @exp = arg.split
       when Integer
@@ -429,8 +442,9 @@ class Decimal
         end
         @exp = 0
         
-      #when Rational
-        # set and  & validate
+      when Rational
+        x, y = Decimal.new(arg.numerator), Decimal.new(arg.denominator)
+        @sign, @coeff, @exp = x.divide(y, context).split
       
       when String
         m = _parser(arg)
@@ -564,8 +578,8 @@ class Decimal
 
 
   def add(other, context=nil)
-    
-    context ||= Decimal.context
+
+    context = Decimal.Context(context)
     
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -636,7 +650,7 @@ class Decimal
   
   def substract(other, context=nil)
     
-    context ||= Decimal.context
+    context = Decimal.Context(context)
     
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -647,7 +661,7 @@ class Decimal
   
   
   def multiply(other, context=nil)
-    context ||= Decimal.context
+    context = Decimal.Context(context)
     resultsign = self.sign * other.sign
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -674,7 +688,7 @@ class Decimal
   end
   
   def divide(other, context=nil)
-    context ||= Decimal.context
+    context = Decimal.Context(context)
     resultsign = self.sign * other.sign
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -720,6 +734,9 @@ class Decimal
     return Decimal([resultsign, coeff, exp])._fix(context)  
       
   end
+
+
+  
   
   def abs(context=nil)
     if special?
@@ -738,35 +755,235 @@ class Decimal
   end
 
   def sqrt(context=nil)
-    (context || Decimal.context).sqrt(self)
+    # (context || Decimal.context).sqrt(self)
   end
   
-  def div(other, context=nil)
-    (context || Decimal.context).div(self,other)
+  # General Decimal Arithmetic Specification integer division and remainder:
+  #  (x/y).truncate, x - y*(x/y).truncate
+  def divrem(other, context=nil)
+    context = Decimal.Context(context)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    sign = self.sign * other.sign
+    
+    if self.infinite?
+      if other.infinite?
+        ans = context.exception(InvalidOperation, 'divmod(INF,INF)')
+        return [ans,ans]
+      else
+        return [Decimal.infinity(sign), context.exception(InvalidOperation, 'INF % x')]
+      end
+    end
+
+    if other.zero?
+      if self.zero?        
+        ans = context.exception(DivisionUndefined, 'divmod(0,0)')  
+        return [ans,ans]
+      else  
+        return [context.exception(DivisionByZero, 'x // 0', sign),
+                 context.exception(InvalidOperation, 'x % 0')]
+      end
+    end
+    
+    quotient, remainder = self._divide_truncate(other, context)
+    return [quotient, remainder._fix(context)]
   end
+
+  # Ruby-style integer division and modulo: (x/y).floor, x - y*(x/y).floor
+  def divmod(other, context=nil)
+    context = Decimal.Context(context)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    sign = self.sign * other.sign
+    
+    if self.infinite?
+      if other.infinite?
+        ans = context.exception(InvalidOperation, 'divmod(INF,INF)')
+        return [ans,ans]
+      else
+        return [Decimal.infinity(sign), context.exception(InvalidOperation, 'INF % x')]
+      end
+    end
+
+    if other.zero?
+      if self.zero?        
+        ans = context.exception(DivisionUndefined, 'divmod(0,0)')  
+        return [ans,ans]
+      else  
+        return [context.exception(DivisionByZero, 'x // 0', sign),
+                 context.exception(InvalidOperation, 'x % 0')]
+      end
+    end
+    
+    quotient, remainder = self._divide_floor(other, context)
+    return [quotient, remainder._fix(context)]
+  end
+
+
+  # General Decimal Arithmetic Specification integer division: (x/y).truncate
+  def divide_int(other, context=nil)
+    context = Decimal.Context(context)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'INF // INF') if other.infinite?
+      return Decimal.infinity(sign)
+    end
+
+    if other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, '0 // 0')  
+      else  
+        return context.exception(DivisionByZero, 'x // 0', sign)
+      end
+    end
+    return self._divide_truncate(other, context).first
+  end
+
+  # Ruby-style integer division: (x/y).floor
+  def div(other, context=nil)
+    context = Decimal.Context(context)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'INF // INF') if other.infinite?
+      return Decimal.infinity(sign)
+    end
+
+    if other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, '0 // 0')  
+      else  
+        return context.exception(DivisionByZero, 'x // 0', sign)
+      end
+    end
+    return self._divide_floor(other, context).first
+  end
+
+
+  # Ruby-style modulo: x - y*div(x,y)
 
   def modulo(other, context=nil)
-    (context || Decimal.context).modulo(self,other)
+    context = Decimal.Context(context)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    #sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'INF % x')
+    elsif other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, '0 % 0')  
+      else  
+        return context.exception(DivisionByZero, 'x % 0')
+      end
+    end
+
+    return self._divide_floor(other, context).last._fix(context)
   end
 
-  def divmod(other, context=nil)
-    (context || Decimal.context).divmod(self,other)
-  end
-
-  def divide_int(other, context=nil)
-    (context || Decimal.context).divide_int(self,other)
-  end
-
+  # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
   def remainder(other, context=nil)
-    (context || Decimal.context).remainder(self,other)
+    context = Decimal.Context(context)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    #sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'INF % x')
+    elsif other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, '0 % 0')  
+      else  
+        return context.exception(DivisionByZero, 'x % 0')
+      end
+    end
+
+    return self._divide_truncate(other, context).last._fix(context)
+  end
+
+
+  # General Decimal Arithmetic Specification remainder-near:
+  #  x - y*round_half_even(x/y)
+  def remainder_near(other, context=nil)
+    context = Decimal.Context(context)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    #sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'remainder_near(INF,x)')
+    elsif other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, 'remainder_near(0,0)')  
+      else  
+        return context.exception(DivisionByZero, 'remainder_near(x,0)')
+      end
+    end
+    
+    if other.infinite?
+      return Decimal.new(self)._fix(context)
+    end
+    
+    ideal_exp = [self.integral_exponent, other.integral_exponent].min
+    if self.zero?
+      return Decimal([self.sign, 0, ideal_exp])._fix(context)
+    end 
+    
+    expdiff = self.adjusted_exponent - other.adjusted_exponent
+    if expdiff >= context.precision+1
+      return context.exception(DivisionImpossible)
+    elsif expdiff <= -2
+      return self.rescale(ideal_exp, context.rounding)._fix(context)
+    end
+    
+      self_coeff = self.integral_significand
+      other_coeff = other.integral_significand
+      de = self.integral_exponent - other.integral_exponent
+      if de >= 0
+        self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
+      else
+        other_coeff = Decimal.int_mult_radix_power(other_coeff, -de)
+      end
+      q, r = self_coeff.divmod(other_coeff)
+      if 2*r + (q&1) > other_coeff
+        r -= other_coeff
+        q += 1
+      end
+      
+      return context.exception(DivisionImpossible) if q >= Decimal.int_radix_power(context.precision)
+
+      sign = self.sign
+      if r < 0
+        sign = -sign
+        r = -r
+      end
+    
+    return Decimal.new([sign, r, ideal_exp])._fix(context)
+      
   end
   
-  def remainder_near(other, context=nil)
-    (context || Decimal.context).remainder_near(self,other)
-  end
 
   def reduce(context=nil)
-    context ||= Decimal.context
+    context = Decimal.Context(context)
     if special?
       ans = _check_nans(context)
       return ans if ans
@@ -792,13 +1009,34 @@ class Decimal
     (context || Decimal.context).logb(self)
   end
 
-  def scaleb(s, context=nil)
-    (context || Decimal.context).scaleb(self, s)
+  def scaleb(other, context=nil)
+        
+    context = Decimal.Context(context)
+    other = Decimal(other)
+    ans = _check_nans(context, other)
+    return ans if ans
+    return context.exception(InvalidOperation) if other.integral_exponent != 0
+    liminf = -2 * (context.emax + context.precision)
+    limsup =  2 * (context.emax + context.precision)
+    i = other.to_i
+    context.exception(InvalidOperation) if !((liminf <= i) && (i <= limsup))
+    return Decimal.new(self) if infinite?
+    return Decimal.new(@sign, @coeff, @exp+i)._fix(context)
+    
   end
 
 
   def to_i
-    # ...
+    if special?
+      return Decimal.context.exception(InvalidContext) if nan?
+    elsif infinite?
+      raise OverflowError, "Cannot convert infinity to Integer"
+    end
+    if @exp >= 0
+      return @sign*Decimal.int_mult_radix_power(@coeff,@exp)
+    else
+      return @sign*Decimal.int_div_radix_power(@coeff,-@exp)      
+    end
   end
 
   def to_s(eng=false,context=nil)
@@ -841,7 +1079,7 @@ class Decimal
       if leftdigits == dotplace
         e = ''
       else
-        context ||= Decimal.context
+        context = Decimal.Context(context)
         e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
       end
       
@@ -990,7 +1228,7 @@ class Decimal
     else
       ans = copy_negate
     end
-    context ||= Decimal.context
+    context = Decimal.Context(context)
     ans._fix(context)
   end
     
@@ -1004,7 +1242,7 @@ class Decimal
     else
       ans = Decimal.new(self)
     end
-    context ||= Decimal.context
+    context = Decimal.Context(context)
     ans._fix(context)
   end    
     
@@ -1122,6 +1360,23 @@ class Decimal
   def _round_up(i)
     -_round_down(i)
   end
+  
+  def _round_half_down(i)
+    if ROUND_ARITHMETIC
+      m = Decimal.int_radix_power(i)
+      if (@coeff%m) == m/2
+        -1
+      else
+        _round_half_up(i)
+      end
+    else
+      d = @coeff.to_s
+      p = d.size - i
+      d[p..-1].match(/^5d*$/) ? -1 : _round_half_up(i)
+    end      
+      
+  end
+  
   def _round_half_up(i)
     if ROUND_ARITHMETIC
       m = Decimal.int_radix_power(i)
@@ -1145,8 +1400,7 @@ class Decimal
   def _round_half_even(i)
     if ROUND_ARITHMETIC
       m = Decimal.int_radix_power(i)
-      m1 = Decimal.int_radix_power(i+1)
-      if (@coeff%m) == m/2 && ((@coeff/m1)%2)==0
+      if (@coeff%m) == m/2 && ((@coeff/m)%2)==0
         -1
       else
         _round_half_up(i)
@@ -1166,10 +1420,10 @@ class Decimal
     
     
   def _round_ceiling(i)
-    sign<0 ? _round_down(i) : -round_down(i)    
+    sign<0 ? _round_down(i) : -_round_down(i)    
   end
   def _round_floor(i)
-    sign>0 ? _round_down(i) : -round_down(i)    
+    sign>0 ? _round_down(i) : -_round_down(i)    
   end
   def _round_up05(i)
     if ROUND_ARITHMETIC      
@@ -1204,7 +1458,7 @@ class Decimal
       self_is_nan = self.nan?
       other_is_nan = other.nil? ? false : other.nan?
       if self.nan? || (other && other.nan?)
-        context ||= Decimal.context        
+        context = Decimal.Context(context)
         return context.exception(InvalidOperation, 'sNan', self) if self.snan?
         return context.exception(InvalidOperation, 'sNan', other) if other.snan?
         return self._fix_nan(context) if self.nan?
@@ -1270,15 +1524,104 @@ class Decimal
     Decimal.new([other.sign, self.integral_significand, self.integral_exponent])
   end
 
-  
+
+
+
+  def _divide_truncate(other, context)
+    context = Decimal.Context(context)
+    sign = self.sign * other.sign
+    if other.infinite?
+      ideal_exp = self.integral_exponent
+    else
+      ideal_exp = [self.integral_exponent, other.integral_exponent].min
+    end
+
+    expdiff = self.adjusted_exponent - other.adjusted_exponent
+    if self.zero? || other.infinite? || (expdiff <= -2)
+      return [Decimal.new([sign, 0, 0]), rescale(ideal_exp, context.rounding)]
+    end
+    if expdiff <= context.precision
+      self_coeff = self.integral_significand
+      other_coeff = other.integral_significand
+      de = self.integral_exponent - other.integral_exponent
+      if de >= 0
+        self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
+      else
+        other_coeff = Decimal.int_mult_radix_power(other_coeff, -de)
+      end
+      q, r = self_coeff.divmod(other_coeff)
+      if q < Decimal.int_radix_power(context.precision)
+        return [Decimal([sign, q, 0]),Decimal([self.sign, r, ideal_exp])]
+      end
+    end
+    # Here the quotient is too large to be representable
+    ans = context.exception(DivisionImpossible, 'quotient too large in //, % or divmod')
+    return [ans, ans]
+    
+  end
+    
+  def _divide_floor(other, context)
+    context = Decimal.Context(context)
+    sign = self.sign * other.sign
+    if other.infinite?
+      ideal_exp = self.integral_exponent
+    else
+      ideal_exp = [self.integral_exponent, other.integral_exponent].min
+    end
+
+    expdiff = self.adjusted_exponent - other.adjusted_exponent
+    if self.zero? || other.infinite? || (expdiff <= -2)
+      return [Decimal.new([sign, 0, 0]), rescale(ideal_exp, context.rounding)]
+    end
+    if expdiff <= context.precision
+      self_coeff = self.integral_significand*self.sign
+      other_coeff = other.integral_significand*other.sign
+      de = self.integral_exponent - other.integral_exponent
+      if de >= 0
+        self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
+      else
+        other_coeff = Decimal.int_mult_radix_power(other_coeff, -de)
+      end
+      q, r = self_coeff.divmod(other_coeff)
+      if r<0
+        r = -r
+        rs = -1
+      else
+        rs = +1
+      end        
+      if q<0
+        q = -q
+        qs = -1
+      else
+        qs = +1
+      end        
+      if q < Decimal.int_radix_power(context.precision)
+        return [Decimal([qs, q, 0]),Decimal([rs, r, ideal_exp])]
+      end
+    end
+    # Here the quotient is too large to be representable
+    ans = context.exception(DivisionImpossible, 'quotient too large in //, % or divmod')
+    return [ans, ans]
+    
+  end
+        
+
+
+  def _parser(txt)
+    md = /^\s*([-+])?(?:(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE]([-+]?\d+))?|Inf(?:inity)?|(s)?NaN(\d*))\s*$/i.match(txt)
+    if md
+      OpenStruct.new :sign=>md[1], :int=>md[2], :frac=>md[3], :onlyfrac=>md[4], :exp=>md[5], 
+                     :signal=>md[6], :diag=>md[7]
+    end    
+  end
+
 end
 
 # Decimal constructor
-def Decimal(v)
-  case v
-    when Decimal
-      v
-    else
-      Decimal.new(v)
+def Decimal(*args)
+  if args.size==1 && args.first.instance_of?(Decimal)
+    args.first
+  else
+    Decimal.new(*args)
   end
 end  

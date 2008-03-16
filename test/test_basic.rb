@@ -176,8 +176,8 @@ class TestBasic < Test::Unit::TestCase
 
    assert_equal 2, Decimal('123.4567').adjusted_exponent
    assert_equal 2, Decimal('123.45670').adjusted_exponent
-   assert_equal 2, Decimal.context.scaleb('1.2345670',2).adjusted_exponent
-   assert_equal 2, Decimal.context.scaleb('1.2345670',Decimal('2')).adjusted_exponent   
+   assert_equal 2, Decimal.context.scaleb(Decimal('1.2345670'),2).adjusted_exponent
+   assert_equal 2, Decimal.context.scaleb(Decimal('1.2345670'),Decimal('2')).adjusted_exponent   
    assert_equal Decimal(2), Decimal.context.logb(Decimal('123.4567'))   
    assert_equal Decimal(2), Decimal.context.logb(Decimal('123.45670'))   
    assert_equal 3, Decimal('123.4567').fractional_exponent
@@ -187,7 +187,7 @@ class TestBasic < Test::Unit::TestCase
    assert_equal(1234567000, Decimal.context.normalized_integral_significand(Decimal('123.4567')))
    
    assert_equal 7, Decimal('123.4567').number_of_digits
-   assert_equal 9, Decimal('123.45670').number_of_digits unless TESTING==:bd
+   assert_equal 8, Decimal('123.45670').number_of_digits unless TESTING==:bd
    assert_equal 7, Decimal('123.45670').reduce.number_of_digits
    
    assert_equal 1234567, Decimal('123.4567').integral_significand
@@ -196,8 +196,8 @@ class TestBasic < Test::Unit::TestCase
 
    assert_equal 2, Decimal('-123.4567').adjusted_exponent
    assert_equal 2, Decimal('-123.45670').adjusted_exponent
-   assert_equal 2, Decimal.context.scaleb('-1.2345670',2).adjusted_exponent
-   assert_equal 2, Decimal.context.scaleb('-1.2345670',Decimal('2')).adjusted_exponent   
+   assert_equal 2, Decimal.context.scaleb(Decimal('-1.2345670'),2).adjusted_exponent
+   assert_equal 2, Decimal.context.scaleb(Decimal('-1.2345670'),Decimal('2')).adjusted_exponent   
    assert_equal Decimal(2), Decimal.context.logb(Decimal('-123.4567'))   
    assert_equal Decimal(2), Decimal.context.logb(Decimal('-123.45670'))   
    assert_equal 3, Decimal('-123.4567').fractional_exponent
@@ -230,48 +230,48 @@ class TestBasic < Test::Unit::TestCase
    
    Decimal.context.precision = 3
    Decimal.context.rounding = :half_up
-   assert_equal "100.0", (+Decimal('100.4')).to_s
-   assert_equal "101.0", (+Decimal('101.4')).to_s
-   assert_equal "101.0", (+Decimal('100.5')).to_s
-   assert_equal "102.0", (+Decimal('101.5')).to_s
-   assert_equal "-101.0", (+Decimal('-100.5')).to_s
-   assert_equal "-102.0", (+Decimal('-101.5')).to_s
-   assert_equal "-100.0", (+Decimal('-100.4')).to_s
-   assert_equal "-101.0", (+Decimal('-101.4')).to_s
+   assert_equal Decimal("100"), (+Decimal('100.4'))
+   assert_equal Decimal("101"), (+Decimal('101.4'))
+   assert_equal Decimal("101"), (+Decimal('100.5'))
+   assert_equal Decimal("102"), (+Decimal('101.5'))
+   assert_equal Decimal("-101"), (+Decimal('-100.5'))
+   assert_equal Decimal("-102"), (+Decimal('-101.5'))
+   assert_equal Decimal("-100"), (+Decimal('-100.4'))
+   assert_equal Decimal("-101"), (+Decimal('-101.4'))
    Decimal.context.rounding = :half_even
-   assert_equal "100.0", (+Decimal('100.5')).to_s
-   # assert_equal "101.0", (+Decimal('100.51')).to_s # not with BigDecimal
-   assert_equal "101.0", (+Decimal('100.6')).to_s # not with BigDecimal
-   assert_equal "102.0", (+Decimal('101.5')).to_s
-   assert_equal "101.0", (+Decimal('101.4')).to_s
-   assert_equal "-100.0", (+Decimal('-100.5')).to_s
-   assert_equal "-102.0", (+Decimal('-101.5')).to_s
-   assert_equal "-101.0", (+Decimal('-101.4')).to_s
+   assert_equal Decimal("100"), (+Decimal('100.5'))
+   assert_equal Decimal("101"), (+Decimal('100.51')) unless TESTING==:bd
+   assert_equal Decimal("101"), (+Decimal('100.6'))
+   assert_equal Decimal("102"), (+Decimal('101.5'))
+   assert_equal Decimal("101"), (+Decimal('101.4'))
+   assert_equal Decimal("-100"), (+Decimal('-100.5'))
+   assert_equal Decimal("-102"), (+Decimal('-101.5'))
+   assert_equal Decimal("-101"), (+Decimal('-101.4'))
    Decimal.context.rounding = :half_down
-   assert_equal "100.0", (+Decimal('100.5')).to_s
-   assert_equal "101.0", (+Decimal('101.5')).to_s
-   assert_equal "-100.0", (+Decimal('-100.5')).to_s
-   assert_equal "-101.0", (+Decimal('-101.5')).to_s
+   assert_equal Decimal("100"), (+Decimal('100.5'))
+   assert_equal Decimal("101"), (+Decimal('101.5'))
+   assert_equal Decimal("-100"), (+Decimal('-100.5'))
+   assert_equal Decimal("-101"), (+Decimal('-101.5'))
    Decimal.context.rounding = :down
-   assert_equal "100.0", (+Decimal('100.9')).to_s
-   assert_equal "101.0", (+Decimal('101.9')).to_s
-   assert_equal "-100.0", (+Decimal('-100.9')).to_s
-   assert_equal "-101.0", (+Decimal('-101.9')).to_s
+   assert_equal Decimal("100"), (+Decimal('100.9'))
+   assert_equal Decimal("101"), (+Decimal('101.9'))
+   assert_equal Decimal("-100"), (+Decimal('-100.9'))
+   assert_equal Decimal("-101"), (+Decimal('-101.9'))
    Decimal.context.rounding = :up
-   assert_equal "101.0", (+Decimal('100.1')).to_s
-   assert_equal "102.0", (+Decimal('101.1')).to_s
-   assert_equal "-101.0", (+Decimal('-100.1')).to_s
-   assert_equal "-102.0", (+Decimal('-101.1')).to_s
+   assert_equal Decimal("101"), (+Decimal('100.1'))
+   assert_equal Decimal("102"), (+Decimal('101.1'))
+   assert_equal Decimal("-101"), (+Decimal('-100.1'))
+   assert_equal Decimal("-102"), (+Decimal('-101.1'))
    Decimal.context.rounding = :floor
-   assert_equal "100.0", (+Decimal('100.9')).to_s
-   assert_equal "101.0", (+Decimal('101.9')).to_s
-   assert_equal "-101.0", (+Decimal('-100.9')).to_s
-   assert_equal "-102.0", (+Decimal('-101.9')).to_s
+   assert_equal Decimal("100"), (+Decimal('100.9'))
+   assert_equal Decimal("101"), (+Decimal('101.9'))
+   assert_equal Decimal("-101"), (+Decimal('-100.9'))
+   assert_equal Decimal("-102"), (+Decimal('-101.9'))
    Decimal.context.rounding = :ceiling
-   assert_equal "101.0", (+Decimal('100.1')).to_s
-   assert_equal "102.0", (+Decimal('101.1')).to_s
-   assert_equal "-100.0", (+Decimal('-100.1')).to_s
-   assert_equal "-101.0", (+Decimal('-101.1')).to_s
+   assert_equal Decimal("101"), (+Decimal('100.1'))
+   assert_equal Decimal("102"), (+Decimal('101.1'))
+   assert_equal Decimal("-100"), (+Decimal('-100.1'))
+   assert_equal Decimal("-101"), (+Decimal('-101.1'))
 
    
   end
@@ -324,6 +324,18 @@ class TestBasic < Test::Unit::TestCase
     assert_equal(-1, zero_neg.sign)
     assert_equal(+1, pos.sign)
     assert_equal(-1, neg.sign)
+  end
+  
+  def test_context_parameters
+    #Decimal.context = Decimal.Context
+    Decimal.context.precision = 3
+    Decimal.context.rounding = :half_even
+    x = Decimal(1)
+    y = Decimal(3)
+    assert_equal Decimal('0.333'), x.divide(y)
+    assert_equal Decimal('0.3333'), x.divide(y, Decimal.Context(:precision=>4))
+    assert_equal Decimal('0.333'), x.divide(y)
+    assert_equal Decimal('0.33333'), x.divide(y, :precision=>5)    
   end
     
 end
