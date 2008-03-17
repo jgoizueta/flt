@@ -70,7 +70,7 @@ class Decimal
     def self.handle(context=nil, *args)
       if args.size>0
         sign, coeff, exp = args.first.split
-        Decimal.new([sign, exp, :nan])._fix_nan(context)
+        Decimal.new([sign, coeff, :nan])._fix_nan(context)
       else
         Decimal.nan
       end
@@ -623,12 +623,14 @@ class Decimal
     end
     
     if self.zero?
-      exp = [exp, other.integral_exponent - (context.precision - 1)].max # TODO: is it o.i_e - c.p-1 ?
+      #exp = [exp, other.integral_exponent - (context.precision - 1)].max # TODO: is it o.i_e - c.p-1 ?
+      exp = [exp, other.integral_exponent - context.precision - 1].max
       return other._rescale(exp, context.rounding)._fix(context)
     end
     
     if other.zero?
-      exp = [exp, self.integral_exponent - (context.precision - 1)].max  # TODO: is it o.i_e - c.p-1 ?
+      # exp = [exp, self.integral_exponent - (context.precision - 1)].max  # TODO: is it o.i_e - c.p-1 ?
+      exp = [exp, self.integral_exponent - context.precision - 1].max
       return self._rescale(exp, context.rounding)._fix(context)
     end
     
@@ -1064,9 +1066,9 @@ class Decimal
       if @exp==:inf
         "#{sgn}Infinity"
       elsif @exp==:nan
-        "#{sgn}NaN#{coeff}"
+        "#{sgn}NaN#{@coeff}"
       else # exp==:snan
-        "#{sgn}sNaN#{coeff}"
+        "#{sgn}sNaN#{@coeff}"
       end
     else
       ds = @coeff.to_s
@@ -1462,7 +1464,7 @@ class Decimal
       
     # adjust payload of a NaN to the context  
     def _fix_nan(context)      
-      payload = @significand
+      payload = @coeff
 
       max_payload_len = context.precision
       max_payload_len -= 1 if context.clamp
@@ -1479,8 +1481,8 @@ class Decimal
       other_is_nan = other.nil? ? false : other.nan?
       if self.nan? || (other && other.nan?)
         context = Decimal.Context(context)
-        return context.exception(InvalidOperation, 'sNan', self) if self.snan?
-        return context.exception(InvalidOperation, 'sNan', other) if other.snan?
+        return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
+        return context.exception(InvalidOperation, 'sNaN', other) if other.snan?
         return self._fix_nan(context) if self.nan?
         return other._fix_nan(context)
       else

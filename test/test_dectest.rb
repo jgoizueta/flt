@@ -34,8 +34,7 @@ FLAG_NAMES = {
 
 
 SKIP = {
-  FPNum::RB => [ 'add303', 'add307', # to pass these, inputs should be rounded to precision+1 ?
-                 'add642','add643', 'add644' ],
+  FPNum::RB => [],
   FPNum::BD => %w{
     add242 add303 add307 add642 add643 add644 add651 add652 add653 add662 add663 add664
     add671 add672 add673 add682 add683 add684 add691 add692 add693 add702 add703 add704
@@ -60,10 +59,7 @@ class TestBasic < Test::Unit::TestCase
       skip_tests = SKIP[mod]
       
       dir = File.join(File.dirname(__FILE__), 'dectest')
-      unless File.exists?(dir)
-        dir = File.join(File.dirname(__FILE__), 'dectest0')
-        dir = nil unless File.exists?(dir)
-      end
+      dir = nil unless File.exists?(dir)
       if dir
         Dir[File.join(dir, '*.decTest')].each do |fn|
                 
@@ -100,8 +96,8 @@ class TestBasic < Test::Unit::TestCase
                     result_flags = context.flags
                   end
                   expected_flags = mod::Decimal::Flags(*flags)
-                  #assert_equal expected.to_s, result.to_s, msg if ans!='?'
-                  assert_equal expected, result, msg if ans!='?'
+                  assert_equal expected.to_s, result.to_s, msg if ans!='?'
+                  #assert_equal expected, result, msg if ans!='?'
                   assert_equal expected_flags, result_flags, msg
                 end          
                 
