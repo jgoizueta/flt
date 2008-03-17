@@ -623,12 +623,12 @@ class Decimal
     end
     
     if self.zero?
-      exp = [exp, other.integral_exponent - context.precision - 1].max
+      exp = [exp, other.integral_exponent - (context.precision - 1)].max # TODO: is it o.i_e - c.p-1 ?
       return other._rescale(exp, context.rounding)._fix(context)
     end
     
     if other.zero?
-      exp = [exp, self.integral_exponent - context.precision - 1].max
+      exp = [exp, self.integral_exponent - (context.precision - 1)].max  # TODO: is it o.i_e - c.p-1 ?
       return self._rescale(exp, context.rounding)._fix(context)
     end
     
@@ -639,10 +639,10 @@ class Decimal
       return ans = Decimal.new([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.integral_significand == op2.integral_significand
       op1,op2 = op2,op1 if op1.integral_significand < op2.integral_significand
       result_sign = op1.sign      
-      op1,op2 = copy_negate(op1), copy_negate(op2) if result_sign < 0 
+      op1,op2 = op1.copy_negate, op2.copy_negate if result_sign < 0 
     elsif op1.sign < 0 
       result_sign = -1
-      op1,op2 = copy_negate(op1), copy_negate(op2)
+      op1,op2 = op1.copy_negate, op2.copy_negate
     else
       result_sign = +1
     end
@@ -1290,6 +1290,7 @@ class Decimal
     
     etiny = context.etiny
     etop  = context.etop
+    exp = integral_exponent
     if zero?
       exp_max = context.clamp? ? context.emax : etop
       new_exp = [[exp, etiny].max, exp_max].min
@@ -1317,6 +1318,7 @@ class Decimal
     end
     
     if @exp < exp_min
+      #puts "_fix(#{self}) rounded; e=#{@exp} em=#{exp_min}"
       context.exception Rounded      
       # dig is the digits number from 0 (MS) to number_of_digits-1 (LS)
       # dg = numberof_digits-dig is from 1 (LS) to number_of_digits (MS)
@@ -1382,7 +1384,7 @@ class Decimal
   def _round_half_down(i)
     if ROUND_ARITHMETIC
       m = Decimal.int_radix_power(i)
-      if (@coeff%m) == m/2
+      if (m>1) && ((@coeff%m) == m/2)
         -1
       else
         _round_half_up(i)
@@ -1398,7 +1400,7 @@ class Decimal
   def _round_half_up(i)
     if ROUND_ARITHMETIC
       m = Decimal.int_radix_power(i)
-      if (@coeff%m) >= m/2
+      if (m>1) && ((@coeff%m) >= m/2)
         1
       else
         (@coeff % m)==0 ? 0 : -1
@@ -1418,7 +1420,7 @@ class Decimal
   def _round_half_even(i)
     if ROUND_ARITHMETIC
       m = Decimal.int_radix_power(i)
-      if (@coeff%m) == m/2 && ((@coeff/m)%2)==0
+      if (m>1) && ((@coeff%m) == m/2 && ((@coeff/m)%2)==0)
         -1
       else
         _round_half_up(i)
@@ -1490,18 +1492,20 @@ class Decimal
 
   def _rescale(exp,rounding)
     
+    
     return Decimal.new(self) if special?
     return Decimal.new([sign, 0, exp]) if zero?    
-    return Decimal.new([sign, coeff*int_radix_power(self.integral_exponent - exp), exp]) if self.integral_exponent > exp
-    nd = number_of_digits + self.integral_exponent - exp
-    if nd < 0 
+    return Decimal.new([sign, @coeff*Decimal.int_radix_power(self.integral_exponent - exp), exp]) if self.integral_exponent > exp
+    #nd = number_of_digits + self.integral_exponent - exp
+    nd = exp - self.integral_exponent
+    if number_of_digits < nd 
       slf = Decimal.new([sign, 1, exp-1])
       nd = 0
     else
-      slf =Decimal.new(self)
+      slf = Decimal.new(self)
     end
-    changed = slf._round(rounding, dg)
-    coeff = int_div_radix_power(@coeff, dg)
+    changed = slf._round(rounding, nd)
+    coeff = Decimal.int_div_radix_power(@coeff, nd)
     coeff += 1 if changed==1
     Decimal.new([slf.sign, coeff, exp])
     

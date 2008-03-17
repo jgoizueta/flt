@@ -276,7 +276,7 @@ class Flags
   end
   
   def to_s
-    "[#{to_a.map{|f| f.to_s}.join(', ')}]"
+    "[#{to_a.map{|f| f.to_s.split('::').last}.join(', ')}]"
   end
   
   def inspect
