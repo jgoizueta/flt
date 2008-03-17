@@ -5,8 +5,9 @@ require 'monitor'
 require 'ostruct'
 
 module FPNum
-module RB
 
+# Pure Ruby Decimal Implementation
+module RB
 
 # Decimal arbitrary precision floating point number.
 class Decimal
@@ -178,10 +179,11 @@ class Decimal
       @emin = -99999999 
       @emax =  99999999 # BigDecimal misbehaves with expoonents such as 999999999
       
-      @flags = Decimal::Flags(EXCEPTIONS)
-      @traps = Decimal::Flags(EXCEPTIONS)      
-      @ignored_flags = Decimal::Flags(EXCEPTIONS)
+      @flags = Decimal::Flags()
+      @traps = Decimal::Flags()      
+      @ignored_flags = Decimal::Flags()
       
+      # currently unused here...
       @signal_flags = true # no flags updated if false
       @quiet = false # no traps or flags updated if ture
       
@@ -234,8 +236,13 @@ class Decimal
       @rounding = options[:rounding] unless options[:rounding].nil?
       @precision = options[:precision] unless options[:precision].nil?        
       @traps = Decimal::Flags(options[:rounding]) unless options[:rounding].nil?
+      @ignored_flags = options[:ignored_flags] unless options[:ignored_flags].nil?
       @signal_flags = options[:signal_flags] unless options[:signal_flags].nil?
       @quiet = options[:quiet] unless options[:quiet].nil?
+      @emin = options[:emin] unless options[:emin].nil?
+      @emax = options[:emax] unless options[:emax].nil?
+      @capitals = options[:capitals ] unless options[:capitals ].nil?
+      @clamp = options[:clamp ] unless options[:clamp ].nil?
     end
     
     

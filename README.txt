@@ -1,9 +1,10 @@
 = Introduction
 
-Decimal solves some of the difficulties of using BigDecimal and makes its behaviour closer
-to the General Decimal Arithmetic Specification (but not too much).
-Future versions may fully adapt to the specifications, either by using decNumber or borrowing from
-the Python's implementation.
+Decimal is a arbitrary precision decimal floating-point type for Ruby that solves
+some of the difficulties of using BigDecimal and is standards compliant (in some
+of its optional flavours).
+
+== BigDecimal replacement
 
 One of the major problems with BigDecimal is that it's not easy to control the number of
 significant digits: while addition, substraction and multiplication are exact (unless a limit is used),
@@ -40,33 +41,46 @@ The final unary + applied to the result forces it to be rounded to the current p
 (because we have computed it with two extra digits)
 The result of this method does not have trailing insignificant digits, as is common with BigDecimal.
       
+== Standars compliance.
 
-=Development plans
 
-The purpose of the current code, using BigDecimal internally is to experiment and define the API for Decimal
-and Decimal::Context. Then implementations conformant to the General Decimal Arithmetic Specification
-and the revised IEEE 7554 standard will be coded.
+Decimal pretends to be conformant to the General Decimal Arithmetic Specification
+and the revised IEEE 7554 standard.
 
-The use of BigDecimal implies some limitations (deviations from the standards):
+The BigDecimal implementations (one of the available Decimal flavours) is closer to these specifications
+than the raw BigDecimal, but has some limitations:
 - Bogus rounding (half_even & half_down) only looks at one extra digit
 - Not all operation correctly rounded (sqrt,exp,log...)(even +/- : 1E100-1E-100 with ROUND_DOWN)
 - Always in reduced form (no trailing zeros are kept)
 - No real fma
-- Deviations in signal/flags from the standards
+- Some deviations in signal/flags handling from the standards
 
-We could have three different implementations of the same Decimal API:
-[decimal-bd] The current, BigDecimal-based implementation, which is fast, non standards-compliant and needs
-             no Ruby extensions (uses only the standard library).
+=Development state and plans
+
+
+Currently two implementations of the same Decimal API are being developed:
+
+
 [decimal-dn] Implemented as a C extension using the decnumber library. That would be fast and standards-compliant.
              A binary gem could be released for mswin32, but in general compilation and the presence of decnumber
              will be necessary to install this.
-[decimal-rb] A pure Ruby implementation that could borrow code from Python's decimal.rb (if licences permit it). 
-             This will be slow and standards compliant and wouldn't need extensions.
+[decimal-rb] A pure Ruby implementation inspired by Python's Decimal. This is standards-compliant
+             but performance is slow. Needs no Ruby extensions.
+[decimal-bd] A BigDecimal-based implementation, which was hoped to be faster than the pure-ruby
+             but isn't currently.  It's not standards-compliant and needs no Ruby extensions
+             (uses only the standard library).
 
-When these three implementations are available, users will have these options:
+The last two are currently being developed.
+
+When all three implementations are available, and assuming that decimal-bd can be made to be fast,
+users will have these options:
 If decimal-dn is available that would be the best choice. If it is not, then some compromise is necessary:
 Choose standards compliance (accuracy) and have poor performance with decimal-rb or give away compliance
 and have a better performance with decimal-bd.
+
+Note: It is dubious that the BigDecimal implementation can be made to be significantly faster than the
+pure-ruby one; in that case the decimal-bd variant would have no reason to be mantained. Maybe it could
+be replaced by Tadashi Saito's Decimal.
 
 We could have a pair of entry-points for requiring:
 
@@ -92,8 +106,5 @@ require 'decimal_fast' if speed is considered more important.
 
 Two of the three planned Decimal alternatives are being developed: decimal_rb.rb is the decimal-rb mentioned above
 and decimal_bd.rb is decimal-bd.
-
-For testing, FILTER must be used to select which alternative to test; to test the BigDecimal version the value
---\ -bd must be assigned to it (EXPORT FILTER=--\ -bd) (SET FILTER=-- -bd in windows).
 
 
