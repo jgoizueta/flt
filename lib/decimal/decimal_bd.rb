@@ -702,8 +702,34 @@ class Decimal
   end
 
   def compare(other, context=nil)
-    Decimal.Context(context).compare(sefl, other)
+    Decimal.Context(context).compare(self, other)
   end
+
+  def copy_abs(context=nil)
+    Decimal.Context(context).copy_abs(self)
+  end
+  def copy_negate(context=nil)
+    Decimal.Context(context).copy_negate(self)
+  end
+  def copy_sign(other,context=nil)
+    Decimal.Context(context).copy_sign(self,other)
+  end
+  def rescale(exp,context=nil)
+    Decimal.Context(context).rescale(self,exp)
+  end
+  def quantize(other,context=nil)
+    Decimal.Context(context).quantize(self,other)
+  end
+  def same_quantum?(other,context=nil)
+    Decimal.Context(context).same_quantum?(self,other)
+  end
+  def to_integral_value(context=nil)
+    Decimal.Context(context).to_integral_value(self)
+  end
+  def to_integral_exact(context=nil)
+    Decimal.Context(context).to_integral_exact(self)
+  end
+
 
 
   def to_i
