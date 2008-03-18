@@ -71,7 +71,7 @@ class Decimal
   class ConversionSyntax < InvalidOperation
   end
 
-  EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal)
+  EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal, DivisionImpossible)
 
   def self.Flags(*values)
     FPNum::Flags(EXCEPTIONS,*values)
@@ -208,7 +208,12 @@ class Decimal
 
     # x*(radix**y) y must be an integer
     def scaleb(x, y)
-      compute { Decimal(Decimal(x)._value * (BigDecimal('10')**y.to_i)) }
+      i = y.to_i
+      if i
+        compute { Decimal(Decimal(x)._value * (BigDecimal('10')**y.to_i)) }
+      else
+        nan
+      end
     end
     
     # Exponent in relation to the significand as an integer
@@ -284,6 +289,53 @@ class Decimal
       Decimal.nan
     end
         
+
+    def compare(x,y)
+      cmp = x<=>y
+      cmp.nil? ? nan : Decimal(cmp)
+    end
+    
+    # TO CARRY ON TO Decimal
+    def copy_abs(x)
+      Decimal(x._value.abs)
+    end
+    def copy_negate(x)
+      Decimal(-(x._value))
+    end
+    def copy_sign(x,y)
+      txt = y._value.to_s
+      if txt[0,1]=='-'
+        txt = txt[1..-1]
+      else
+        txt = '-'+txt
+      end
+      Decimal(txt)
+    end
+    def rescale(x,exp)
+      x
+    end
+    def quantize(x,y)
+      x
+    end
+    def same_quantum?(x,y)
+      true
+    end
+    def to_integral_value(x)
+      i = x.to_i
+      if i
+        Decimal(x.to_i)
+      else
+        nan
+      end
+    end
+    def to_integral_exact(x)
+      i = x.to_i
+      if i
+        Decimal(x.to_i)
+      else
+        nan
+      end
+    end
 
     protected
             
@@ -412,7 +464,7 @@ class Decimal
   def Decimal.Context(options=:default)
     case options
       when :default
-        Decimal.context.new
+        Decimal::Context.new
       when Context
         options
       when nil
@@ -447,16 +499,17 @@ class Decimal
     result
   end
 
-    def zero(sign=+1)
-    end
-    def infinity(sign=+1)
-      compute(:quiet=>true) { Decimal(BigDecimal(sign.to_s)/BigDecimal('0')) }
-    end
-    def nan
-      compute(:quiet=>true) { Decimal(BigDecimal('0')/BigDecimal('0')) }
-    end
-        
+  DefaultContext = Decimal::Context()
 
+  def zero(sign=+1)
+  end
+  def infinity(sign=+1)
+    compute(:quiet=>true) { Decimal(BigDecimal(sign.to_s)/BigDecimal('0')) }
+  end
+  def nan
+    compute(:quiet=>true) { Decimal(BigDecimal('0')/BigDecimal('0')) }
+  end
+        
   def Decimal._sign_symbol(sign)
     sign<0 ? '-' : '+'
   end
@@ -510,6 +563,7 @@ class Decimal
         _fix!(context)
       
       when String
+        arg = arg.to_s.sub(/Inf(?:\s|\Z)/i, 'Infinity')
         @value = BigDecimal.new(arg.to_s)
         _fix!(context)
         
@@ -645,6 +699,10 @@ class Decimal
 
   def scaleb(s, context=nil)
     Decimal.Context(context).scaleb(self, s)
+  end
+
+  def compare(other, context=nil)
+    Decimal.Context(context).compare(sefl, other)
   end
 
 

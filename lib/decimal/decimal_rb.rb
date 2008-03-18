@@ -185,8 +185,6 @@ class Decimal
       @ignored_flags = Decimal::Flags()
       
       # currently unused here...
-      @signal_flags = true # no flags updated if false
-      @quiet = false # no traps or flags updated if ture
       
       @capitals = true
       
@@ -196,7 +194,7 @@ class Decimal
         
     end
     
-    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags, :capitals, :clamp
+    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp
     
     def ignore_all_flags
       #@ignored_flags << EXCEPTIONS
@@ -238,8 +236,6 @@ class Decimal
       @precision = options[:precision] unless options[:precision].nil?        
       @traps = Decimal::Flags(options[:traps]) unless options[:traps].nil?
       @ignored_flags = options[:ignored_flags] unless options[:ignored_flags].nil?
-      @signal_flags = options[:signal_flags] unless options[:signal_flags].nil?
-      @quiet = options[:quiet] unless options[:quiet].nil?
       @emin = options[:emin] unless options[:emin].nil?
       @emax = options[:emax] unless options[:emax].nil?
       @capitals = options[:capitals ] unless options[:capitals ].nil?
@@ -551,7 +547,6 @@ class Decimal
   end
   
   def special?
-    STDERR.puts "TEST #{$test_id}" if @exp.nil?
     @exp.instance_of?(Symbol)
   end
   
