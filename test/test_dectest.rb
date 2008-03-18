@@ -50,13 +50,6 @@ FLAG_NAMES = {
 
 
 
-SKIP = {
-  FPNum::RB => [],
-  FPNum::BD => %w{
-    addx242 addx273 addx274
-  }
-}
-
 def unquote(txt)
   txt = txt[1...-1] if txt[0,1]=="'" && txt[-1,1]=="'"
   txt = txt[1...-1] if txt[0,1]=='"' && txt[-1,1]=='"'
@@ -72,7 +65,11 @@ class TestBasic < Test::Unit::TestCase
     
     $implementations_to_test.each do |mod|
     
-      skip_tests = SKIP[mod]
+      skip_tests = []
+      exceptions_fn = File.join(File.dirname(__FILE__), 'bd_exceptions')
+      if mod==FPNum::BD && File.exists?(exceptions_fn)     
+        skip_tests = File.read(exceptions_fn).split
+      end
       
       dir = File.join(File.dirname(__FILE__), 'dectest')
       dir = nil unless File.exists?(dir)
@@ -118,8 +115,19 @@ class TestBasic < Test::Unit::TestCase
                   result = 1 if result==true
                   result = 0 if result==false
                   expected_flags = mod::Decimal::Flags(*flags)
-                  assert_equal expected.to_s, result.to_s, msg if ans!='?'
-                  #assert_equal expected, result, msg if ans!='?'
+                  if ans!='?'
+                    if mod==FPNum::BD
+                      expected = mod::Decimal(expected)
+                      result = mod::Decimal(result)
+                      if expected.nan? || result.nan?                        
+                        assert_equal expected.to_s, result.to_s, msg
+                      else
+                        assert_equal expected, result, msg
+                      end
+                    else
+                      assert_equal expected.to_s, result.to_s, msg
+                    end
+                  end
                   assert_equal expected_flags, result_flags, msg unless mod==FPNum::BD
                 end          
                 
@@ -133,7 +141,7 @@ class TestBasic < Test::Unit::TestCase
                     value = value.to_i
                 end
                 if value.nil?
-                  raise "error"
+                  #raise "error"
                   # to do: skip untill next valid value of same funct
                 else  
                   case funct
