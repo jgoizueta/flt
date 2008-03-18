@@ -54,6 +54,14 @@ end
 
 class TestBasic < Test::Unit::TestCase
   
+
+  def setup
+    $implementations_to_test.each do |mod|
+      mod::Decimal.context = mod::Decimal::DefaultContext
+    end
+  end  
+  
+  
   def test_basic
     $implementations_to_test.each do |mod|
       
@@ -334,7 +342,6 @@ class TestBasic < Test::Unit::TestCase
   
   def test_context_parameters
     $implementations_to_test.each do |mod|
-      puts "testing #{mod}"
       #mod::Decimal.context = mod::Decimal.Context
       mod::Decimal.context.precision = 3
       mod::Decimal.context.rounding = :half_even
@@ -344,6 +351,15 @@ class TestBasic < Test::Unit::TestCase
       assert_equal mod::Decimal('0.3333'), x.divide(y, mod::Decimal.Context(:precision=>4))
       assert_equal mod::Decimal('0.333'), x.divide(y)
       assert_equal mod::Decimal('0.33333'), x.divide(y, :precision=>5)    
+    end
+  end
+  
+  def test_integer
+    $implementations_to_test.each do |mod|
+      # Decimal('0').integral? Decimal('0E10').integral? Decimal('0E-10').integral? Decimal('12.0').integral? Decimal('12').integral? Decimal(12).integral? Decimal(Rational(6,2)).integral? Decimal('120E-1').integral?
+      # Decimal('12.1E10').integral?
+      # Decimal('NaN').integral? Decimal('Inf').integral? Decimal('12.1').integral? Decimal('121E-1').integral? Decimal(Rational(121,10)).integral? 
+      
     end
   end
     

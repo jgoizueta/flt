@@ -114,13 +114,13 @@ class Decimal
         if context.rounding == :ceiling
           Decimal.infinity(sign)
         else
-          Decimal([sign, int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
+          Decimal.new([sign, Decimal.int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
         end
       elsif sign==-1
-        if context_rounding == :floor
+        if context.rounding == :floor
           Decimal.infinity(sign)
         else
-          Decimal([sign, int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
+          Decimal.new([sign, Decimal.int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
         end
       end
     end
@@ -157,7 +157,8 @@ class Decimal
   
 
   
-  EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal)
+  #EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal)
+  EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal, DivisionImpossible)
 
   def self.Flags(*values)
     FPNum::Flags(EXCEPTIONS,*values)
@@ -235,7 +236,7 @@ class Decimal
     def assign(options)
       @rounding = options[:rounding] unless options[:rounding].nil?
       @precision = options[:precision] unless options[:precision].nil?        
-      @traps = Decimal::Flags(options[:rounding]) unless options[:rounding].nil?
+      @traps = Decimal::Flags(options[:traps]) unless options[:traps].nil?
       @ignored_flags = options[:ignored_flags] unless options[:ignored_flags].nil?
       @signal_flags = options[:signal_flags] unless options[:signal_flags].nil?
       @quiet = options[:quiet] unless options[:quiet].nil?
@@ -249,7 +250,7 @@ class Decimal
     
     CONDITION_MAP = {
       ConversionSyntax=>InvalidOperation,
-      DivisionImpossible=>InvalidOperation,
+      #DivisionImpossible=>InvalidOperation,
       DivisionUndefined=>InvalidOperation,
       InvalidContext=>InvalidOperation
     }
@@ -298,7 +299,7 @@ class Decimal
 
     # Adjusted exponent of x returned as a Decimal value.
     def logb(x)
-      Decimal(x.adjusted_exponent,self)
+      x.logb(self)
     end
     
     # x*(radix**y) y must be an integer
@@ -329,10 +330,9 @@ class Decimal
     #  ceil floor truncate round
     #  ** power
     # GDAS
-    #  quantize, rescale: cannot be done with BigDecimal
+    #  quantize
     #  power
     #  exp log10 ln
-    #  remainder_near
     #  fma: (not meaninful with BigDecimal bogus rounding)
     
     def sqrt(x)
@@ -370,7 +370,44 @@ class Decimal
     def divrem(x,y)
       x.divrem(y,self)
     end
-              
+
+    def compare(x,y)
+      x.compare(y, self)
+    end
+    
+
+    def copy_abs(x)
+      x.copy_abs
+    end
+    
+    def copy_negate(x)
+      x.copy_negate
+    end
+      
+    def copy_sign(x,y)
+      x.copy_sign(y)
+    end
+
+    def rescale(x, exp, watch_exp=true)
+      x.rescale(exp, self, watch_exp)
+    end
+    
+    def quantize(x, y, watch_exp=true)
+      x.quantize(y, self, watch_exp)
+    end
+    
+    def same_quantum?(x,y)
+      x.same_quantum?(y)
+    end
+    
+    def to_integral_exact(x)
+      x.to_integral_exact(self)
+    end
+    
+    def to_integral_value(x)
+      x.to_integral_value(self)
+    end
+    
     
   end
     
@@ -378,7 +415,7 @@ class Decimal
   def Decimal.Context(options=:default)
     case options
       when :default
-        Decimal.context.new
+        Decimal::Context.new
       when Context
         options
       when nil
@@ -388,6 +425,7 @@ class Decimal
     end
   end
   
+
   # The current context (thread-local).
   def Decimal.context
     Thread.current['FPNum::RB::Decimal.context'] ||= Decimal::Context.new
@@ -412,6 +450,9 @@ class Decimal
     Decimal.context = keep
     result
   end
+    
+  DefaultContext = Decimal::Context()
+      
     
   def Decimal.zero(sign=+1)
     Decimal.new([sign, 0, 0])
@@ -485,7 +526,8 @@ class Decimal
         else
           if m.diag
             # NaN
-            @coeff = (m.diag.nil? || m.diag.empty?) ? nil : m.diag.to_i
+            @coeff = (m.diag.nil? || m.diag.empty?) ? nil : m.diag.to_i            
+            @coeff = nil if @coeff==0
             @exp = m.signal ? :snan : :nan
           else
             # Infinity
@@ -509,6 +551,7 @@ class Decimal
   end
   
   def special?
+    STDERR.puts "TEST #{$test_id}" if @exp.nil?
     @exp.instance_of?(Symbol)
   end
   
@@ -597,7 +640,7 @@ class Decimal
   def add(other, context=nil)
 
     context = Decimal.Context(context)
-    
+        
     if self.special? || other.special?
       ans = _check_nans(context,other)
       return ans if ans
@@ -690,7 +733,7 @@ class Decimal
         return context.exception(InvalidOperation,"(+-)INF * 0") if other.zero?
         return Decimal.infinity(resultsign)        
       end                
-      if other.infinity?
+      if other.infinite?
         return context.exception(InvalidOperation,"0 * (+-)INF") if self.zero?
         return Decimal.infinity(resultsign)        
       end  
@@ -714,10 +757,10 @@ class Decimal
       ans = _check_nans(context,other)
       return ans if ans
       if self.infinite?
-        return context.exception(InvalidOperation,"(+-)INF/(+-)INF") if other.infinity?
+        return context.exception(InvalidOperation,"(+-)INF/(+-)INF") if other.infinite?
         return Decimal.infinity(resultsign)        
       end                
-      if other.infinity?
+      if other.infinite?
         context.exception(Clamped,"Division by infinity")
         return Decimal.new([resultsign, 0, context.etiny])        
       end  
@@ -849,7 +892,7 @@ class Decimal
     context = Decimal.Context(context)
 
     ans = _check_nans(context,other)
-    return [ans,ans] if ans
+    return ans if ans
 
     sign = self.sign * other.sign
 
@@ -899,7 +942,7 @@ class Decimal
     context = Decimal.Context(context)
 
     ans = _check_nans(context,other)
-    return [ans,ans] if ans
+    return ans if ans
 
     #sign = self.sign * other.sign
 
@@ -909,7 +952,7 @@ class Decimal
       if self.zero?
         return context.exception(DivisionUndefined, '0 % 0')  
       else  
-        return context.exception(DivisionByZero, 'x % 0')
+        return context.exception(InvalidOperation, 'x % 0')
       end
     end
 
@@ -921,7 +964,7 @@ class Decimal
     context = Decimal.Context(context)
 
     ans = _check_nans(context,other)
-    return [ans,ans] if ans
+    return ans if ans
 
     #sign = self.sign * other.sign
 
@@ -931,7 +974,7 @@ class Decimal
       if self.zero?
         return context.exception(DivisionUndefined, '0 % 0')  
       else  
-        return context.exception(DivisionByZero, 'x % 0')
+        return context.exception(InvalidOperation, 'x % 0')
       end
     end
 
@@ -945,9 +988,9 @@ class Decimal
     context = Decimal.Context(context)
 
     ans = _check_nans(context,other)
-    return [ans,ans] if ans
+    return ans if ans
 
-    #sign = self.sign * other.sign
+    sign = self.sign * other.sign
 
     if self.infinite?
       return context.exception(InvalidOperation, 'remainder_near(INF,x)')
@@ -955,7 +998,7 @@ class Decimal
       if self.zero?
         return context.exception(DivisionUndefined, 'remainder_near(0,0)')  
       else  
-        return context.exception(DivisionByZero, 'remainder_near(x,0)')
+        return context.exception(InvalidOperation, 'remainder_near(x,0)')
       end
     end
     
@@ -972,7 +1015,7 @@ class Decimal
     if expdiff >= context.precision+1
       return context.exception(DivisionImpossible)
     elsif expdiff <= -2
-      return self.rescale(ideal_exp, context.rounding)._fix(context)
+      return self._rescale(ideal_exp, context.rounding)._fix(context)
     end
     
       self_coeff = self.integral_significand
@@ -1014,19 +1057,25 @@ class Decimal
     return Decimal.new([dup.sign, 0, 0]) if dup.zero?
     
     exp_max = context.clamp? ? context.etop : context.emax
-    end_d = nd = number_of_digits
+    end_d = nd = dup.number_of_digits
     exp = dup.integral_exponent
+    coeff = dup.integral_significand
     dgs = dup.digits
-    while dgs[end_d-1]==0 && exp < exp_max
+    while (dgs[end_d-1]==0) && (exp < exp_max)      
       exp += 1
       end_d -= 1
     end
-    return Decimal.new([dup.sign, dup.integral_significand/Decimal.int_radix_power(nd-end_d), exp])
+    return Decimal.new([dup.sign, coeff/Decimal.int_radix_power(nd-end_d), exp])
     
   end
 
   def logb(context=nil)
-    (context || Decimal.context).logb(self)
+    context = Decimal::Context(context)    
+    ans = _check_nans(context)
+    return ans if ans
+    return Decimal.infinity if infinite?
+    return context.exception(DivisionByZero,'logb(0)',-1) if zero?
+    Decimal.new(adjusted_exponent)
   end
 
   def scaleb(other, context=nil)
@@ -1034,12 +1083,12 @@ class Decimal
     context = Decimal.Context(context)
     other = Decimal(other)
     ans = _check_nans(context, other)
-    return ans if ans
-    return context.exception(InvalidOperation) if other.integral_exponent != 0
+    return ans if ans    
+    return context.exception(InvalidOperation) if other.infinite? || other.integral_exponent != 0
     liminf = -2 * (context.emax + context.precision)
     limsup =  2 * (context.emax + context.precision)
     i = other.to_i
-    context.exception(InvalidOperation) if !((liminf <= i) && (i <= limsup))
+    return context.exception(InvalidOperation) if !((liminf <= i) && (i <= limsup))
     return Decimal.new(self) if infinite?
     return Decimal.new(@sign, @coeff, @exp+i)._fix(context)
     
@@ -1049,7 +1098,6 @@ class Decimal
   def to_i
     if special?
       return Decimal.context.exception(InvalidContext) if nan?
-    elsif infinite?
       raise OverflowError, "Cannot convert infinity to Integer"
     end
     if @exp >= 0
@@ -1122,7 +1170,9 @@ class Decimal
           if self.nan? || other.nan?
             1
           else
-            self.sign <=> other.sigh
+            self_v = self.finite? ? 0 : self.sign
+            other_v = other.finite? ? 0 : other.sign            
+            self_v <=> other_v
           end
         else
           if self.zero?
@@ -1134,9 +1184,9 @@ class Decimal
           elsif other.zero?
             self.sign
           elsif other.sign < self.sign
-            -1
+            +1
           elsif self.sign < other.sign
-            1
+            -1
           else
             self_adjusted = self.adjusted_exponent
             other_adjusted = other.adjusted_exponent
@@ -1180,13 +1230,26 @@ class Decimal
   def hash!
     super.hash
   end
+  
+  def compare(other, context=nil)
+    
+    other = _convert_other(other, true)
+    
+    if self.special? || other.special?
+      ans = _check_nans(context, other)
+      return ans if ans
+    end
+    
+    return Decimal(self <=> other)
+    
+  end
 
   # Digits of the significand as an array of integers
   def digits
     @coeff.to_s.split('').map{|d| d.to_i}
   end
 
-
+  
 
   
   # Exponent of the magnitude of the most significant digit of the operand 
@@ -1294,7 +1357,7 @@ class Decimal
     etop  = context.etop
     exp = integral_exponent
     if zero?
-      exp_max = context.clamp? ? context.emax : etop
+      exp_max = context.clamp? ? etop : context.emax
       new_exp = [[exp, etiny].max, exp_max].min
       if new_exp!=exp
         context.exception Clamped
@@ -1449,13 +1512,13 @@ class Decimal
   end
   def _round_up05(i)
     if ROUND_ARITHMETIC      
-      dg = (@coeff%int_radix_power(i+1))/int_radix_power(i)
+      dg = (@coeff%Decimal.int_radix_power(i+1))/Decimal.int_radix_power(i)
     else
       d = @coeff.to_s
       p = d.size - i
       dg = (p>0) ? d[p-1,1].to_i : 0
     end
-    if [0,radix/2].include?(dg)
+    if [0,Decimal.radix/2].include?(dg)
       -_round_down(i)
     else
       _round_down(i)
@@ -1465,6 +1528,7 @@ class Decimal
     # adjust payload of a NaN to the context  
     def _fix_nan(context)      
       payload = @coeff
+      payload = nil if payload==0
 
       max_payload_len = context.precision
       max_payload_len -= 1 if context.clamp
@@ -1477,12 +1541,12 @@ class Decimal
     end
 
     def _check_nans(context=nil, other=nil)
-      self_is_nan = self.nan?
-      other_is_nan = other.nil? ? false : other.nan?
+      #self_is_nan = self.nan?
+      #other_is_nan = other.nil? ? false : other.nan?
       if self.nan? || (other && other.nan?)
         context = Decimal.Context(context)
         return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
-        return context.exception(InvalidOperation, 'sNaN', other) if other.snan?
+        return context.exception(InvalidOperation, 'sNaN', other) if other && other.snan?
         return self._fix_nan(context) if self.nan?
         return other._fix_nan(context)
       else
@@ -1493,8 +1557,7 @@ class Decimal
 
 
   def _rescale(exp,rounding)
-    
-    
+        
     return Decimal.new(self) if special?
     return Decimal.new([sign, 0, exp]) if zero?    
     return Decimal.new([sign, @coeff*Decimal.int_radix_power(self.integral_exponent - exp), exp]) if self.integral_exponent > exp
@@ -1502,7 +1565,7 @@ class Decimal
     nd = exp - self.integral_exponent
     if number_of_digits < nd 
       slf = Decimal.new([sign, 1, exp-1])
-      nd = 0
+      nd = number_of_digits
     else
       slf = Decimal.new(self)
     end
@@ -1545,11 +1608,121 @@ class Decimal
   end
     
   def copy_sign(other)
-    Decimal.new([other.sign, self.integral_significand, self.integral_exponent])
+    Decimal.new([other.sign, @coeff, @exp])
+  end
+  
+  def integral?
+    if finite?
+      if @exp>=0 || @coeff==0
+        true
+      else
+        if @exp <= -number_of_digits
+          false
+        else
+          m = Decimal.int_radix_power(-@exp)
+          (@coeff % m) == 0
+        end
+      end
+    else
+      false
+    end
+  end
+
+  def rescale(exp, context=nil, watch_exp=true)
+    context = Decimal::Context(context)
+    exp = _convert_other(exp, true)
+    if self.special? || exp.special?
+      ans = _check_nans(context, exp)
+      return ans if ans
+      if exp.infinite? || self.infinite?
+        return Decimal.new(self) if exp.infinite? && self.infinite?
+        return context.exception(InvalidOperation, 'rescale with one INF')
+      end      
+    end
+    return context.exception(InvalidOperation,"exponent of rescale is not integral") unless exp.integral?
+    exp = exp.to_i    
+    _watched_rescale(exp, context, watch_exp)  
   end
 
 
-
+  def quantize(exp, context=nil, watch_exp=true)
+    exp = _convert_other(exp, true)
+    context = Decimal::Context(context)
+    if self.special? || exp.special?
+      ans = _check_nans(context, exp)
+      return ans if ans
+      if exp.infinite? || self.infinite?
+        return Decimal.new(self) if exp.infinite? && self.infinite?
+        return context.exception(InvalidOperation, 'quantize with one INF')
+      end      
+    end
+    exp = exp.integral_exponent
+    _watched_rescale(exp, context, watch_exp)  
+  end
+  
+  def _watched_rescale(exp, context, watch_exp)
+    if !watch_exp
+      ans = _rescale(exp, context.rounding)
+      context.exception(Rounded) if ans.integral_exponent > self.integral_exponent
+      context.exception(Inexact) if ans != self
+      return ans
+    end
+    
+    if exp < context.etiny || exp > context.emax
+      return context.exception(InvalidOperation, "target operation out of bounds in quantize/rescale")
+    end
+      
+    return Decimal.new([@sign, 0, exp])._fix(context) if zero?
+    
+    self_adjusted = adjusted_exponent
+    return context.exception(InvalidOperation,"exponent of quantize/rescale result too large for current context") if self_adjusted > context.emax
+    return context.exception(InvalidOperation,"quantize/rescale has too many digits for current context") if self_adjusted - exp + 1 > context.precision
+    
+    ans = _rescale(exp, context.rounding)
+    return context.exception(InvalidOperation,"exponent of rescale result too large for current context") if ans.adjusted_exponent > context.emax
+    return context.exception(InvalidOperation,"rescale result has too many digits for current context") if ans.number_of_digits > context.precision
+    if ans.integral_exponent > self.integral_exponent
+      context.exception(Rounded)
+      context.exception(Inexact) if ans!=self
+    end
+    context.exception(Subnormal) if !ans.zero? && (ans.adjusted_exponent < context.emin)
+    return ans._fix(context)  
+  end
+  
+  def same_quantum?(other)
+    other = _convert_other(other, true)
+    if self.special? || other.special?
+      return (self.nan? && other.nan?) || (self.infinite? && other.infinite?)
+    end
+    return self.integral_exponent == other.integral_exponent
+  end
+  
+  def to_integral_exact(context=nil)
+    context = Decimal::Context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      return Decimal.new(self)
+    end
+    return Decimal.new(self) if @exp >= 0
+    return Decimal.new([@sign, 0, 0]) if zero?
+    context.exception Rounded
+    ans = _rescale(0, context.rounding)
+    context.exception(Inexact) if ans != self
+    return ans    
+  end
+  
+  def to_integral_value(context=nil)
+    context = Decimal::Context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      return Decimal.new(self)
+    end
+    return Decimal.new(self) if @exp >= 0
+    return _rescale(0, context.rounding)
+  end
+  
 
   def _divide_truncate(other, context)
     context = Decimal.Context(context)
@@ -1562,7 +1735,7 @@ class Decimal
 
     expdiff = self.adjusted_exponent - other.adjusted_exponent
     if self.zero? || other.infinite? || (expdiff <= -2)
-      return [Decimal.new([sign, 0, 0]), rescale(ideal_exp, context.rounding)]
+      return [Decimal.new([sign, 0, 0]), _rescale(ideal_exp, context.rounding)]
     end
     if expdiff <= context.precision
       self_coeff = self.integral_significand
@@ -1595,7 +1768,7 @@ class Decimal
 
     expdiff = self.adjusted_exponent - other.adjusted_exponent
     if self.zero? || other.infinite? || (expdiff <= -2)
-      return [Decimal.new([sign, 0, 0]), rescale(ideal_exp, context.rounding)]
+      return [Decimal.new([sign, 0, 0]), _rescale(ideal_exp, context.rounding)]
     end
     if expdiff <= context.precision
       self_coeff = self.integral_significand*self.sign
@@ -1629,6 +1802,17 @@ class Decimal
     
   end
         
+  def _convert_other(other, raiseit=false)
+    case other
+    when Decimal
+      other
+    when Integer, Rational
+      Decimal(other)
+    else
+      raise TypeError, "Unable to convert #{other.class} to Decimal"
+      nil
+    end
+  end    
 
 
   def _parser(txt)

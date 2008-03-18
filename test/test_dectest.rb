@@ -9,14 +9,30 @@ ROUNDINGS = {
   'half_even' => :half_even,
   'half_up' => :half_up,
   'up' => :up,
-  '05up' => nil
+  '05up' => :up05
 }
 FUNCTIONS = {
   'add'=>'add',
   'divide'=>'divide',
   'multiply'=>'multiply',
   'substract'=>'substract',
-  
+  'compare'=>'compare',
+  'copyabs'=>'copy_abs',
+  'copynegate'=>'copy_negate',
+  'copysign'=>'copy_sign',
+  'divideint'=>'divide_int',
+  'logb'=>'logb',
+  'minus'=>'minus',
+  'plus'=>'plus',
+  'reduce'=>'reduce',
+  'remainder'=>'remainder',
+  'remaindernear'=>'remainder_near',
+  'scaleb'=>'scaleb',
+  'rescale'=>'rescale',
+  'quantize'=>'quantize',
+  'samequantum'=>'same_quantum?',
+  'tointegral'=>'to_integral_value',
+  'tointegralx'=>'to_integral_exact'
 }
 
 FLAG_NAMES = {
@@ -28,7 +44,8 @@ FLAG_NAMES = {
   'underflow'=>:Underflow,
   'overflow'=>:Overflow,
   'division_by_zero'=>:DivisionByZero,
-  'division_undefined'=>:InvalidOperation
+  'division_undefined'=>:InvalidOperation,
+  'division_impossible'=>:DivisionImpossible
 }
 
 
@@ -46,7 +63,10 @@ SKIP = {
 
 def unquote(txt)
   txt = txt[1...-1] if txt[0,1]=="'" && txt[-1,1]=="'"
-  txt = 'NaN' if txt=='#' || txt=='?'
+  txt = txt[1...-1] if txt[0,1]=='"' && txt[-1,1]=='"'
+  #txt = 'NaN' if txt=='#' || txt=='?'
+  txt = 'sNaN' if txt=='#'
+  txt = 'NaN' if txt=='?'
   txt    
 end
   
@@ -64,8 +84,8 @@ class TestBasic < Test::Unit::TestCase
         Dir[File.join(dir, '*.decTest')].each do |fn|
                 
           name = File.basename(fn,'.decTest').downcase
-          next if %w{ds dd dq}.include?(fn[0,2]) || 
-                   %w{decsingle decdouble decquad testall}.include?(fn)
+          next if %w{ds dd dq}.include?(name[0,2]) || 
+                   %w{decsingle decdouble decquad testall}.include?(name)
         
           File.open(fn,'r') do |file|
             file.each_line do |line|
@@ -83,6 +103,10 @@ class TestBasic < Test::Unit::TestCase
                 ans = rhs.first
                 flags = rhs[1..-1].map{|f| mod::Decimal.class_eval(FLAG_NAMES[f.downcase].to_s)}.compact
                 
+                next unless valstemp.grep(/#/).empty?
+                
+                $test_id = id
+                
                 funct = FUNCTIONS[funct]
                 if funct && !skip_tests.include?(id)
                   # do test
@@ -95,6 +119,8 @@ class TestBasic < Test::Unit::TestCase
                     expected = mod::Decimal(unquote(ans))              
                     result_flags = context.flags
                   end
+                  result = 1 if result==true
+                  result = 0 if result==false
                   expected_flags = mod::Decimal::Flags(*flags)
                   assert_equal expected.to_s, result.to_s, msg if ans!='?'
                   #assert_equal expected, result, msg if ans!='?'

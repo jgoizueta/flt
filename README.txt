@@ -66,21 +66,17 @@ Currently two implementations of the same Decimal API are being developed:
              will be necessary to install this.
 [decimal-rb] A pure Ruby implementation inspired by Python's Decimal. This is standards-compliant
              but performance is slow. Needs no Ruby extensions.
-[decimal-bd] A BigDecimal-based implementation, which was hoped to be faster than the pure-ruby
+[decimal-bd] A BigDecimal-based implementation, which is faster than the pure-ruby
              but isn't currently.  It's not standards-compliant and needs no Ruby extensions
              (uses only the standard library).
 
 The last two are currently being developed.
 
-When all three implementations are available, and assuming that decimal-bd can be made to be fast,
-users will have these options:
+When all three implementations are available users will have these options:
 If decimal-dn is available that would be the best choice. If it is not, then some compromise is necessary:
 Choose standards compliance (accuracy) and have poor performance with decimal-rb or give away compliance
 and have a better performance with decimal-bd.
 
-Note: It is dubious that the BigDecimal implementation can be made to be significantly faster than the
-pure-ruby one; in that case the decimal-bd variant would have no reason to be mantained. Maybe it could
-be replaced by Tadashi Saito's Decimal.
 
 We could have a pair of entry-points for requiring:
 
