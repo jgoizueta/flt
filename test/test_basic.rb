@@ -356,9 +356,22 @@ class TestBasic < Test::Unit::TestCase
   
   def test_integer
     $implementations_to_test.each do |mod|
-      # Decimal('0').integral? Decimal('0E10').integral? Decimal('0E-10').integral? Decimal('12.0').integral? Decimal('12').integral? Decimal(12).integral? Decimal(Rational(6,2)).integral? Decimal('120E-1').integral?
-      # Decimal('12.1E10').integral?
-      # Decimal('NaN').integral? Decimal('Inf').integral? Decimal('12.1').integral? Decimal('121E-1').integral? Decimal(Rational(121,10)).integral? 
+      
+      %w{ 0 0E10 0E-10 12.0 12 120E-1 12.1E10 }.each do |x|
+        assert mod::Decimal(x).integral?, "#{mod}::Decimal('#{x}').integral?"
+      end
+      
+      [12, Rational(6,2)].each do |x|
+        assert mod::Decimal(x).integral?, "#{mod}::Decimal(#{x}).integral?"
+      end
+      
+      %w{ NaN Inf 12.1 121E-1 }.each do |x|
+        assert !mod::Decimal(x).integral?, "!#{mod}::Decimal('#{x}').integral?"
+      end
+      
+      [ Rational(121,10) ].each do |x|
+        assert !mod::Decimal(x).integral?, "!#{mod}::Decimal(#{x}).integral?"
+      end
       
     end
   end

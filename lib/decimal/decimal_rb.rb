@@ -326,7 +326,6 @@ class Decimal
     #  ceil floor truncate round
     #  ** power
     # GDAS
-    #  quantize
     #  power
     #  exp log10 ln
     #  fma: (not meaninful with BigDecimal bogus rounding)

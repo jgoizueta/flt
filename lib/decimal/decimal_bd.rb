@@ -295,13 +295,14 @@ class Decimal
       cmp.nil? ? nan : Decimal(cmp)
     end
     
-    # TO CARRY ON TO Decimal
     def copy_abs(x)
       Decimal(x._value.abs)
     end
+
     def copy_negate(x)
       Decimal(-(x._value))
     end
+    
     def copy_sign(x,y)
       txt = y._value.to_s
       if txt[0,1]=='-'
@@ -311,15 +312,19 @@ class Decimal
       end
       Decimal(txt)
     end
+    
     def rescale(x,exp)
       x
     end
+    
     def quantize(x,y)
       x
     end
+    
     def same_quantum?(x,y)
       true
     end
+    
     def to_integral_value(x)
       i = x.to_i
       if i
@@ -328,6 +333,7 @@ class Decimal
         nan
       end
     end
+    
     def to_integral_exact(x)
       i = x.to_i
       if i
@@ -335,6 +341,10 @@ class Decimal
       else
         nan
       end
+    end
+    
+    def integral?(x)
+      x.integral?
     end
 
     protected
@@ -824,12 +834,17 @@ class Decimal
   def _fix(context)
     Decimal.new(context._fix_bd(@value))
   end
-  
+
+  def integral?
+    @value.frac == 0
+  end
+
   private
   
   def _fix!(context)
     @value = context._fix_bd(@value) if @value.finite?
   end
+  
 
 
 end
