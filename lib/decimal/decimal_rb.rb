@@ -1550,7 +1550,7 @@ class Decimal
       
     # adjust payload of a NaN to the context  
     def _fix_nan(context)      
-      unless  !context.exact?
+      if  !context.exact?
         payload = @coeff
         payload = nil if payload==0
 
