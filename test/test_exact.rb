@@ -13,9 +13,7 @@ class TestExact < Test::Unit::TestCase
   
   def test_exact
     $implementations_to_test.each do |mod|
-      
-      next if mod==FPNum::BD # not yet implemented
-      
+            
       mod::Decimal.context.exact = true
       
       assert_equal mod::Decimal("9"*100+"E-50"), mod::Decimal('1E50')-mod::Decimal('1E-50')

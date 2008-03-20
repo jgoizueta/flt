@@ -255,12 +255,7 @@ class Decimal
       @capitals = options[:capitals ] unless options[:capitals ].nil?
       @clamp = options[:clamp ] unless options[:clamp ].nil?
       @exact = options[:exact ] unless options[:exact ].nil?
-      if @exact || @precision==0
-        @exact = true         
-        @precision = 0
-        @traps << Inexact
-        @ignored_flags[Inexact] = false
-      end
+      update_precision
     end
     
     

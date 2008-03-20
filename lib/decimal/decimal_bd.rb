@@ -87,6 +87,7 @@ class Decimal
     def initialize(options = {})
       
       # default context:
+      @exact = false
       @rounding = ROUND_HALF_EVEN
       @precision = 28
       
@@ -107,7 +108,7 @@ class Decimal
       assign options
         
     end
-    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags, :capitals, :clamp
+    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags, :capitals, :clamp, :exact
 
     def ignore_all_flags
       #@ignored_flags << EXCEPTIONS
@@ -143,6 +144,19 @@ class Decimal
     def clamp?
       @clamp
     end
+    def precision=(n)
+      @precision = n
+      update_precision
+      n
+    end
+    def exact=(v)
+      @exact = v
+      update_precision
+      v
+    end
+    def exact?
+      @exact
+    end
     
     
     def assign(options)
@@ -156,10 +170,12 @@ class Decimal
       @emax = options[:emax] unless options[:emax].nil?
       @capitals = options[:capitals ] unless options[:capitals ].nil?
       @clamp = options[:clamp ] unless options[:clamp ].nil?
+      @exact = options[:exact ] unless options[:exact ].nil?
+      update_precision
     end
     
     def _fix_bd(x)
-      if x.finite?
+      if x.finite? && !@exact
         compute { x*BigDecimal('1') }
       else
         x
@@ -176,7 +192,16 @@ class Decimal
       compute { Decimal(x._value*y._value) }
     end
     def divide(x,y)
-      compute { Decimal(x._value.div(y._value,@precision)) }
+      if exact?
+        prec = x.number_of_digits + 4*y.number_of_digits
+        compute {
+          z = x._value.div(y._value, prec)
+          raise Decimal::Inexact if z*y._value != x._value
+          Decimal(z)
+        }
+      else
+        compute { Decimal(x._value.div(y._value,@precision)) }
+      end
     end
     
     def abs(x)
@@ -245,7 +270,12 @@ class Decimal
     #  fma: (not meaninful with BigDecimal bogus rounding)
     
     def sqrt(x)
-      compute { Decimal(x._value.sqrt(@precision)) }
+      if exact?
+        # TO DO...
+        context.raise Decimal::Inexact
+      else
+        compute { Decimal(x._value.sqrt(@precision)) }
+      end
     end
    
     # Ruby-style integer division.
@@ -273,8 +303,13 @@ class Decimal
     # General Decimal Arithmetic Specification remainder-near
     def remainder_near(x,y)
       compute do
-        z = (x._value.div(y._value, @precision)).round
-        Decimal(x._value - y._value*z)
+        if exact?
+          # TO DO....
+          raise Decimal::Inexact
+        else
+          z = (x._value.div(y._value, @precision)).round
+          Decimal(x._value - y._value*z)
+        end
       end
     end
     
@@ -438,6 +473,15 @@ class Decimal
       result
     end          
     
+    def update_precision
+      if @exact || @precision==0
+        @exact = true         
+        @precision = 0
+        @traps << Inexact
+        @ignored_flags[Inexact] = false
+      end
+    end
+    
     ROUNDING_MODES_NAMES = {  
       :half_even=>ROUND_HALF_EVEN,
       :half_up=>ROUND_HALF_UP,
@@ -568,9 +612,16 @@ class Decimal
         @value = BigDecimal.new(arg.to_s)
         _fix!(context)
         
-      when Rational
-        @value = BigDecimal.new(arg.numerator.to_s).div(BigDecimal.new(arg.denominator.to_s), context.precision)
-        _fix!(context)
+      when Rational      
+        if !context.exact? || ((arg.numerator % arg.denominator)==0)
+          num = arg.numerator.to_s
+          den = arg.denominator.to_s
+          prec = context.exact? ? num.size + 4*den.size : context.precision
+          @value = BigDecimal.new(num).div(BigDecimal.new(den), prec)        
+          _fix!(context)
+        else  
+          raise Inexact
+        end
       
       when String
         arg = arg.to_s.sub(/Inf(?:\s|\Z)/i, 'Infinity')
