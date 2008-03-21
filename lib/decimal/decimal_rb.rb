@@ -339,7 +339,6 @@ class Decimal
 
     # TO DO:
     # Ruby-style:
-    #  ceil floor truncate round
     #  ** power
     # GDAS
     #  power
@@ -1748,6 +1747,45 @@ class Decimal
     return _rescale(0, context.rounding)
   end
   
+  
+  def round(opt)
+    opt = { :places=>opt } if opt.kind_of?(Integer)
+    r = opt[:rounding] || :half_up
+    as_int = false
+    if v=(opt[:precision] || opt[:significant_digits])
+      prec = s
+    elsif v=(opt[:places])
+      prec = adjusted_exponent + 1 - v
+    elsif v=(opt[:exponent])
+      prec = adjusted_exponent + 1 + v
+    elsif v=(opt[:power])
+      prec = adjusted_exponent + 1 + Decimal(v).adjusted_exponent         
+    elsif v=(opt[:index])
+      prec = i+1
+    elsif v=(opt[:rindex])
+      prec = number_of_digits - v
+    else
+      prec = adjusted_exponent + 1
+      as_int = true
+    end
+    result = plus(:rounding=>r, :precision=>prec)
+    return as_int ? result.to_i : result
+  end
+  
+  def ceil(opt)
+    opt[:rounding] = :ceiling
+    round opt
+  end
+
+  def floor(opt)
+    opt[:rounding] = :floor
+    round opt
+  end
+
+  def truncate(opt)
+    opt[:rounding] = :down
+    round opt
+  end
 
   def _divide_truncate(other, context)
     context = Decimal.Context(context)
