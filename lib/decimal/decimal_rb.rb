@@ -1748,18 +1748,18 @@ class Decimal
   end
   
   
-  def round(opt)
+  def round(opt={})
     opt = { :places=>opt } if opt.kind_of?(Integer)
     r = opt[:rounding] || :half_up
     as_int = false
     if v=(opt[:precision] || opt[:significant_digits])
-      prec = s
+      prec = v
     elsif v=(opt[:places])
-      prec = adjusted_exponent + 1 - v
-    elsif v=(opt[:exponent])
       prec = adjusted_exponent + 1 + v
+    elsif v=(opt[:exponent])
+      prec = adjusted_exponent + 1 - v
     elsif v=(opt[:power])
-      prec = adjusted_exponent + 1 + Decimal(v).adjusted_exponent         
+      prec = adjusted_exponent + 1 - Decimal(v).adjusted_exponent         
     elsif v=(opt[:index])
       prec = i+1
     elsif v=(opt[:rindex])
@@ -1772,17 +1772,17 @@ class Decimal
     return as_int ? result.to_i : result
   end
   
-  def ceil(opt)
+  def ceil(opt={})
     opt[:rounding] = :ceiling
     round opt
   end
 
-  def floor(opt)
+  def floor(opt={})
     opt[:rounding] = :floor
     round opt
   end
 
-  def truncate(opt)
+  def truncate(opt={})
     opt[:rounding] = :down
     round opt
   end
