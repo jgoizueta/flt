@@ -32,7 +32,8 @@ FUNCTIONS = {
   'quantize'=>'quantize',
   'samequantum'=>'same_quantum?',
   'tointegral'=>'to_integral_value',
-  'tointegralx'=>'to_integral_exact'
+  'tointegralx'=>'to_integral_exact',
+  'fma'=>'fma'
 }
 
 FLAG_NAMES = {

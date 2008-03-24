@@ -380,6 +380,10 @@ class Decimal
     def divrem(x,y)
       x.divrem(y,self)
     end
+    
+    def fma(x,y,z)
+      x.fma(y,z,self)
+    end
 
     def compare(x,y)
       x.compare(y, self)
@@ -1785,6 +1789,29 @@ class Decimal
   def truncate(opt={})
     opt[:rounding] = :down
     round opt
+  end
+  
+  def fma(other, third, context=nil)
+    if self.special? || other.special?
+      context = Decimal::Context(context)
+      return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
+      return context.exception(InvalidOperation, 'sNaN', other) if other.snan?
+      if self.nan?
+        product = self
+      elsif other.nan?
+        product = other
+      elsif self.infinite?        
+        return context.exception(InvalidOperation, 'INF * 0 in fma') if other.zero?
+        product = Decimal.infinity(self.sign*other.sign)
+      elsif other.infinite?
+        return context.exception(InvalidOperation, '0 * INF  in fma') if self.zero?
+        product = Decimal.infinity(self.sign*other.sign)
+      end
+    else
+      product = Decimal.new([self.sign*other.sign,self.integral_significand*other.integral_significand, self.integral_exponent+other.integral_exponent])
+    end                      
+    third = _convert_other(third, true)
+    return product.add(third, context)      
   end
 
   def _divide_truncate(other, context)

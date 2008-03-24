@@ -260,14 +260,12 @@ class Decimal
 
     # TO DO:
     # Ruby-style:
-    #  ceil floor truncate round
     #  ** power
     # GDAS
     #  quantize, rescale: cannot be done with BigDecimal
     #  power
     #  exp log10 ln
     #  remainder_near
-    #  fma: (not meaninful with BigDecimal bogus rounding)
     
     def sqrt(x)
       if exact?
@@ -380,6 +378,13 @@ class Decimal
     
     def integral?(x)
       x.integral?
+    end
+    
+    def fma(x,y,z)
+      exact_context = self.dup
+      exact_context.exact = true
+      product = exact_context.multiply(x,y)
+      add(product,z)
     end
     
     def Context.round(x, opt={})
@@ -805,6 +810,10 @@ class Decimal
   end
   def to_integral_exact(context=nil)
     Decimal.Context(context).to_integral_exact(self)
+  end
+
+  def fma(other, third, context=nil)
+    Decimal.Context(context).fma(self, other, third)
   end
 
   def round(opt={})
