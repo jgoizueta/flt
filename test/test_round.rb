@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/test_helper.rb'
 
 
-class TestExact < Test::Unit::TestCase
+class TestRound < Test::Unit::TestCase
   
 
   def setup
@@ -11,10 +11,9 @@ class TestExact < Test::Unit::TestCase
   end  
   
   
-  def test_exact
+  def test_round
     $implementations_to_test.each do |mod|
       
-      next if mod==FPNum::BD
             
 
       assert_equal(101,  mod::Decimal('100.5').round)
@@ -25,6 +24,8 @@ class TestExact < Test::Unit::TestCase
 
       assert_equal 101, mod::Decimal('100.5').round(:places=>0)
       assert mod::Decimal('100.5').round(:places=>0).kind_of?(mod::Decimal)
+      assert_equal 101, mod::Decimal('100.5').round(0)
+      assert mod::Decimal('100.5').round(0).kind_of?(mod::Decimal)
 
       assert_equal mod::Decimal('123.12'), mod::Decimal('123.123').round(2)
       assert_equal mod::Decimal('123'), mod::Decimal('123.123').round(0)
@@ -33,7 +34,7 @@ class TestExact < Test::Unit::TestCase
       assert_equal mod::Decimal('123.12'), mod::Decimal('123.123').round(:precision=>5)
 
       assert_equal 100, mod::Decimal('100.5').round(:rounding=>:half_even)
-      assert_equal 101, mod::Decimal('100.5000001').round(:rounding=>:half_even)
+      assert_equal 101, mod::Decimal('100.5000001').round(:rounding=>:half_even) unless mod==FPNum::BD
       assert_equal 102, mod::Decimal('101.5').round(:rounding=>:half_even)
       assert_equal 101, mod::Decimal('101.4999999999').round(:rounding=>:half_even)
 

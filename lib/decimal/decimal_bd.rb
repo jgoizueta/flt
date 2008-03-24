@@ -381,7 +381,23 @@ class Decimal
     def integral?(x)
       x.integral?
     end
-
+    
+    def Context.round(x, opt={})
+      opt = { :places=>opt } if opt.kind_of?(Integer)
+      r = opt[:rounding] || :half_up
+      as_int = false
+      if v=(opt[:precision] || opt[:significant_digits])
+        places = v - x.adjusted_exponent - 1
+      elsif v=(opt[:places])
+        places = v
+      else
+        places = 0
+        as_int = true
+      end
+      result = x._value.round(places, big_decimal_rounding(r))
+      return as_int ? result.to_i : Decimal.new(result)
+    end
+    
     protected
             
     @@compute_lock = Monitor.new  
@@ -392,7 +408,7 @@ class Decimal
     UPDATE_FLAGS = true
     
     def compute(options={})
-      rnd = big_decimal_rounding(options[:rounding] || @rounding)
+      rnd = Context.big_decimal_rounding(options[:rounding] || @rounding)
       prc = options[:precision] || options[:digits] || @precision
       trp = Decimal.Flags(options[:traps] || @traps)
       quiet = options[:quiet] || @quiet
@@ -502,7 +518,7 @@ class Decimal
       ROUND_UP,
       ROUND_05UP
     ]
-    def big_decimal_rounding(m)
+    def Context.big_decimal_rounding(m)
       mode = m      
       if mode.kind_of?(Symbol)
         mode = ROUNDING_MODES_NAMES[mode]
@@ -791,7 +807,24 @@ class Decimal
     Decimal.Context(context).to_integral_exact(self)
   end
 
+  def round(opt={})
+    Context.round(self, opt)
+  end
+  
+  def ceil(opt={})
+    opt[:rounding] = :ceiling
+    round opt
+  end
 
+  def floor(opt={})
+    opt[:rounding] = :floor
+    round opt
+  end
+
+  def truncate(opt={})
+    opt[:rounding] = :down
+    round opt
+  end
 
   def to_i
     @value.to_i
