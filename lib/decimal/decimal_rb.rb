@@ -474,7 +474,9 @@ class Decimal
     result
   end
     
-  DefaultContext = Decimal::Context()
+  def Decimal.defaultContext 
+    Decimal::Context()
+  end
       
     
   def Decimal.zero(sign=+1)
@@ -840,7 +842,57 @@ class Decimal
   end
 
   def sqrt(context=nil)
-    # (context || Decimal.context).sqrt(self)
+    context = Decimal.Context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      return Decimal.new(self) if infinite? && @sign==+1
+    end        
+    return Decimal.new([@sign, 0, @exp/2])._fix(context) if zero?
+    return context.exception(InvalidOperation, 'sqrt(-x), x>0') if @sign<0
+    prec = context.precision + 1
+    e = (@exp >> 1)
+    if (@exp & 1)!=0
+      c = @coeff*Decimal.radix
+      l = (number_of_digits >> 1) + 1
+    else
+      c = @coeff
+      l = (number_of_digits+1) >> 1
+    end
+    shift = prec - l
+    if shift >= 0
+      c = Decimal.int_mult_radix_power(c, (shift<<1))
+      exact = true
+    else
+      c, remainder = c.divmod(Decimal.int_radix_power((-shift)<<1))
+      exact = (remainder==0)
+    end
+    e -= shift
+    
+    n = Decimal.int_radix_power(prec)
+    while true
+      q = c / n
+      break if n <= q
+      n = ((n + q) >> 1)
+    end
+    exact = exact && (n*n == c)
+    
+    if exact
+      if shift >= 0
+        n = Decimal.int_div_radix_power(n, shift)
+      else
+        n = Decimal.int_mult_radix_power(n, -shift)
+      end
+      e += shift
+    else
+      return context.exception(Inexact) if context.exact?
+      n += 1 if (n%5)==0
+    end
+    ans = Decimal.new([+1,n,e])
+    Decimal.local_context(:rounding=>:half_even) do
+      ans = ans._fix(context)
+    end
+    return ans          
   end
   
   # General Decimal Arithmetic Specification integer division and remainder:
@@ -1367,7 +1419,7 @@ class Decimal
     end
     ans
   end
-    
+        
   def _fix(context)
     return self if context.exact?
     
@@ -1381,11 +1433,10 @@ class Decimal
     
     etiny = context.etiny
     etop  = context.etop
-    exp = integral_exponent
     if zero?
       exp_max = context.clamp? ? etop : context.emax
-      new_exp = [[exp, etiny].max, exp_max].min
-      if new_exp!=exp
+      new_exp = [[@exp, etiny].max, exp_max].min
+      if new_exp!=@exp
         context.exception Clamped
         return Decimal.new([sign,0,new_exp])
       else
@@ -1442,9 +1493,9 @@ class Decimal
       return ans
     end
     
-    if context.clamp? && exp>etop
+    if context.clamp? &&  @exp>etop
       context.exception Clamped
-      self_padded = int_mult_radix_power(exp-etop)
+      self_padded = Decimal.int_mult_radix_power(@coeff, @exp-etop)
       return Decimal.new([sign,self_padded,etop])
     end
     
@@ -1813,7 +1864,7 @@ class Decimal
     third = _convert_other(third, true)
     return product.add(third, context)      
   end
-
+  
   def _divide_truncate(other, context)
     context = Decimal.Context(context)
     sign = self.sign * other.sign

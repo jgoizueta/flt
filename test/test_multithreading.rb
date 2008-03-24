@@ -3,7 +3,13 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 
 
 class TestMultithreading < Test::Unit::TestCase
-  
+
+  def setup
+    $implementations_to_test.each do |mod|
+      mod::Decimal.context = mod::Decimal.defaultContext 
+    end
+  end  
+
   def test_concurrent_precision
     $implementations_to_test.each do |mod|
       threads = []

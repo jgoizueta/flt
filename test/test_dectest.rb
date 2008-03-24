@@ -33,7 +33,8 @@ FUNCTIONS = {
   'samequantum'=>'same_quantum?',
   'tointegral'=>'to_integral_value',
   'tointegralx'=>'to_integral_exact',
-  'fma'=>'fma'
+  'fma'=>'fma',
+  'squareroot'=>'sqrt'
 }
 
 FLAG_NAMES = {
@@ -80,8 +81,10 @@ class TestBasic < Test::Unit::TestCase
           name = File.basename(fn,'.decTest').downcase
           next if %w{ds dd dq}.include?(name[0,2]) || 
                    %w{decsingle decdouble decquad testall}.include?(name)
-        
-          File.open(fn,'r') do |file|
+                   
+          mod::Decimal.context = mod::Decimal.defaultContext
+                        
+          File.open(fn,'r') do |file|            
             file.each_line do |line|
               next if line[0,2]=='--' || line.strip.empty?
               
@@ -152,6 +155,8 @@ class TestBasic < Test::Unit::TestCase
                       mod::Decimal.context.emax = value
                     when 'minexponent'
                       mod::Decimal.context.emin = value
+                    when 'clamp'
+                      mod::Decimal.context.clamp = (value==0 ? false : true)
                   end
                 end            
               end        

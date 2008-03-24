@@ -57,7 +57,7 @@ class TestBasic < Test::Unit::TestCase
 
   def setup
     $implementations_to_test.each do |mod|
-      mod::Decimal.context = mod::Decimal::DefaultContext
+      mod::Decimal.context = mod::Decimal.defaultContext 
     end
   end  
   

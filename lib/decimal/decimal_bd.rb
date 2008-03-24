@@ -269,8 +269,11 @@ class Decimal
     
     def sqrt(x)
       if exact?
-        # TO DO...
-        context.raise Decimal::Inexact
+        prec = (x.number_of_digits << 1) + 1
+        x = x._value
+        y,z = compute{ v=x.sqrt(prec); [v,v*v] }
+        raise Decimal::Inexact if z!=x
+        Decimal(y)                        
       else
         compute { Decimal(x._value.sqrt(@precision)) }
       end
@@ -574,7 +577,9 @@ class Decimal
     result
   end
 
-  DefaultContext = Decimal::Context()
+  def Decimal.defaultContext 
+    Decimal::Context()
+  end
 
   def zero(sign=+1)
   end

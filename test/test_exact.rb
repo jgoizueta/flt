@@ -6,7 +6,7 @@ class TestExact < Test::Unit::TestCase
 
   def setup
     $implementations_to_test.each do |mod|
-      mod::Decimal.context = mod::Decimal::DefaultContext
+      mod::Decimal.context = mod::Decimal.defaultContext 
     end
   end  
   
@@ -24,6 +24,9 @@ class TestExact < Test::Unit::TestCase
       assert_raise(mod::Decimal::Inexact){ mod::Decimal(1)/mod::Decimal(3) }
       # assert_raise(mod::Decimal::Inexact){ mod::Decimal(2).sqrt }
       
+      assert_equal mod::Decimal(2), mod::Decimal('4').sqrt
+      assert_equal mod::Decimal(4), mod::Decimal('16').sqrt
+      assert_raise(mod::Decimal::Inexact){ mod::Decimal(2).sqrt }
 
     end  
    
