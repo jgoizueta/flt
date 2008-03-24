@@ -10,6 +10,8 @@ module FPNum
 module RB
 
 # Decimal arbitrary precision floating point number.
+# This implementation of Decimal is based on the Decimal module of Python,
+# written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
 class Decimal
   
   extend FPNum # allows use of unqualified FlagValues(), Flags()
