@@ -173,27 +173,17 @@ class Decimal
     
     include RB # allows use of unqualified Decimal()
     
-    def initialize(options = {})
-      
-      # default context:
-      @exact = false
-      @rounding = ROUND_HALF_EVEN
-      @precision = 28
-      
-      @emin = -99999999 
-      @emax =  99999999 # BigDecimal misbehaves with expoonents such as 999999999
-      
-      @flags = Decimal::Flags()
-      @traps = Decimal::Flags()      
-      @ignored_flags = Decimal::Flags()
-      
-      # currently unused here...
-      
-      @capitals = true
-      
-      @clamp = false
-                  
-      assign options
+    def initialize(*options)
+            
+      if options.first.instance_of?(Context)
+        base = options.shift
+        copy_from base
+      else        
+        @ignored_flags = Decimal::Flags()
+        @traps = Decimal::Flags()
+        @flags = Decimal::Flags()
+      end      
+      assign options.first
         
     end
     
@@ -243,24 +233,45 @@ class Decimal
       update_precision
       v
     end
+    def exact
+      @exact
+    end
     def exact?
       @exact
     end
         
     def assign(options)
-      @rounding = options[:rounding] unless options[:rounding].nil?
-      @precision = options[:precision] unless options[:precision].nil?        
-      @traps = Decimal::Flags(options[:traps]) unless options[:traps].nil?
-      @ignored_flags = options[:ignored_flags] unless options[:ignored_flags].nil?
-      @emin = options[:emin] unless options[:emin].nil?
-      @emax = options[:emax] unless options[:emax].nil?
-      @capitals = options[:capitals ] unless options[:capitals ].nil?
-      @clamp = options[:clamp ] unless options[:clamp ].nil?
-      @exact = options[:exact ] unless options[:exact ].nil?
-      update_precision
+      if options
+        @rounding = options[:rounding] unless options[:rounding].nil?
+        @precision = options[:precision] unless options[:precision].nil?        
+        @traps = Decimal::Flags(options[:traps]) unless options[:traps].nil?
+        @flags = Decimal::Flags(options[:flags]) unless options[:flags].nil?
+        @ignored_flags = Decimal::Flags(options[:ignored_flags]) unless options[:ignored_flags].nil?
+        @emin = options[:emin] unless options[:emin].nil?
+        @emax = options[:emax] unless options[:emax].nil?
+        @capitals = options[:capitals ] unless options[:capitals ].nil?
+        @clamp = options[:clamp ] unless options[:clamp ].nil?
+        @exact = options[:exact ] unless options[:exact ].nil?
+        update_precision
+      end
     end
     
+    def copy_from(other)
+      @rounding = other.rounding
+      @precision = other.precision
+      @traps = other.traps.dup
+      @flags = other.flags.dup
+      @ignored_flags = other.ignored_flags.dup
+      @emin = other.emin
+      @emax = other.emax
+      @capitals = other.capitals
+      @clamp = other.clamp
+      @exact = other.exact
+    end
     
+    def dup
+      Context.new(self)
+    end
     
     CONDITION_MAP = {
       ConversionSyntax=>InvalidOperation,
@@ -424,6 +435,15 @@ class Decimal
       x.to_integral_value(self)
     end
     
+    def to_s
+      inspect
+    end
+    def inspect
+      "<#{self.class}:\n" +
+      instance_variables.map { |v| "  #{v}: #{eval(v)}"}.join("\n") +
+      ">\n"      
+    end
+    
     private
     def update_precision
       if @exact || @precision==0
@@ -435,30 +455,79 @@ class Decimal
     end
     
   end
-    
-  # Context constructor
-  def Decimal.Context(options=:default)
-    case options
-      when :default
-        Decimal::Context.new
-      when Context
-        options
-      when nil
-        Decimal.context
+  
+  # the DefaultContext is the base for new contexts; it can be changed.
+  DefaultContext = Decimal::Context.new(
+                             :exact=>false, :precision=>28, :rounding=>:half_even,
+                             :emin=> -999999999, :emax=>+999999999,
+                             :flags=>[],
+                             :traps=>[DivisionByZero, Overflow, InvalidOperation],
+                             :ignored_flags=>[],
+                             :capitals=>true,
+                             :clamp=>true)
+  
+  BasicContext = Decimal::Context.new(DefaultContext,
+                             :precision=>9, :rounding=>:half_up,
+                             :traps=>[DivisionByZero, Overflow, InvalidOperation, Clamped, Underflow],
+                             :flags=>[])
+                             
+  ExtendedContext = Decimal::Context.new(DefaultContext,
+                             :precision=>9, :rounding=>:half_even,
+                             :traps=>[], :flags=>[], :clamp=>false)
+     
+  # Context constructor; if an options hash is passed, the options are
+  # applied to the default context; if a Context is passed as the first
+  # argument, it is used as the base instead of the default context.
+  def Decimal.Context(*args)
+    case args.size
+      when 0
+        base = DefaultContext
+      when 1
+        arg = args.first
+        if arg.instance_of?(Context)
+          base = arg
+          options = nil
+        elsif arg.instance_of?(Hash)
+          base = DefaultContext
+          options = arg
+        else
+          raise TypeError,"invalid argument for Decimal.Context"
+        end
+      when 2
+        base = args.first
+        options = args.last
       else
-        Decimal::Context.new(options)
+        raise ARgumentError,"wrong number of arguments (#{args.size} for 0, 1 or 2)"
+    end
+        
+    if options.nil? || options.empty?
+      base
+    else
+      Context.new(base, options)
+    end
+      
+  end        
+    
+  # Define a context by passing either a Context object or a (possibly empty)
+  # hash of options to alter de current context.
+  def Decimal.define_context(*options)
+    if options.size==1 && options.first.instance_of?(Context)
+      options.first
+    else    
+      Context(Decimal.context, *options)
     end
   end
   
+    
 
   # The current context (thread-local).
   def Decimal.context
-    Thread.current['FPNum::RB::Decimal.context'] ||= Decimal::Context.new
+    Thread.current['FPNum::RB::Decimal.context'] ||= DefaultContext.dup
   end
   
   # Change the current context (thread-local).
   def Decimal.context=(c)
-    Thread.current['FPNum::RB::Decimal.context'] = c    
+    Thread.current['FPNum::RB::Decimal.context'] = c.dup  
   end
   
   # Defines a scope with a local context. A context can be passed which will be
@@ -476,10 +545,7 @@ class Decimal
     result
   end
     
-  def Decimal.defaultContext 
-    Decimal::Context()
-  end
-      
+   
     
   def Decimal.zero(sign=+1)
     Decimal.new([sign, 0, 0])
@@ -501,10 +567,10 @@ class Decimal
     elsif args.size==1 && args.last.instance_of?(Hash)
       arg = args.last
       args = [arg[:sign], args[:coefficient], args[:exponent]]
-      context ||= Context(arg) # TO DO: remove sign, coeff, exp form arg
+      context ||= arg # TO DO: remove sign, coeff, exp form arg
     end
     
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
         
     case args.size
     when 3
@@ -665,7 +731,7 @@ class Decimal
 
   def add(other, context=nil)
 
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
         
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -736,7 +802,7 @@ class Decimal
   
   def substract(other, context=nil)
     
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -747,7 +813,7 @@ class Decimal
   
   
   def multiply(other, context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     resultsign = self.sign * other.sign
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -774,8 +840,7 @@ class Decimal
   end
   
   def divide(other, context=nil)
-    
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     resultsign = self.sign * other.sign
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -819,7 +884,6 @@ class Decimal
       end
       
     end
-      
     return Decimal([resultsign, coeff, exp])._fix(context)  
       
   end
@@ -844,7 +908,7 @@ class Decimal
   end
 
   def sqrt(context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     if special?
       ans = _check_nans(context)
       return ans if ans
@@ -900,7 +964,7 @@ class Decimal
   # General Decimal Arithmetic Specification integer division and remainder:
   #  (x/y).truncate, x - y*(x/y).truncate
   def divrem(other, context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
 
     ans = _check_nans(context,other)
     return [ans,ans] if ans
@@ -932,7 +996,7 @@ class Decimal
 
   # Ruby-style integer division and modulo: (x/y).floor, x - y*(x/y).floor
   def divmod(other, context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
 
     ans = _check_nans(context,other)
     return [ans,ans] if ans
@@ -965,7 +1029,7 @@ class Decimal
 
   # General Decimal Arithmetic Specification integer division: (x/y).truncate
   def divide_int(other, context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
 
     ans = _check_nans(context,other)
     return ans if ans
@@ -989,7 +1053,7 @@ class Decimal
 
   # Ruby-style integer division: (x/y).floor
   def div(other, context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
 
     ans = _check_nans(context,other)
     return [ans,ans] if ans
@@ -1015,7 +1079,7 @@ class Decimal
   # Ruby-style modulo: x - y*div(x,y)
 
   def modulo(other, context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
 
     ans = _check_nans(context,other)
     return ans if ans
@@ -1037,7 +1101,7 @@ class Decimal
 
   # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
   def remainder(other, context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
 
     ans = _check_nans(context,other)
     return ans if ans
@@ -1061,7 +1125,7 @@ class Decimal
   # General Decimal Arithmetic Specification remainder-near:
   #  x - y*round_half_even(x/y)
   def remainder_near(other, context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
 
     ans = _check_nans(context,other)
     return ans if ans
@@ -1122,7 +1186,7 @@ class Decimal
   
 
   def reduce(context=nil)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     if special?
       ans = _check_nans(context)
       return ans if ans
@@ -1146,7 +1210,7 @@ class Decimal
   end
 
   def logb(context=nil)
-    context = Decimal::Context(context)    
+    context = Decimal.define_context(context)    
     ans = _check_nans(context)
     return ans if ans
     return Decimal.infinity if infinite?
@@ -1156,7 +1220,7 @@ class Decimal
 
   def scaleb(other, context=nil)
         
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     other = Decimal(other)
     ans = _check_nans(context, other)
     return ans if ans    
@@ -1225,7 +1289,7 @@ class Decimal
       if leftdigits == dotplace
         e = ''
       else
-        context = Decimal.Context(context)
+        context = Decimal.define_context(context)
         e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
       end
       
@@ -1389,7 +1453,7 @@ class Decimal
     else
       ans = copy_negate
     end
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     ans._fix(context)
   end
     
@@ -1403,7 +1467,7 @@ class Decimal
     else
       ans = Decimal.new(self)
     end
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     ans._fix(context)
   end    
     
@@ -1625,7 +1689,7 @@ class Decimal
       #self_is_nan = self.nan?
       #other_is_nan = other.nil? ? false : other.nan?
       if self.nan? || (other && other.nan?)
-        context = Decimal.Context(context)
+        context = Decimal.define_context(context)
         return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
         return context.exception(InvalidOperation, 'sNaN', other) if other && other.snan?
         return self._fix_nan(context) if self.nan?
@@ -1710,7 +1774,7 @@ class Decimal
   end
 
   def rescale(exp, context=nil, watch_exp=true)
-    context = Decimal::Context(context)
+    context = Decimal.define_context(context)
     exp = _convert_other(exp, true)
     if self.special? || exp.special?
       ans = _check_nans(context, exp)
@@ -1728,7 +1792,7 @@ class Decimal
 
   def quantize(exp, context=nil, watch_exp=true)
     exp = _convert_other(exp, true)
-    context = Decimal::Context(context)
+    context = Decimal.define_context(context)
     if self.special? || exp.special?
       ans = _check_nans(context, exp)
       return ans if ans
@@ -1779,7 +1843,7 @@ class Decimal
   end
   
   def to_integral_exact(context=nil)
-    context = Decimal::Context(context)
+    context = Decimal.define_context(context)
     if special?
       ans = _check_nans(context)
       return ans if ans
@@ -1794,7 +1858,7 @@ class Decimal
   end
   
   def to_integral_value(context=nil)
-    context = Decimal::Context(context)
+    context = Decimal.define_context(context)
     if special?
       ans = _check_nans(context)
       return ans if ans
@@ -1846,7 +1910,7 @@ class Decimal
   
   def fma(other, third, context=nil)
     if self.special? || other.special?
-      context = Decimal::Context(context)
+      context = Decimal.define_context(context)
       return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
       return context.exception(InvalidOperation, 'sNaN', other) if other.snan?
       if self.nan?
@@ -1868,7 +1932,7 @@ class Decimal
   end
   
   def _divide_truncate(other, context)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     sign = self.sign * other.sign
     if other.infinite?
       ideal_exp = self.integral_exponent
@@ -1901,7 +1965,7 @@ class Decimal
   end
     
   def _divide_floor(other, context)
-    context = Decimal.Context(context)
+    context = Decimal.define_context(context)
     sign = self.sign * other.sign
     if other.infinite?
       ideal_exp = self.integral_exponent

@@ -103,4 +103,51 @@ require 'decimal_fast' if speed is considered more important.
 Two of the three planned Decimal alternatives are being developed: decimal_rb.rb is the decimal-rb mentioned above
 and decimal_bd.rb is decimal-bd.
 
+= Examples
 
+  include FPNum
+  include RB
+
+  puts Decimal(1)/Decimal(3)
+  Decimal.local_context(:precision=>4) do
+    puts Decimal(1)/Decimal(3)
+    puts Decimal('1E20')-Decimal('-1E20')
+  end
+
+  puts Decimal('1E20')-Decimal('-1E20')
+  puts Decimal(16).sqrt
+  puts Decimal(16)/Decimal(4)
+  puts Decimal(1)/Decimal(3)
+
+  Decimal.local_context(:exact=>true) do
+    puts Decimal('1E20')-Decimal('-1E20')
+    puts Decimal(16).sqrt
+    puts Decimal(16)/Decimal(4)
+    puts Decimal(1)/Decimal(3)
+  end
+        
+  puts Decimal('101.5').round
+  puts Decimal('101.5').round(0)
+  puts Decimal('101.12345').round(2)
+  puts Decimal('101.12345').round(-1)
+  puts Decimal('101.12345').round(:places=>2)
+  puts Decimal('101.12345').round(:precision=>2)
+  puts Decimal('101.5').round(:rounding=>:half_up)
+  puts Decimal('101.5').ceil
+  puts Decimal('101.5').floor
+  puts Decimal('101.5').truncate
+  
+  # set default context attributes
+  Decimal::DefaultContext.precision = 10
+  Decimal.context = Decimal::Context(:rounding=>half_up)
+  puts Decimal.context.precision # -> 10
+  # note that:
+  Decimal.context.precision = 5
+  Decimal.context = Decimal::Context()
+  puts Decimal.context.precision # -> 10
+  
+  
+  # Decimal::Context() is the default context
+  # Decimal::Context(nil) is the current context
+  #                       (to be applied to a context parameter nil-valued by default)
+  

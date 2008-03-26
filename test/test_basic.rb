@@ -39,7 +39,7 @@ end
         i += 1
         z *= i
         
-        #d  = x1.divide(z,Decimal::Context(:precision=>m))
+        #d  = x1.divide(z,:precision=>m)
         context.precision = m
         d = x1/z
         context.precision = n
@@ -57,7 +57,7 @@ class TestBasic < Test::Unit::TestCase
 
   def setup
     $implementations_to_test.each do |mod|
-      mod::Decimal.context = mod::Decimal.defaultContext 
+      initialize_context mod
     end
   end  
   

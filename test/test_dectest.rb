@@ -82,7 +82,8 @@ class TestBasic < Test::Unit::TestCase
           next if %w{ds dd dq}.include?(name[0,2]) || 
                    %w{decsingle decdouble decquad testall}.include?(name)
                    
-          mod::Decimal.context = mod::Decimal.defaultContext
+          initialize_context mod
+
                         
           File.open(fn,'r') do |file|            
             file.each_line do |line|

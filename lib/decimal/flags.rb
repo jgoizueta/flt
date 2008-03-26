@@ -79,7 +79,9 @@ class Flags
     @values = nil
     @flags = {}
     
-    v = 0
+    v = 0    
+    
+    flags.flatten!
     
     flags.each do |flag|
       case flag
@@ -91,7 +93,7 @@ class Flags
           v |= flag
         when Flags
           @values = flag.values
-          @flags = flag.to_h
+          @flags = flag.to_h.dup
         else
           raise InvalidFlagTypeError, "Invalid flag type for: #{flag.inspect}"          
       end
@@ -107,6 +109,10 @@ class Flags
       @flags.each_key{|flag| check flag}
     end
     
+  end
+  
+  def dup
+    Flags.new(self)    
   end
   
   # Clears all flags

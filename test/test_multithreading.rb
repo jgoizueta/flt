@@ -6,7 +6,7 @@ class TestMultithreading < Test::Unit::TestCase
 
   def setup
     $implementations_to_test.each do |mod|
-      mod::Decimal.context = mod::Decimal.defaultContext 
+      initialize_context mod
     end
   end  
 
