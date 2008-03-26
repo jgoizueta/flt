@@ -13,7 +13,7 @@ class TestRound < Test::Unit::TestCase
   
   def test_round
     $implementations_to_test.each do |mod|
-      
+            
       assert_equal(101,  mod::Decimal('100.5').round)
       assert mod::Decimal('100.5').round.kind_of?(Integer)
       assert_equal 100, mod::Decimal('100.4999999999').round
