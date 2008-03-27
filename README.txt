@@ -182,6 +182,7 @@ And individual parameters can be assigned like this:
     puts context.precision
     puts context.rounding
   end                                                -> 9
+                                                     -> down
   
 Contexts created with the Decimal::Context() constructor
 inherit from Decimal::DefaultContext.
@@ -226,20 +227,20 @@ Results are normally rounded using the precision (number of significant digits)
 and rounding mode defined in the context.
 
   Decimal.context.precision = 4
-  puts Decimal(1)/Decimal(3)
-  puts Decimal('1E20')-Decimal('1E-20')
+  puts Decimal(1)/Decimal(3)                         -> 0.3333
+  puts Decimal('1E20')-Decimal('1E-20')              -> 1.000E+20
   Decimal.context.rounding = :half_up
-  puts +Decimal('100.05') 
+  puts +Decimal('100.05')                            -> 100.1
   Decimal.context.rounding = :half_even
-  puts +Decimal('100.05') 
+  puts +Decimal('100.05')                            -> 100.0
   
 Note that input values are not rounded, only results; we use
 the plus operator to force rounding here:
 
   Decimal.context.precision = 4
   x = Decimal('123.45678')
-  puts x
-  puts +x
+  puts x                                             -> 123.45678
+  puts +x                                            -> 123.5
 
 Precision can be also set to exact to avoid rounding, by using
 the exact property or using a 0 precision. In exact mode results
@@ -247,16 +248,16 @@ are never rounded and results that have an infinite number of
 digits trigger the Decimal::Inexact exception.
 
   Decimal.context.exact = true
-  puts Decimal('1E20')-Decimal('1E-20')
-  puts Decimal(16).sqrt
-  puts Decimal(16)/Decimal(4)
-  puts Decimal(1)/Decimal(3)
-
-  Decimal.context.precision = 5
-  puts Decimal('1E20')-Decimal('1E-20')              -> 2E+20
+  puts Decimal('1E20')-Decimal('1E-20')              -> 99999999999999999999.99999999999999999999
   puts Decimal(16).sqrt                              -> 4
   puts Decimal(16)/Decimal(4)                        -> 4
-  puts Decimal(1)/Decimal(3)                         -> 0.333333333
+  puts Decimal(1)/Decimal(3)                         -> Exception : FPNum::RB::Decimal::Inexact
+
+  Decimal.context.precision = 5
+  puts Decimal('1E20')-Decimal('1E-20')              -> 1.0000E+20
+  puts Decimal(16).sqrt                              -> 4
+  puts Decimal(16)/Decimal(4)                        -> 4
+  puts Decimal(1)/Decimal(3)                         -> 0.33333
 
   
   # quantize, etc  
