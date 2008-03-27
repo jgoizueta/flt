@@ -100,7 +100,7 @@ class Decimal
         
     end
 
-    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags, :capitals, :clamp, :exact
+    attr_accessor :rounding, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags, :capitals, :clamp
 
     def ignore_all_flags
       #@ignored_flags << EXCEPTIONS
@@ -138,9 +138,13 @@ class Decimal
     end
     def precision=(n)
       @precision = n
+      @exact = false unless n==0
       update_precision
       n
     end
+    def precision
+      @precision
+    end    
     def exact=(v)
       @exact = v
       update_precision
@@ -193,6 +197,7 @@ class Decimal
   
     
     def _fix_bd(x)
+      x = as_bd(x)
       if x.finite? && !@exact
         compute { x*BigDecimal('1') }
       else
@@ -201,59 +206,63 @@ class Decimal
     end
     
     def add(x,y)
-      compute { Decimal(x._value+y._value) }
+      compute { Decimal(as_bd(x)+as_bd(y)) }
     end
     def substract(x,y)
-      compute { Decimal(x._value-y._value) }
+      compute { Decimal(as_bd(x)-as_bd(y)) }
     end
     def multiply(x,y)
-      compute { Decimal(x._value*y._value) }
+      compute { Decimal(as_bd(x)*as_bd(y)) }
     end
     def divide(x,y)
-      if exact?
-        prec = x.number_of_digits + 4*y.number_of_digits
+      x = as_bd(x)
+      y = as_bd(y)
+      if exact? && x.finite? && y.finite?
+        x_number_of_digits = x.split[1].size
+        y_number_of_digits = y.split[1].size
+        prec = x_number_of_digits + 4*y_number_of_digits
         compute {
-          z = x._value.div(y._value, prec)
-          raise Decimal::Inexact if z*y._value != x._value
+          z = x.div(y, prec)
+          raise Decimal::Inexact if z*y != x
           Decimal(z)
         }
       else
-        compute { Decimal(x._value.div(y._value,@precision)) }
+        compute { Decimal(x.div(y,@precision)) }
       end
     end
     
     def abs(x)
-      compute { Decimal(x._value.abs) }
+      compute { Decimal(as_bd(x).abs) }
     end
     
     def plus(x)      
-      x._fix(self)
+      Decimal(x)._fix(self)
     end
     
     def minus(x)
-      compute { Decimal(-x._value) }
+      compute { Decimal(-as_bd(x)) }
     end
     
     def to_string(x)
-      x._value.to_s('F')
+      as_bd(x).to_s('F')
     end
 
 
     def reduce(x)
       # nop: BigDecimals are always in reduced form
-      x
+      Decimal(x)
     end
     
     # Adjusted exponent of x returned as a Decimal value.
     def logb(x)
-      compute { Decimal(x.adjusted_exponent) }
+      compute { Decimal(Decimal(x).adjusted_exponent) }
     end
 
     # x*(radix**y) y must be an integer
     def scaleb(x, y)
       i = y.to_i
       if i
-        compute { Decimal(Decimal(x)._value * (BigDecimal('10')**y.to_i)) }
+        compute { Decimal(as_bd(x) * (BigDecimal('10')**y.to_i)) }
       else
         nan
       end
@@ -262,16 +271,19 @@ class Decimal
     # Exponent in relation to the significand as an integer
     # normalized to precision digits. (minimum exponent)
     def normalized_integral_exponent(x)
+      x = Decimal(x)
       x.integral_exponent - (precision - x.number_of_digits)
     end
 
     # Significand normalized to precision digits
     # x == normalized_integral_significand(x) * radix**(normalized_integral_exponent)
     def normalized_integral_significand(x)
+      x = Decimal(x)
       x.integral_significand*(10**(precision - x.number_of_digits))
     end
     
     def to_normalized_int_scale(x)
+      x = Decimal(x)
       [x.sign*normalized_integral_significand(x), normalized_integral_exponent(x)]
     end
 
@@ -286,6 +298,7 @@ class Decimal
     #  remainder_near
     
     def sqrt(x)
+      x = Decimal(x)      
       if exact?
         prec = (x.number_of_digits << 1) + 1
         x = x._value
@@ -299,25 +312,25 @@ class Decimal
    
     # Ruby-style integer division.
     def div(x,y)
-      compute { Decimal(x._value.div(y._value)) }
+      compute { Decimal(as_bd(x).div(as_bd(y))) }
     end
     # Ruby-style modulo.
     def modulo(x,y)
-      compute { Decimal(x._value.modulo(y._value)) }
+      compute { Decimal(as_bd(x).modulo(as_bd(y))) }
     end
     # Ruby-style integer division and modulo.
     def divmod(x,y)
-      compute { x._value.divmod(y._value).map{|z| Decimal(z)} }
+      compute { as_bd(x).divmod(as_bd(y)).map{|z| Decimal(z)} }
     end
             
     # General Decimal Arithmetic Specification integer division
     def divide_int(x,y)
       # compute { Decimal(x._value/y._value).truncate }      
-      compute(:rounding=>ROUND_DOWN) { Decimal((x._value/y._value).truncate) }      
+      compute(:rounding=>ROUND_DOWN) { Decimal((as_bd(x)/as_bd(y)).truncate) }      
     end
     # General Decimal Arithmetic Specification remainder
     def remainder(x,y)
-      compute { Decimal(x._value.remainder(y._value)) }      
+      compute { Decimal(as_bd(x).remainder(as_bd(y))) }      
     end
     # General Decimal Arithmetic Specification remainder-near
     def remainder_near(x,y)
@@ -326,8 +339,9 @@ class Decimal
           # TO DO....
           raise Decimal::Inexact
         else
-          z = (x._value.div(y._value, @precision)).round
-          Decimal(x._value - y._value*z)
+          x,y = as_bd(x),as_bd(y)
+          z = (x.div(y, @precision)).round
+          Decimal(x - y*z)
         end
       end
     end
@@ -350,29 +364,24 @@ class Decimal
     end
     
     def copy_abs(x)
-      Decimal(x._value.abs)
+      Decimal(as_bd(x).abs)
     end
 
     def copy_negate(x)
-      Decimal(-(x._value))
+      Decimal(-as_bd(x))
     end
     
     def copy_sign(x,y)
-      txt = y._value.to_s
-      if txt[0,1]=='-'
-        txt = txt[1..-1]
-      else
-        txt = '-'+txt
-      end
-      Decimal(txt)
+      x,y = as_bd(x).abs,as_bd(y)
+      Decimal(y<0 ? -x : x)
     end
     
     def rescale(x,exp)
-      x
+      Decimal(x)
     end
     
     def quantize(x,y)
-      x
+      Decimal(x)
     end
     
     def same_quantum?(x,y)
@@ -398,7 +407,7 @@ class Decimal
     end
     
     def integral?(x)
-      x.integral?
+      Decimal(x).integral?
     end
     
     def fma(x,y,z)
@@ -432,7 +441,7 @@ class Decimal
       instance_variables.map { |v| "  #{v}: #{eval(v.to_s)}"}.join("\n") +
       ">\n"      
     end    
-    
+        
     protected
             
     @@compute_lock = Monitor.new  
@@ -530,6 +539,23 @@ class Decimal
         @precision = 0
         @traps << Inexact
         @ignored_flags[Inexact] = false
+      else
+        @traps[Inexact] = false
+      end
+    end
+    
+    def as_bd(x)
+      case x
+      when Decimal
+        x._value      
+      when BigDecimal
+        x
+      when Integer
+        BigDecimal(x.to_s)
+      when Rational
+        Decimal.new(x)._value        
+      else
+        raise TypeError, "Unable to convert #{x.class} to Decimal" if error  
       end
     end
     
@@ -1004,12 +1030,26 @@ class Decimal
     @value.frac == 0
   end
 
+  def _convert(x, error=true)
+    case x
+    when Decimal
+      x
+    when Integer, Rational
+      Decimal(x)
+    else
+      raise TypeError, "Unable to convert #{x.class} to Decimal" if error
+      nil
+    end
+  end    
+
+
   private
   
   def _fix!(context)
     @value = context._fix_bd(@value) if @value.finite?
   end
   
+
 
 
 end

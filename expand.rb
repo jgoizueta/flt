@@ -123,7 +123,7 @@ def expand_text(txt,non_code_block_prefix=nil) # text with indented blocks of co
   accum = ""
   skip_until_blank = false
   disabled = false
-  txt.each do |line|
+  txt.split("\n").each do |line|
     line_num += 1
     code = false
     line.chomp!

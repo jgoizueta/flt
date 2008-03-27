@@ -187,7 +187,7 @@ class Decimal
         
     end
     
-    attr_accessor :rounding, :precision, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp
+    attr_accessor :rounding, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp
     
     def ignore_all_flags
       #@ignored_flags << EXCEPTIONS
@@ -228,6 +228,9 @@ class Decimal
       @exact = false unless n==0
       update_precision
       n
+    end
+    def precision
+      @precision
     end
     def exact=(v)
       @exact = v
@@ -290,63 +293,66 @@ class Decimal
     end
     
     def add(x,y)
-      x.add(y,self)
+      Decimal._convert(x).add(y,self)
     end
     def substract(x,y)
-      x.substract(y,self)
+      Decimal._convert(x).substract(y,self)
     end
     def multiply(x,y)
-      x.multiply(y,self)
+      Decimal._convert(x).multiply(y,self)
     end
     def divide(x,y)
-      x.divide(y,self)
+      Decimal._convert(x).divide(y,self)
     end
     
     def abs(x)
-      x.abs(self)
+      Decimal._convert(x).abs(self)
     end
     
     def plus(x)
-      x._pos(self)
+      Decimal._convert(x).plus(self)
     end
     
     def minus(x)
-      x._neg(self)
+      Decimal._convert(x)._neg(self)
     end
     
     def to_string(eng=false)
-      x.to_s(eng, self)
+      Decimal._convert(x).to_s(eng, self)
     end
 
     def reduce(x)
-      x.reduce(self)
+      Decimal._convert(x).reduce(self)
     end
     
 
     # Adjusted exponent of x returned as a Decimal value.
     def logb(x)
-      x.logb(self)
+      Decimal._convert(x).logb(self)
     end
     
     # x*(radix**y) y must be an integer
     def scaleb(x, y)
-      Decimal(x).scaleb(y,self)      
+      Decimal._convert(x).scaleb(y,self)      
     end
         
     
     # Exponent in relation to the significand as an integer
     # normalized to precision digits. (minimum exponent)
     def normalized_integral_exponent(x)
+      x = Decimal._convert(x)
       x.integral_exponent - (precision - x.number_of_digits)
     end
 
     # Significand normalized to precision digits
     # x == normalized_integral_significand(x) * radix**(normalized_integral_exponent)
     def normalized_integral_significand(x)
+      x = Decimal._convert(x)
       x.integral_significand*(Decimal.int_radix_power(precision - x.number_of_digits))
     end
     
     def to_normalized_int_scale(x)
+      x = Decimal._convert(x)
       [x.sign*normalized_integral_significand(x), normalized_integral_exponent(x)]
     end
 
@@ -357,83 +363,82 @@ class Decimal
     # GDAS
     #  power
     #  exp log10 ln
-    #  fma: (not meaninful with BigDecimal bogus rounding)
     
     def sqrt(x)
-      x.sqrt(self)
+      Decimal._convert(x).sqrt(self)
     end
    
     # Ruby-style integer division: (x/y).floor
     def div(x,y)
-      x.div(y,self)
+      Decimal._convert(x).div(y,self)
     end
     # Ruby-style modulo: x - y*div(x,y)
     def modulo(x,y)
-      x.modulo(y,self)
+      Decimal._convert(x).modulo(y,self)
     end
     # Ruby-style integer division and modulo: (x/y).floor, x - y*(x/y).floor
     def divmod(x,y)
-      x.divmod(y,self)
+      Decimal._convert(x).divmod(y,self)
     end
             
     # General Decimal Arithmetic Specification integer division: (x/y).truncate
     def divide_int(x,y)
-      x.divide_int(y,self)
+      Decimal._convert(x).divide_int(y,self)
     end
     # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
     def remainder(x,y)
-      x.remainder(y,self)
+      Decimal._convert(x).remainder(y,self)
     end
     # General Decimal Arithmetic Specification remainder-near
     #  x - y*round_half_even(x/y)
     def remainder_near(x,y)
-      x.remainder_near(y,self)
+      Decimal._convert(x).remainder_near(y,self)
     end
     # General Decimal Arithmetic Specification integer division and remainder:
     #  (x/y).truncate, x - y*(x/y).truncate
     def divrem(x,y)
-      x.divrem(y,self)
+      Decimal._convert(x).divrem(y,self)
     end
     
     def fma(x,y,z)
-      x.fma(y,z,self)
+      Decimal._convert(x).fma(y,z,self)
     end
 
     def compare(x,y)
-      x.compare(y, self)
+      Decimal._convert(x).compare(y, self)
     end
     
 
     def copy_abs(x)
-      x.copy_abs
+      Decimal._convert(x).copy_abs
     end
     
     def copy_negate(x)
-      x.copy_negate
+      Decimal._convert(x).copy_negate
     end
       
     def copy_sign(x,y)
-      x.copy_sign(y)
+      Decimal._convert(x).copy_sign(y)
     end
 
     def rescale(x, exp, watch_exp=true)
-      x.rescale(exp, self, watch_exp)
+      Decimal._convert(x).rescale(exp, self, watch_exp)
     end
     
     def quantize(x, y, watch_exp=true)
-      x.quantize(y, self, watch_exp)
+      Decimal._convert(x).quantize(y, self, watch_exp)
     end
     
     def same_quantum?(x,y)
-      x.same_quantum?(y)
+      Decimal._convert(x).same_quantum?(y)
     end
     
     def to_integral_exact(x)
-      x.to_integral_exact(self)
+      Decimal._convert(x).to_integral_exact(self)
     end
     
     def to_integral_value(x)
-      x.to_integral_value(self)
+      Decimal._convert(x).to_integral_value(self)
     end
     
     def to_s
@@ -735,7 +740,7 @@ class Decimal
   def add(other, context=nil)
 
     context = Decimal.define_context(context)
-    other = _convert_other(other)
+    other = Decimal._convert(other)
 
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -807,7 +812,7 @@ class Decimal
   def substract(other, context=nil)
     
     context = Decimal.define_context(context)
-    other = _convert_other(other)
+    other = Decimal._convert(other)
 
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -819,7 +824,7 @@ class Decimal
   
   def multiply(other, context=nil)
     context = Decimal.define_context(context)
-    other = _convert_other(other)
+    other = Decimal._convert(other)
     resultsign = self.sign * other.sign
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -847,7 +852,7 @@ class Decimal
   
   def divide(other, context=nil)
     context = Decimal.define_context(context)
-    other = _convert_other(other)
+    other = Decimal._convert(other)
     resultsign = self.sign * other.sign
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -972,6 +977,7 @@ class Decimal
   #  (x/y).truncate, x - y*(x/y).truncate
   def divrem(other, context=nil)
     context = Decimal.define_context(context)
+    other = Decimal._convert(other)
 
     ans = _check_nans(context,other)
     return [ans,ans] if ans
@@ -1004,6 +1010,7 @@ class Decimal
   # Ruby-style integer division and modulo: (x/y).floor, x - y*(x/y).floor
   def divmod(other, context=nil)
     context = Decimal.define_context(context)
+    other = Decimal._convert(other)
 
     ans = _check_nans(context,other)
     return [ans,ans] if ans
@@ -1037,6 +1044,7 @@ class Decimal
   # General Decimal Arithmetic Specification integer division: (x/y).truncate
   def divide_int(other, context=nil)
     context = Decimal.define_context(context)
+    other = Decimal._convert(other)
 
     ans = _check_nans(context,other)
     return ans if ans
@@ -1061,6 +1069,7 @@ class Decimal
   # Ruby-style integer division: (x/y).floor
   def div(other, context=nil)
     context = Decimal.define_context(context)
+    other = Decimal._convert(other)
 
     ans = _check_nans(context,other)
     return [ans,ans] if ans
@@ -1087,6 +1096,7 @@ class Decimal
 
   def modulo(other, context=nil)
     context = Decimal.define_context(context)
+    other = Decimal._convert(other)
 
     ans = _check_nans(context,other)
     return ans if ans
@@ -1109,6 +1119,7 @@ class Decimal
   # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
   def remainder(other, context=nil)
     context = Decimal.define_context(context)
+    other = Decimal._convert(other)
 
     ans = _check_nans(context,other)
     return ans if ans
@@ -1133,6 +1144,7 @@ class Decimal
   #  x - y*round_half_even(x/y)
   def remainder_near(other, context=nil)
     context = Decimal.define_context(context)
+    other = Decimal._convert(other)
 
     ans = _check_nans(context,other)
     return ans if ans
@@ -1228,7 +1240,7 @@ class Decimal
   def scaleb(other, context=nil)
         
     context = Decimal.define_context(context)
-    other = Decimal(other)
+    other = Decimal._convert(other)
     ans = _check_nans(context, other)
     return ans if ans    
     return context.exception(InvalidOperation) if other.infinite? || other.integral_exponent != 0
@@ -1382,7 +1394,7 @@ class Decimal
   
   def compare(other, context=nil)
     
-    other = _convert_other(other, true)
+    other = Decimal._convert(other)
     
     if self.special? || other.special?
       ans = _check_nans(context, other)
@@ -1782,7 +1794,7 @@ class Decimal
 
   def rescale(exp, context=nil, watch_exp=true)
     context = Decimal.define_context(context)
-    exp = _convert_other(exp, true)
+    exp = Decimal._convert(exp)
     if self.special? || exp.special?
       ans = _check_nans(context, exp)
       return ans if ans
@@ -1798,7 +1810,7 @@ class Decimal
 
 
   def quantize(exp, context=nil, watch_exp=true)
-    exp = _convert_other(exp, true)
+    exp = Decimal._convert(exp)
     context = Decimal.define_context(context)
     if self.special? || exp.special?
       ans = _check_nans(context, exp)
@@ -1842,7 +1854,7 @@ class Decimal
   end
   
   def same_quantum?(other)
-    other = _convert_other(other, true)
+    other = Decimal._convert(other)
     if self.special? || other.special?
       return (self.nan? && other.nan?) || (self.infinite? && other.infinite?)
     end
@@ -1916,8 +1928,10 @@ class Decimal
   end
   
   def fma(other, third, context=nil)
-    if self.special? || other.special?
-      context = Decimal.define_context(context)
+    context = Decimal.define_context(context)
+    other = Decimal._convert(other)
+    third = Decimal._convert(third)
+    if self.special? || other.special?      
       return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
       return context.exception(InvalidOperation, 'sNaN', other) if other.snan?
       if self.nan?
@@ -1934,7 +1948,6 @@ class Decimal
     else
       product = Decimal.new([self.sign*other.sign,self.integral_significand*other.integral_significand, self.integral_exponent+other.integral_exponent])
     end                      
-    third = _convert_other(third, true)
     return product.add(third, context)      
   end
   
@@ -2016,14 +2029,14 @@ class Decimal
     
   end
         
-  def _convert_other(other, raiseit=false)
-    case other
+  def Decimal._convert(x, error=true)
+    case x
     when Decimal
-      other
+      x
     when Integer, Rational
-      Decimal(other)
+      Decimal.new(x)
     else
-      raise TypeError, "Unable to convert #{other.class} to Decimal"
+      raise TypeError, "Unable to convert #{x.class} to Decimal" if error
       nil
     end
   end    
