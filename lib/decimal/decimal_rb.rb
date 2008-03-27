@@ -225,6 +225,7 @@ class Decimal
     end
     def precision=(n)
       @precision = n
+      @exact = false unless n==0
       update_precision
       n
     end
@@ -451,6 +452,8 @@ class Decimal
         @precision = 0
         @traps << Inexact
         @ignored_flags[Inexact] = false
+      else
+        @traps[Inexact] = false
       end
     end
     

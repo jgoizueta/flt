@@ -79,7 +79,9 @@ class ExampleExpander
     rescue MimickIRB::Continue
       @output << line_output(line)
     rescue Object => e
-      msg = "#{e.class}: #{e.message}"
+      #msg = "Exception : #{e.message}"
+      msg = "Exception : #{e.class}"
+      # msg = "#{e.class}: #{e.message}"
       @output << line_output(line,msg)
       STDERR.puts "#{msg}\n"
     end

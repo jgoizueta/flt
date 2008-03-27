@@ -225,46 +225,38 @@ Decimal::ExtendedContext in the following examples:
 Results are normally rounded using the precision (number of significant digits)
 and rounding mode defined in the context.
 
-  Decimal.local_context(:precision=>4) do |context|
-    puts Decimal(1)/Decimal(3)
-    puts Decimal('1E20')-Decimal('-1E20')
-    context.rounding = :half_even
-    # the plus operator forces rounding:
-    puts +Decimal('100.05') 
-    context.rounding = :half_up
-    puts +Decimal('100.05')     
-  end                                                -> 0.3333
-
+  Decimal.context.precision = 4
+  puts Decimal(1)/Decimal(3)
+  puts Decimal('1E20')-Decimal('1E-20')
+  Decimal.context.rounding = :half_up
+  puts +Decimal('100.05') 
+  Decimal.context.rounding = :half_even
+  puts +Decimal('100.05') 
   
-Note that input values are not rounded, only results:
+Note that input values are not rounded, only results; we use
+the plus operator to force rounding here:
 
-  Decimal.local_context(:precision=>4) do
-    x = Decimal('123.45678')
-    puts x
-    puts +x
-  end                                                -> 123.45678
-
-
-  puts Decimal('1E20')-Decimal('-1E20')              -> 2E+20
-  puts Decimal(16).sqrt                              -> 4
-  puts Decimal(16)/Decimal(4)                        -> 4
-  puts Decimal(1)/Decimal(3)                         -> 0.333333333
+  Decimal.context.precision = 4
+  x = Decimal('123.45678')
+  puts x
+  puts +x
 
 Precision can be also set to exact to avoid rounding, by using
 the exact property or using a 0 precision. In exact mode results
 are never rounded and results that have an infinite number of 
 digits trigger the Decimal::Inexact exception.
 
-  Decimal.local_context(:exact=>true) do
-    puts Decimal('1E20')-Decimal('-1E20')
-    puts Decimal(16).sqrt
-    puts Decimal(16)/Decimal(4)
-    begin
-      puts Decimal(1)/Decimal(3)
-    rescue => err
-      puts "Error: #{err}"
-    end
-  end                                                -> 2E+20
+  Decimal.context.exact = true
+  puts Decimal('1E20')-Decimal('1E-20')
+  puts Decimal(16).sqrt
+  puts Decimal(16)/Decimal(4)
+  puts Decimal(1)/Decimal(3)
+
+  Decimal.context.precision = 5
+  puts Decimal('1E20')-Decimal('1E-20')              -> 2E+20
+  puts Decimal(16).sqrt                              -> 4
+  puts Decimal(16)/Decimal(4)                        -> 4
+  puts Decimal(1)/Decimal(3)                         -> 0.333333333
 
   
   # quantize, etc  
