@@ -732,7 +732,8 @@ class Decimal
   def add(other, context=nil)
 
     context = Decimal.define_context(context)
-        
+    other = _convert_other(other)
+
     if self.special? || other.special?
       ans = _check_nans(context,other)
       return ans if ans
@@ -803,7 +804,8 @@ class Decimal
   def substract(other, context=nil)
     
     context = Decimal.define_context(context)
-    
+    other = _convert_other(other)
+
     if self.special? || other.special?
       ans = _check_nans(context,other)
       return ans if ans
@@ -814,6 +816,7 @@ class Decimal
   
   def multiply(other, context=nil)
     context = Decimal.define_context(context)
+    other = _convert_other(other)
     resultsign = self.sign * other.sign
     if self.special? || other.special?
       ans = _check_nans(context,other)
@@ -841,6 +844,7 @@ class Decimal
   
   def divide(other, context=nil)
     context = Decimal.define_context(context)
+    other = _convert_other(other)
     resultsign = self.sign * other.sign
     if self.special? || other.special?
       ans = _check_nans(context,other)
