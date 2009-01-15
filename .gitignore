@@ -1,1 +1,6 @@
 test/dectest/*
+email.txt
+ruby-decimal.gemspec
+html
+.DS_Store
+pkg
