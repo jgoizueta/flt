@@ -755,9 +755,6 @@ class Decimal
     special? || @coeff>0
   end
 
-
-
-
   def coerce(other)
     case other
       when Decimal,Integer,Rational
@@ -1454,14 +1451,11 @@ class Decimal
   include Comparable
 
   def hash
-    if finite?
-      reduce.hash!
-    else
-      super
-    end
+    ([Decimal]+reduce.split).hash # TODO: optimize
   end
-  def hash!
-    super.hash
+  def eql?(other)
+    return false unless other.is_a?(Decimal)
+    reduce.split == other.reduce.split
   end
 
   def compare(other, context=nil)
