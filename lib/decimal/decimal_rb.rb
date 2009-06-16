@@ -890,7 +890,7 @@ class Decimal
       else
         ideal_exp = self.integral_exponent - other.integral_exponent
         while (exp < ideal_exp) && ((coeff % Decimal.radix)==0)
-          coeff /= 10
+          coeff /= Decimal.radix
           exp += 1
         end
       end
