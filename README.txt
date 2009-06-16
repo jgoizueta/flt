@@ -262,7 +262,7 @@ digits trigger the Decimal::Inexact exception.
 
   # quantize, etc
 
-There are also some methods for excplicit rounding that provide
+There are also some methods for explicit rounding that provide
 an interface compatible with the Ruby interface of Float:
 
   puts Decimal('101.5').round                        -> 102
