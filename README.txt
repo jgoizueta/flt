@@ -24,7 +24,7 @@ Or use locally in a block without affecting other code:
     puts Decimal(1)/Decimal(3)
   }
   puts Decimal.context.precision
-  
+
 This allows in general to write simpler code; e.g. this is an exponential function, adapted from the
 'recipes' in Python's Decimal:
     def exp(x,c=nil)
@@ -32,11 +32,11 @@ This allows in general to write simpler code; e.g. this is an exponential functi
       Decimal.local_context(c) do |context|
         context.precision += 2
         while s != lasts
-          lasts = s    
+          lasts = s
           i += 1
           fact *= i
-          num *= x     
-          s += num / fact   
+          num *= x
+          s += num / fact
         end
       end
       return +s
@@ -44,7 +44,7 @@ This allows in general to write simpler code; e.g. this is an exponential functi
 The final unary + applied to the result forces it to be rounded to the current precision
 (because we have computed it with two extra digits)
 The result of this method does not have trailing insignificant digits, as is common with BigDecimal.
-      
+
 == Standars compliance.
 
 
@@ -84,14 +84,14 @@ and have a better performance with decimal-bd.
 
 We could have a pair of entry-points for requiring:
 
-  
+
 decimal_std.rb:
   begin
     require 'decimal/decimal_dc.rb'
   rescue
     require 'decimal/decimal_rb.rb' # decimal_rb.rb
   end
-    
+
 decimal_fast.rb:
   begin
     require 'decimal/decimal_dc.rb'
@@ -99,7 +99,7 @@ decimal_fast.rb:
     require 'decimal/decimal_bd.rb'
   end
 
-So the user would require 'decimal_std' if standards-compilacne is preferred or 
+So the user would require 'decimal_std' if standards-compilacne is preferred or
 require 'decimal_fast' if speed is considered more important.
 
 =Development status
@@ -120,7 +120,7 @@ namespace inside FPNum to allow coexistence: FPNum::RB for the pure ruby impleme
 FPNum::BD for the BigDecimal wrapper and FPNum::DN may be used in the future for a
 decNumber implementation.
 
-For the next examples we will use the RB implementation, so we include the module 
+For the next examples we will use the RB implementation, so we include the module
 to economize writing:
 
   require 'decimal/decimal_rb'
@@ -129,9 +129,9 @@ to economize writing:
 Now we can use the Decimal class simply like this:
 
   puts Decimal(1)/Decimal(3)                         -> 0.3333333333333333333333333333
-  
+
 Decimal() is a constructor that can be used instead of Decimal.new()
-  
+
 == Contexts
 
 Contexts are envrionments for arithmetic operations. They govern precision, set rules
@@ -141,7 +141,7 @@ for exponents.
 Each thread has an active context that can be accessed like this:
 
   puts Decimal.context.precision                     -> 28
-  
+
 The active context can be globally for the current thread:
 
   Decimal.context.precision = 2
@@ -158,7 +158,7 @@ Or it can be altered locally inside a block:
     puts Decimal.context.precision
   end                                                -> 5
   puts Decimal.context.precision                     -> 9
-  
+
 The block for a local context can be passed the current context as an argument:
 
   Decimal.local_context do |context|
@@ -166,14 +166,14 @@ The block for a local context can be passed the current context as an argument:
     puts Decimal.context.precision
   end                                                -> 5
   puts Decimal.context.precision                     -> 9
-  
-A context object can be used to define the local context:  
-  
+
+A context object can be used to define the local context:
+
   my_context = Decimal::Context(:precision=>20)
   Decimal.local_context(my_context) do |context|
     puts context.precision
   end                                                -> 20
-  
+
 And individual parameters can be assigned like this:
 
   puts Decimal.context.precision                     -> 9
@@ -183,16 +183,16 @@ And individual parameters can be assigned like this:
     puts context.rounding
   end                                                -> 9
                                                      -> down
-  
+
 Contexts created with the Decimal::Context() constructor
 inherit from Decimal::DefaultContext.
 Default context attributes can be established by modifying
 that object:
-  
+
   Decimal::DefaultContext.precision = 10
   Decimal.context = Decimal::Context(:rounding=>:half_up)
   puts Decimal.context.precision                     -> 10
-  
+
 Note that a context object assigned to Decimal.context are copied,
 so they are not altered through Decimal.context:
 
@@ -200,16 +200,16 @@ so they are not altered through Decimal.context:
   Decimal.context = my_context
   Decimal.context.precision = 2
   puts my_context.precision                          -> 20
-  
-So DefaultContext is not altered when modifying Decimal.context.  
-  
+
+So DefaultContext is not altered when modifying Decimal.context.
+
 Methods that use a context have an optional parameter to override
 the active context (Decimal.context) :
 
   Decimal.context.precision = 3
   puts Decimal(1).divide(3)                          -> 0.333
   puts Decimal(1).divide(3, my_context)              -> 0.33333333333333333333
-  
+
 And individual context parameter can also be overriden:
 
   puts Decimal(1).divide(3, :precision=>6)           -> 0.333333
@@ -233,7 +233,7 @@ and rounding mode defined in the context.
   puts +Decimal('100.05')                            -> 100.1
   Decimal.context.rounding = :half_even
   puts +Decimal('100.05')                            -> 100.0
-  
+
 Note that input values are not rounded, only results; we use
 the plus operator to force rounding here:
 
@@ -244,7 +244,7 @@ the plus operator to force rounding here:
 
 Precision can be also set to exact to avoid rounding, by using
 the exact property or using a 0 precision. In exact mode results
-are never rounded and results that have an infinite number of 
+are never rounded and results that have an infinite number of
 digits trigger the Decimal::Inexact exception.
 
   Decimal.context.exact = true
@@ -259,9 +259,9 @@ digits trigger the Decimal::Inexact exception.
   puts Decimal(16)/Decimal(4)                        -> 4
   puts Decimal(1)/Decimal(3)                         -> 0.33333
 
-  
-  # quantize, etc  
-  
+
+  # quantize, etc
+
 There are also some methods for excplicit rounding that provide
 an interface compatible with the Ruby interface of Float:
 
@@ -275,7 +275,7 @@ an interface compatible with the Ruby interface of Float:
   puts Decimal('101.5').ceil                         -> 102
   puts Decimal('101.5').floor                        -> 101
   puts Decimal('101.5').truncate                     -> 101
-  
+
 ==Special values
 
 ==Exceptions

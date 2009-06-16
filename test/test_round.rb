@@ -2,18 +2,18 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 
 
 class TestRound < Test::Unit::TestCase
-  
+
 
   def setup
     $implementations_to_test.each do |mod|
       initialize_context mod
     end
-  end  
+  end
 
-  
+
   def test_round
     $implementations_to_test.each do |mod|
-            
+
       assert_equal(101,  mod::Decimal('100.5').round)
       assert mod::Decimal('100.5').round.kind_of?(Integer)
       assert_equal 100, mod::Decimal('100.4999999999').round
@@ -46,11 +46,11 @@ class TestRound < Test::Unit::TestCase
       assert_equal 100, mod::Decimal('100.99999').truncate
       assert_equal(-100, mod::Decimal('-100.99999').truncate)
 
-      
 
-    end  
-   
+
+    end
+
   end
-  
-    
+
+
 end

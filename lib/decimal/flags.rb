@@ -8,15 +8,15 @@ module FPNum # acts as a namespace here
 #   puts fv[:flag3]
 #   fv.each{|f,v| puts "#{f} -> #{v}"}
 class FlagValues
-  
+
   #include Enumerator
-  
+
   class InvalidFlagError < StandardError
   end
   class InvalidFlagTypeError < StandardError
   end
-  
-  
+
+
   # The flag symbols must be passed; values are assign in increasing order.
   #   fv = FlagValues.new(:flag1, :flag2, :flag3)
   #   puts fv[:flag3]
@@ -25,18 +25,18 @@ class FlagValues
     value = 1
     flags.each do |flag|
       raise InvalidFlagType,"Flags must be defined as symbols or classes; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol) || flag.instance_of?(Class)
-      @flags[flag] = value      
+      @flags[flag] = value
       value <<= 1
-    end    
+    end
   end
 
   # Get the bit-value of a flag
   def [](flag)
     v = @flags[flag]
-    raise InvalidFlagError, "Invalid flag: #{flag}" unless v    
+    raise InvalidFlagError, "Invalid flag: #{flag}" unless v
     v
-  end    
-  
+  end
+
   # Return each flag and its bit-value
   def each(&blk)
     if blk.arity==2
@@ -45,22 +45,22 @@ class FlagValues
       @flags.to_a.sort_by{|f,v|v}.map{|f,v|f}.each(&blk)
     end
   end
-  
+
   def size
     @flags.size
-  end  
-  
+  end
+
   def all_flags_value
     (1 << size) - 1
   end
-  
+
 end
 
 # This class stores a set of flags. It can be assign a FlagValues
 # object (using values= or passing to the constructor) so that
 # the flags can be store in an integer (bits).
 class Flags
-  
+
   class Error < StandardError
   end
   class InvalidFlagError < Error
@@ -69,7 +69,7 @@ class Flags
   end
   class InvalidFlagTypeError < Error
   end
-  
+
   # When a Flag object is created, the initial flags to be set can be passed,
   # and also a FlagValues. If a FlagValues is passed an integer can be used
   # to define the flags.
@@ -78,11 +78,11 @@ class Flags
   def initialize(*flags)
     @values = nil
     @flags = {}
-    
-    v = 0    
-    
+
+    v = 0
+
     flags.flatten!
-    
+
     flags.each do |flag|
       case flag
         when FlagValues
@@ -95,31 +95,31 @@ class Flags
           @values = flag.values
           @flags = flag.to_h.dup
         else
-          raise InvalidFlagTypeError, "Invalid flag type for: #{flag.inspect}"          
+          raise InvalidFlagTypeError, "Invalid flag type for: #{flag.inspect}"
       end
     end
-    
+
     if v!=0
       raise InvalidFlagTypeError, "Integer flag values need flag bit values to be defined" if @values.nil?
       self.bits = v
     end
-    
+
     if @values
       # check flags
       @flags.each_key{|flag| check flag}
     end
-    
+
   end
-  
+
   def dup
-    Flags.new(self)    
+    Flags.new(self)
   end
-  
+
   # Clears all flags
   def clear!
     @flags = {}
   end
-  
+
   # Sets all flags
   def set!
     if @values
@@ -128,22 +128,22 @@ class Flags
       raise Error,"No flag values defined"
     end
   end
-  
+
   # Assign the flag bit values
   def values=(fv)
     @values = fv
   end
-  
+
   # Retrieves the flag bit values
   def values
     @values
   end
-  
+
   # Retrieves the flags as a bit-vector integer. Values must have been assigned.
   def bits
     if @values
       i = 0
-      @flags.each do |f,v|      
+      @flags.each do |f,v|
         bit_val = @values[f]
         i |= bit_val if v && bit_val
       end
@@ -152,7 +152,7 @@ class Flags
       raise Error,"No flag values defined"
     end
   end
-  
+
   # Sets the flags as a bit-vector integer. Values must have been assigned.
   def bits=(i)
     if @values
@@ -165,23 +165,23 @@ class Flags
       raise Error,"No flag values defined"
     end
   end
-  
+
   # Retrieves the flags as a hash.
   def to_h
     @flags
   end
-  
+
   # Same as bits
   def to_i
     bits
   end
-  
+
   # Retrieve the setting (true/false) of a flag
   def [](flag)
     check flag
     @flags[flag]
   end
-  
+
   # Modifies the setting (true/false) of a flag.
   def []=(flag,value)
     check flag
@@ -196,7 +196,7 @@ class Flags
     @flags[flag] = value
     value
   end
-  
+
   # Sets (makes true) one or more flags
   def set(*flags)
     flags = flags.first if flags.size==1 && flags.first.instance_of?(Array)
@@ -208,7 +208,7 @@ class Flags
           flags.concat other.to_a
         #end
       else
-        check flag      
+        check flag
         @flags[flag] = true
       end
     end
@@ -239,7 +239,7 @@ class Flags
       set(flags)
     end
   end
-  
+
   # Iterate on each flag/setting pair.
   def each(&blk)
     if @values
@@ -247,24 +247,24 @@ class Flags
         blk.call(f,@flags[f])
       end
     else
-      @flags.each(&blk)    
+      @flags.each(&blk)
     end
   end
-  
+
   # Iterate on each set flag
   def each_set
     each do |f,v|
       yield f if v
     end
   end
-  
+
   # Iterate on each cleared flag
   def each_clear
     each do |f,v|
       yield f if !v
     end
   end
-  
+
   # returns true if any flag is set
   def any?
     if @values
@@ -273,25 +273,25 @@ class Flags
       to_a.size>0
     end
   end
-  
+
   # Returns the true flags as an array
   def to_a
     a = []
     each_set{|f| a << f}
-    a    
+    a
   end
-  
+
   def to_s
     "[#{to_a.map{|f| f.to_s.split('::').last}.join(', ')}]"
   end
-  
+
   def inspect
     txt = "#{self.class.to_s}#{to_s}"
-    txt << " (0x#{bits.to_s(16)})" if @values    
+    txt << " (0x#{bits.to_s(16)})" if @values
     txt
-  end  
-  
-  
+  end
+
+
   def ==(other)
     if @values && other.values && compatible_values?(other.values)
       bits == other.bits
@@ -299,22 +299,22 @@ class Flags
       to_a.map{|s| s.to_s}.sort == other.to_a.map{|s| s.to_s}.sort
     end
   end
-  
-  
-  
+
+
+
   private
   def check(flag)
     raise InvalidFlagType,"Flags must be defined as symbols or classes; invalid flag: #{flag.inspect}" unless flag.kind_of?(Symbol) || flag.instance_of?(Class)
-    
+
     @values[flag] if @values # raises an invalid flag error if flag is invalid
-    true    
+    true
   end
-  
+
   def compatible_values?(v)
     #@values.object_id==v.object_id
     @values == v
   end
-  
+
 end
 
 module_function

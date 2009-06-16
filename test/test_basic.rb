@@ -3,17 +3,17 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 def exp(mod, x,c=nil)
   i, lasts, s, fact, num = 0, 0, 1, 1, 1
   mod::Decimal.local_context(c) do
-    # result context    
-    mod::Decimal.local_context do |context|    
-      # working context      
+    # result context
+    mod::Decimal.local_context do |context|
+      # working context
       context.precision += 2
       context.rounding = mod::Decimal::ROUND_HALF_EVEN
       while s != lasts
-        lasts = s    
+        lasts = s
         i += 1
         fact *= i
-        num *= x     
-        s += num / fact   
+        num *= x
+        s += num / fact
       end
     end
     +s
@@ -26,7 +26,7 @@ end
     ext = 2
     mod::Decimal.local_context(c) do |context|
       n = (context.precision += ext)
-    
+
       one  = mod::Decimal("1")
       x1 = one
       y  = one
@@ -38,33 +38,33 @@ end
         x1  *= x
         i += 1
         z *= i
-        
+
         #d  = x1.divide(z,:precision=>m)
         context.precision = m
         d = x1/z
         context.precision = n
-        
+
         y += d
       end
     end
     return +y
   end
-  
+
 
 
 class TestBasic < Test::Unit::TestCase
-  
+
 
   def setup
     $implementations_to_test.each do |mod|
       initialize_context mod
     end
-  end  
-  
-  
+  end
+
+
   def test_basic
     $implementations_to_test.each do |mod|
-      
+
       mod::Decimal.context.precision = 4
       assert_equal 4, mod::Decimal.context.precision
       assert_equal mod::Decimal("0.3333"), mod::Decimal(1)/mod::Decimal(3)
@@ -118,29 +118,29 @@ class TestBasic < Test::Unit::TestCase
       assert_equal mod::Decimal('2.1'), mod::Decimal('2.1').remainder(mod::Decimal('3'))
       assert_equal mod::Decimal('-2.1'), mod::Decimal('-2.1').remainder(mod::Decimal('3'))
       assert_equal mod::Decimal('2.1'), mod::Decimal('2.1').remainder(mod::Decimal('-3'))
-      assert_equal mod::Decimal('-2.1'), mod::Decimal('-2.1').remainder(mod::Decimal('-3'))    
+      assert_equal mod::Decimal('-2.1'), mod::Decimal('-2.1').remainder(mod::Decimal('-3'))
       assert_equal mod::Decimal('1'), mod::Decimal('10').remainder(mod::Decimal('3'))
       assert_equal mod::Decimal('-1'), mod::Decimal('-10').remainder(mod::Decimal('3'))
       assert_equal mod::Decimal('1'), mod::Decimal('10').remainder(mod::Decimal('-3'))
-      assert_equal mod::Decimal('-1'), mod::Decimal('-10').remainder(mod::Decimal('-3'))    
+      assert_equal mod::Decimal('-1'), mod::Decimal('-10').remainder(mod::Decimal('-3'))
       assert_equal mod::Decimal('0.2'), mod::Decimal('10.2').remainder(mod::Decimal('1'))
       assert_equal mod::Decimal('0.1'), mod::Decimal('10').remainder(mod::Decimal('0.3'))
       assert_equal mod::Decimal('1.0'), mod::Decimal('3.6').remainder(mod::Decimal('1.3'))
       assert_equal mod::Decimal('2'), mod::Decimal('2').remainder(mod::Decimal('3'))
       assert_equal mod::Decimal('1'), mod::Decimal('10').remainder(mod::Decimal('3'))
       assert_equal mod::Decimal('.1'), mod::Decimal('1').remainder(mod::Decimal('0.3'))
-      
+
       assert_equal mod::Decimal('0'), mod::Decimal('2.1').divide_int(mod::Decimal('3'))
       assert_equal mod::Decimal('0'), mod::Decimal('-2.1').divide_int(mod::Decimal('3'))
       assert_equal mod::Decimal('0'), mod::Decimal('2.1').divide_int(mod::Decimal('-3'))
-      assert_equal mod::Decimal('0'), mod::Decimal('-2.1').divide_int(mod::Decimal('-3'))    
+      assert_equal mod::Decimal('0'), mod::Decimal('-2.1').divide_int(mod::Decimal('-3'))
       assert_equal mod::Decimal('3'), mod::Decimal('10').divide_int(mod::Decimal('3'))
       assert_equal mod::Decimal('-3'), mod::Decimal('-10').divide_int(mod::Decimal('3'))
       assert_equal mod::Decimal('-3'), mod::Decimal('10').divide_int(mod::Decimal('-3'))
-      assert_equal mod::Decimal('3'), mod::Decimal('-10').divide_int(mod::Decimal('-3'))    
+      assert_equal mod::Decimal('3'), mod::Decimal('-10').divide_int(mod::Decimal('-3'))
       assert_equal mod::Decimal('10'), mod::Decimal('10.2').divide_int(mod::Decimal('1'))
       assert_equal mod::Decimal('33'), mod::Decimal('10').divide_int(mod::Decimal('0.3'))
-      assert_equal mod::Decimal('2'), mod::Decimal('3.6').divide_int(mod::Decimal('1.3'))    
+      assert_equal mod::Decimal('2'), mod::Decimal('3.6').divide_int(mod::Decimal('1.3'))
       assert_equal mod::Decimal('0'), mod::Decimal('2').divide_int(mod::Decimal('3'))
       assert_equal mod::Decimal('3'), mod::Decimal('10').divide_int(mod::Decimal('3'))
       assert_equal mod::Decimal('3'), mod::Decimal('1').divide_int(mod::Decimal('0.3'))
@@ -148,29 +148,29 @@ class TestBasic < Test::Unit::TestCase
       assert_equal mod::Decimal('2.1'), mod::Decimal('2.1').modulo(mod::Decimal('3'))
       assert_equal mod::Decimal('0.9'), mod::Decimal('-2.1').modulo(mod::Decimal('3'))
       assert_equal mod::Decimal('-0.9'), mod::Decimal('2.1').modulo(mod::Decimal('-3'))
-      assert_equal mod::Decimal('-2.1'), mod::Decimal('-2.1').modulo(mod::Decimal('-3'))    
+      assert_equal mod::Decimal('-2.1'), mod::Decimal('-2.1').modulo(mod::Decimal('-3'))
       assert_equal mod::Decimal('1'), mod::Decimal('10').modulo(mod::Decimal('3'))
       assert_equal mod::Decimal('2'), mod::Decimal('-10').modulo(mod::Decimal('3'))
       assert_equal mod::Decimal('-2'), mod::Decimal('10').modulo(mod::Decimal('-3'))
-      assert_equal mod::Decimal('-1'), mod::Decimal('-10').modulo(mod::Decimal('-3'))    
+      assert_equal mod::Decimal('-1'), mod::Decimal('-10').modulo(mod::Decimal('-3'))
       assert_equal mod::Decimal('0.2'), mod::Decimal('10.2').modulo(mod::Decimal('1'))
       assert_equal mod::Decimal('0.1'), mod::Decimal('10').modulo(mod::Decimal('0.3'))
       assert_equal mod::Decimal('1.0'), mod::Decimal('3.6').modulo(mod::Decimal('1.3'))
       assert_equal mod::Decimal('2'), mod::Decimal('2').modulo(mod::Decimal('3'))
       assert_equal mod::Decimal('1'), mod::Decimal('10').modulo(mod::Decimal('3'))
       assert_equal mod::Decimal('.1'), mod::Decimal('1').modulo(mod::Decimal('0.3'))
-      
+
       assert_equal mod::Decimal('0'), mod::Decimal('2.1').div(mod::Decimal('3'))
       assert_equal mod::Decimal('-1'), mod::Decimal('-2.1').div(mod::Decimal('3'))
       assert_equal mod::Decimal('-1'), mod::Decimal('2.1').div(mod::Decimal('-3'))
-      assert_equal mod::Decimal('0'), mod::Decimal('-2.1').div(mod::Decimal('-3'))    
+      assert_equal mod::Decimal('0'), mod::Decimal('-2.1').div(mod::Decimal('-3'))
       assert_equal mod::Decimal('3'), mod::Decimal('10').div(mod::Decimal('3'))
       assert_equal mod::Decimal('-4'), mod::Decimal('-10').div(mod::Decimal('3'))
       assert_equal mod::Decimal('-4'), mod::Decimal('10').div(mod::Decimal('-3'))
-      assert_equal mod::Decimal('3'), mod::Decimal('-10').div(mod::Decimal('-3'))    
+      assert_equal mod::Decimal('3'), mod::Decimal('-10').div(mod::Decimal('-3'))
       assert_equal mod::Decimal('10'), mod::Decimal('10.2').div(mod::Decimal('1'))
       assert_equal mod::Decimal('33'), mod::Decimal('10').div(mod::Decimal('0.3'))
-      assert_equal mod::Decimal('2'), mod::Decimal('3.6').div(mod::Decimal('1.3'))    
+      assert_equal mod::Decimal('2'), mod::Decimal('3.6').div(mod::Decimal('1.3'))
       assert_equal mod::Decimal('0'), mod::Decimal('2').div(mod::Decimal('3'))
       assert_equal mod::Decimal('3'), mod::Decimal('10').div(mod::Decimal('3'))
       assert_equal mod::Decimal('3'), mod::Decimal('1').div(mod::Decimal('0.3'))
@@ -187,19 +187,19 @@ class TestBasic < Test::Unit::TestCase
      assert_equal 2, mod::Decimal('123.4567').adjusted_exponent
      assert_equal 2, mod::Decimal('123.45670').adjusted_exponent
      assert_equal 2, mod::Decimal.context.scaleb(mod::Decimal('1.2345670'),2).adjusted_exponent
-     assert_equal 2, mod::Decimal.context.scaleb(mod::Decimal('1.2345670'),mod::Decimal('2')).adjusted_exponent   
-     assert_equal mod::Decimal(2), mod::Decimal.context.logb(mod::Decimal('123.4567'))   
-     assert_equal mod::Decimal(2), mod::Decimal.context.logb(mod::Decimal('123.45670'))   
+     assert_equal 2, mod::Decimal.context.scaleb(mod::Decimal('1.2345670'),mod::Decimal('2')).adjusted_exponent
+     assert_equal mod::Decimal(2), mod::Decimal.context.logb(mod::Decimal('123.4567'))
+     assert_equal mod::Decimal(2), mod::Decimal.context.logb(mod::Decimal('123.45670'))
      assert_equal 3, mod::Decimal('123.4567').fractional_exponent
      assert_equal 3, mod::Decimal('123.45670').fractional_exponent
 
      assert_equal(-7, mod::Decimal.context.normalized_integral_exponent(mod::Decimal('123.4567')))
      assert_equal(1234567000, mod::Decimal.context.normalized_integral_significand(mod::Decimal('123.4567')))
-     
+
      assert_equal 7, mod::Decimal('123.4567').number_of_digits
      assert_equal 8, mod::Decimal('123.45670').number_of_digits unless mod==FPNum::BD
      assert_equal 7, mod::Decimal('123.45670').reduce.number_of_digits
-     
+
      assert_equal 1234567, mod::Decimal('123.4567').integral_significand
      assert_equal 12345670, mod::Decimal('123.45670').integral_significand unless mod==FPNum::BD
      assert_equal 1234567, mod::Decimal('123.45670').reduce.integral_significand
@@ -207,15 +207,15 @@ class TestBasic < Test::Unit::TestCase
      assert_equal 2, mod::Decimal('-123.4567').adjusted_exponent
      assert_equal 2, mod::Decimal('-123.45670').adjusted_exponent
      assert_equal 2, mod::Decimal.context.scaleb(mod::Decimal('-1.2345670'),2).adjusted_exponent
-     assert_equal 2, mod::Decimal.context.scaleb(mod::Decimal('-1.2345670'),mod::Decimal('2')).adjusted_exponent   
-     assert_equal mod::Decimal(2), mod::Decimal.context.logb(mod::Decimal('-123.4567'))   
-     assert_equal mod::Decimal(2), mod::Decimal.context.logb(mod::Decimal('-123.45670'))   
+     assert_equal 2, mod::Decimal.context.scaleb(mod::Decimal('-1.2345670'),mod::Decimal('2')).adjusted_exponent
+     assert_equal mod::Decimal(2), mod::Decimal.context.logb(mod::Decimal('-123.4567'))
+     assert_equal mod::Decimal(2), mod::Decimal.context.logb(mod::Decimal('-123.45670'))
      assert_equal 3, mod::Decimal('-123.4567').fractional_exponent
      assert_equal 3, mod::Decimal('-123.45670').fractional_exponent
 
      assert_equal(-7, mod::Decimal.context.normalized_integral_exponent(mod::Decimal('-123.4567')))
      assert_equal(1234567000, mod::Decimal.context.normalized_integral_significand(mod::Decimal('-123.4567')))
-     
+
      assert_equal 7, mod::Decimal('-123.4567').number_of_digits
      # assert_equal 9, mod::Decimal('123.45670').number_of_digits # not with BigDecimal
      assert_equal 7, mod::Decimal('-123.45670').reduce.number_of_digits
@@ -223,21 +223,21 @@ class TestBasic < Test::Unit::TestCase
      assert_equal(1234567, mod::Decimal('-123.4567').integral_significand)
      #assert_equal(12345670, mod::Decimal('-123.45670').integral_significand) # not with BigDecimal
      assert_equal(1234567, mod::Decimal('-123.45670').reduce.integral_significand)
-     
+
      x = mod::Decimal('123.4567')
      assert_equal x, mod::Decimal(x.integral_significand)*10**x.integral_exponent
      assert_equal x, mod::Decimal(mod::Decimal.context.normalized_integral_significand(x))*10**mod::Decimal.context.normalized_integral_exponent(x)
-     
+
      assert_equal x, mod::Decimal.context.scaleb(x.integral_significand, x.integral_exponent)
      assert_equal x, mod::Decimal.context.scaleb(mod::Decimal.context.normalized_integral_significand(x),mod::Decimal.context.normalized_integral_exponent(x))
-     
+
      x = mod::Decimal('-123.4567')
      assert_equal x.abs, mod::Decimal(x.integral_significand)*10**x.integral_exponent
      assert_equal x.abs, mod::Decimal(mod::Decimal.context.normalized_integral_significand(x))*10**mod::Decimal.context.normalized_integral_exponent(x)
-     
+
      assert_equal x.abs, mod::Decimal.context.scaleb(x.integral_significand, x.integral_exponent)
      assert_equal x.abs, mod::Decimal.context.scaleb(mod::Decimal.context.normalized_integral_significand(x),mod::Decimal.context.normalized_integral_exponent(x))
-     
+
      mod::Decimal.context.precision = 3
      mod::Decimal.context.rounding = :half_up
      assert_equal mod::Decimal("100"), (+mod::Decimal('100.4'))
@@ -283,9 +283,9 @@ class TestBasic < Test::Unit::TestCase
      assert_equal mod::Decimal("-100"), (+mod::Decimal('-100.1'))
      assert_equal mod::Decimal("-101"), (+mod::Decimal('-101.1'))
     end
-   
+
   end
-  
+
   def test_exp
     $implementations_to_test.each do |mod|
       mod::Decimal.context.precision = 100
@@ -297,7 +297,7 @@ class TestBasic < Test::Unit::TestCase
       assert_equal mod::Decimal(e_100), exp1(mod, mod::Decimal(1))
     end
   end
-  
+
   def test_special
     $implementations_to_test.each do |mod|
       nan = mod::Decimal(0)/mod::Decimal(0)
@@ -306,13 +306,13 @@ class TestBasic < Test::Unit::TestCase
       zero_pos = mod::Decimal(0)
       zero_neg = mod::Decimal('-0')
       pos = mod::Decimal(1)
-      neg = mod::Decimal(-1)    
-      
+      neg = mod::Decimal(-1)
+
       assert nan.nan?
       assert nan.special?
       assert !nan.zero?
       assert !nan.finite?
-      assert !nan.infinite?    
+      assert !nan.infinite?
       assert inf_pos.infinite?
       assert !inf_pos.finite?
       assert !inf_pos.nan?
@@ -329,7 +329,7 @@ class TestBasic < Test::Unit::TestCase
       assert !neg.zero?
       assert pos.nonzero?
       assert neg.nonzero?
-      
+
       #assert nan.sign.nil?
       assert_equal(+1, inf_pos.sign)
       assert_equal(-1, inf_neg.sign)
@@ -339,7 +339,7 @@ class TestBasic < Test::Unit::TestCase
       assert_equal(-1, neg.sign)
     end
   end
-  
+
   def test_context_parameters
     $implementations_to_test.each do |mod|
       #mod::Decimal.context = mod::Decimal.Context
@@ -350,30 +350,30 @@ class TestBasic < Test::Unit::TestCase
       assert_equal mod::Decimal('0.333'), x.divide(y)
       assert_equal mod::Decimal('0.3333'), x.divide(y, mod::Decimal.Context(:precision=>4))
       assert_equal mod::Decimal('0.333'), x.divide(y)
-      assert_equal mod::Decimal('0.33333'), x.divide(y, :precision=>5)    
+      assert_equal mod::Decimal('0.33333'), x.divide(y, :precision=>5)
     end
   end
-  
+
   def test_integer
     $implementations_to_test.each do |mod|
-      
+
       %w{ 0 0E10 0E-10 12.0 12 120E-1 12.1E10 }.each do |x|
         assert mod::Decimal(x).integral?, "#{mod}::Decimal('#{x}').integral?"
       end
-      
+
       [12, Rational(6,2)].each do |x|
         assert mod::Decimal(x).integral?, "#{mod}::Decimal(#{x}).integral?"
       end
-      
+
       %w{ NaN Inf 12.1 121E-1 }.each do |x|
         assert !mod::Decimal(x).integral?, "!#{mod}::Decimal('#{x}').integral?"
       end
-      
+
       [ Rational(121,10) ].each do |x|
         assert !mod::Decimal(x).integral?, "!#{mod}::Decimal(#{x}).integral?"
       end
-      
+
     end
   end
-    
+
 end

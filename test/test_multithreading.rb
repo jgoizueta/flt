@@ -8,7 +8,7 @@ class TestMultithreading < Test::Unit::TestCase
     $implementations_to_test.each do |mod|
       initialize_context mod
     end
-  end  
+  end
 
   def test_concurrent_precision
     $implementations_to_test.each do |mod|
@@ -32,5 +32,5 @@ class TestMultithreading < Test::Unit::TestCase
       assert total_fails==0,"Context precision different per thread"
     end
   end
-    
+
 end

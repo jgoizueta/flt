@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 
 
 class TestFlags < Test::Unit::TestCase
-  
+
   def test_flags
     f = FPNum::Flags(:flag_one, :flag_three)
     assert_equal "[:flag_one, :flag_three]",  f.to_a.sort_by{|flg| flg.to_s}.inspect
@@ -23,12 +23,12 @@ class TestFlags < Test::Unit::TestCase
     g.set!
     assert_equal "FPNum::Flags[flag_one, flag_two, flag_three] (0x7)", g.inspect
     assert g!=f
-    
+
     assert FPNum::Flags(:flag_one, :flag_three)==FPNum::Flags(:flag_three, :flag_one)
     assert FPNum::Flags(:flag_one, :flag_three)!=FPNum::Flags(:flag_one)
 
-    
-    
+
+
   end
-  
+
 end

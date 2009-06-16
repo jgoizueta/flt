@@ -12,7 +12,7 @@ module BD
 
 # Decimal arbitrary precision floating point number.
 class Decimal
-  
+
   extend FPNum # allows use of unqualified FlagValues(), Flags()
   include BD # allows use of unqualified Decimal()
 
@@ -24,50 +24,50 @@ class Decimal
   ROUND_DOWN = BigDecimal::ROUND_DOWN
   ROUND_UP = BigDecimal::ROUND_UP
   ROUND_05UP = nil
-   
+
   class Error < StandardError
   end
-  
+
   class Exception < StandardError
     attr :context
     def initialize(context=nil)
       @context = context
     end
   end
-  
+
   class InvalidOperation < Exception
   end
-  
+
   class DivisionByZero < Exception
   end
-  
+
   class DivisionImpossible < Exception
   end
 
   class DivisionUndefined < Exception
   end
-    
+
   class Inexact < Exception
   end
-  
+
   class Overflow < Exception
   end
-  
+
   class Underflow < Exception
   end
 
   class Clamped < Exception
   end
-  
+
   class InvalidContext < Exception
   end
-  
+
   class Rounded < Exception
   end
 
   class Subnormal < Exception
   end
-  
+
   class ConversionSyntax < InvalidOperation
   end
 
@@ -81,30 +81,30 @@ class Decimal
   # The context defines the arithmetic context: rounding mode, precision,...
   # Decimal.context is the current (thread-local) context.
   class Context
-    
+
     include BD # allows use of unqualified Decimal()
-    
+
     def initialize(*options)
-            
+
       if options.first.instance_of?(Context)
         base = options.shift
         copy_from base
-      else        
+      else
         @signal_flags = true # no flags updated if false
         @quiet = false # no traps or flags updated if ture        @ignored_flags = Decimal::Flags()
         @ignored_flags = Decimal::Flags()
         @traps = Decimal::Flags()
         @flags = Decimal::Flags()
-      end      
+      end
       assign options.first
-        
+
     end
 
     attr_accessor :rounding, :emin, :emax, :flags, :traps, :quiet, :signal_flags, :ignored_flags, :capitals, :clamp
 
     def ignore_all_flags
       #@ignored_flags << EXCEPTIONS
-      @ignored_flags.set!      
+      @ignored_flags.set!
     end
     def ignore_flags(*flags)
       #@ignored_flags << flags
@@ -113,7 +113,7 @@ class Decimal
     def regard_flags(*flags)
       @ignored_flags.clear(*flags)
     end
-    
+
     def etiny
       emin - precision + 1
     end
@@ -144,7 +144,7 @@ class Decimal
     end
     def precision
       @precision
-    end    
+    end
     def exact=(v)
       @exact = v
       update_precision
@@ -156,12 +156,12 @@ class Decimal
     def exact?
       @exact
     end
-    
-    
+
+
     def assign(options)
       if options
         @rounding = options[:rounding] unless options[:rounding].nil?
-        @precision = options[:precision] unless options[:precision].nil?        
+        @precision = options[:precision] unless options[:precision].nil?
         @traps = Decimal::Flags(options[:traps]) unless options[:traps].nil?
         @flags = Decimal::Flags(options[:flags]) unless options[:flags].nil?
         @ignored_flags = Decimal::Flags(options[:ignored_flags]) unless options[:ignored_flags].nil?
@@ -175,7 +175,7 @@ class Decimal
         update_precision
       end
     end
-  
+
     def copy_from(other)
       @rounding = other.rounding
       @precision = other.precision
@@ -190,12 +190,12 @@ class Decimal
       @quiet = other.quiet
       @signal_flags = other.signal_flags
     end
-    
+
     def dup
       Context.new(self)
     end
-  
-    
+
+
     def _fix_bd(x)
       x = as_bd(x)
       if x.finite? && !@exact
@@ -204,7 +204,7 @@ class Decimal
         x
       end
     end
-    
+
     def add(x,y)
       compute { Decimal(as_bd(x)+as_bd(y)) }
     end
@@ -230,19 +230,19 @@ class Decimal
         compute { Decimal(x.div(y,@precision)) }
       end
     end
-    
+
     def abs(x)
       compute { Decimal(as_bd(x).abs) }
     end
-    
-    def plus(x)      
+
+    def plus(x)
       Decimal(x)._fix(self)
     end
-    
+
     def minus(x)
       compute { Decimal(-as_bd(x)) }
     end
-    
+
     def to_string(x)
       as_bd(x).to_s('F')
     end
@@ -252,7 +252,7 @@ class Decimal
       # nop: BigDecimals are always in reduced form
       Decimal(x)
     end
-    
+
     # Adjusted exponent of x returned as a Decimal value.
     def logb(x)
       compute { Decimal(Decimal(x).adjusted_exponent) }
@@ -267,7 +267,7 @@ class Decimal
         nan
       end
     end
-    
+
     # Exponent in relation to the significand as an integer
     # normalized to precision digits. (minimum exponent)
     def normalized_integral_exponent(x)
@@ -281,7 +281,7 @@ class Decimal
       x = Decimal(x)
       x.integral_significand*(10**(precision - x.number_of_digits))
     end
-    
+
     def to_normalized_int_scale(x)
       x = Decimal(x)
       [x.sign*normalized_integral_significand(x), normalized_integral_exponent(x)]
@@ -296,20 +296,20 @@ class Decimal
     #  power
     #  exp log10 ln
     #  remainder_near
-    
+
     def sqrt(x)
-      x = Decimal(x)      
+      x = Decimal(x)
       if exact?
         prec = (x.number_of_digits << 1) + 1
         x = x._value
         y,z = compute{ v=x.sqrt(prec); [v,v*v] }
         raise Decimal::Inexact if z!=x
-        Decimal(y)                        
+        Decimal(y)
       else
         compute { Decimal(x._value.sqrt(@precision)) }
       end
     end
-   
+
     # Ruby-style integer division.
     def div(x,y)
       compute { Decimal(as_bd(x).div(as_bd(y))) }
@@ -322,15 +322,15 @@ class Decimal
     def divmod(x,y)
       compute { as_bd(x).divmod(as_bd(y)).map{|z| Decimal(z)} }
     end
-            
+
     # General Decimal Arithmetic Specification integer division
     def divide_int(x,y)
-      # compute { Decimal(x._value/y._value).truncate }      
-      compute(:rounding=>ROUND_DOWN) { Decimal((as_bd(x)/as_bd(y)).truncate) }      
+      # compute { Decimal(x._value/y._value).truncate }
+      compute(:rounding=>ROUND_DOWN) { Decimal((as_bd(x)/as_bd(y)).truncate) }
     end
     # General Decimal Arithmetic Specification remainder
     def remainder(x,y)
-      compute { Decimal(as_bd(x).remainder(as_bd(y))) }      
+      compute { Decimal(as_bd(x).remainder(as_bd(y))) }
     end
     # General Decimal Arithmetic Specification remainder-near
     def remainder_near(x,y)
@@ -345,8 +345,8 @@ class Decimal
         end
       end
     end
-    
-    
+
+
     def zero(sign=+1)
       Decimal.zero(sign)
     end
@@ -356,13 +356,13 @@ class Decimal
     def nan
       Decimal.nan
     end
-        
+
 
     def compare(x,y)
       cmp = x<=>y
       cmp.nil? ? nan : Decimal(cmp)
     end
-    
+
     def copy_abs(x)
       Decimal(as_bd(x).abs)
     end
@@ -370,24 +370,24 @@ class Decimal
     def copy_negate(x)
       Decimal(-as_bd(x))
     end
-    
+
     def copy_sign(x,y)
       x,y = as_bd(x).abs,as_bd(y)
       Decimal(y<0 ? -x : x)
     end
-    
+
     def rescale(x,exp)
       Decimal(x)
     end
-    
+
     def quantize(x,y)
       Decimal(x)
     end
-    
+
     def same_quantum?(x,y)
       true
     end
-    
+
     def to_integral_value(x)
       i = x.to_i
       if i
@@ -396,7 +396,7 @@ class Decimal
         nan
       end
     end
-    
+
     def to_integral_exact(x)
       i = x.to_i
       if i
@@ -405,18 +405,18 @@ class Decimal
         nan
       end
     end
-    
+
     def integral?(x)
       Decimal(x).integral?
     end
-    
+
     def fma(x,y,z)
       exact_context = self.dup
       exact_context.exact = true
       product = exact_context.multiply(x,y)
       add(product,z)
     end
-    
+
     def Context.round(x, opt={})
       opt = { :places=>opt } if opt.kind_of?(Integer)
       r = opt[:rounding] || :half_up
@@ -432,25 +432,25 @@ class Decimal
       result = x._value.round(places, big_decimal_rounding(r))
       return as_int ? result.to_i : Decimal.new(result)
     end
-    
+
     def to_s
       inspect
     end
     def inspect
       "<#{self.class}:\n" +
       instance_variables.map { |v| "  #{v}: #{eval(v.to_s)}"}.join("\n") +
-      ">\n"      
-    end    
-        
+      ">\n"
+    end
+
     protected
-            
-    @@compute_lock = Monitor.new  
+
+    @@compute_lock = Monitor.new
     # Use of BigDecimal is done in blocks passed to this method, which sets
     # the rounding mode and precision defined in the context.
     # Since the BigDecimal rounding mode and precision is a global resource,
     # a lock must be used to prevent other threads from modifiying it.
     UPDATE_FLAGS = true
-    
+
     def compute(options={})
       rnd = Context.big_decimal_rounding(options[:rounding] || @rounding)
       prc = options[:precision] || options[:digits] || @precision
@@ -466,7 +466,7 @@ class Decimal
           BigDecimal.mode(BigDecimal::EXCEPTION_ALL, true)
           BigDecimal.mode(BigDecimal::EXCEPTION_INFINITY, true)
           BigDecimal.mode(BigDecimal::EXCEPTION_UNDERFLOW, true)
-        else 
+        else
           BigDecimal.mode(BigDecimal::EXCEPTION_ALL, false)
           BigDecimal.mode(BigDecimal::EXCEPTION_INFINITY, false)
           BigDecimal.mode(BigDecimal::EXCEPTION_UNDERFLOW, false)
@@ -480,7 +480,7 @@ class Decimal
               raise DivisionByZero if trp[DivisionByZero]
               BigDecimal.mode(BigDecimal::EXCEPTION_ZERODIVIDE, false)
               retry # to set the result value
-            when "exponent overflow", "Computation results to 'Infinity'", "Computation results to '-Infinity'", "Exponent overflow"            
+            when "exponent overflow", "Computation results to 'Infinity'", "Computation results to '-Infinity'", "Exponent overflow"
               @flags << Overflow
               raise Overflow if trp[Overflow]
               BigDecimal.mode(BigDecimal::EXCEPTION_OVERFLOW, false)
@@ -506,17 +506,17 @@ class Decimal
           end
         end
         BigDecimal.limit keep_limit
-        BigDecimal.mode BigDecimal::ROUND_MODE, keep_round_mode            
+        BigDecimal.mode BigDecimal::ROUND_MODE, keep_round_mode
         [BigDecimal::EXCEPTION_NaN, BigDecimal::EXCEPTION_INFINITY, BigDecimal::EXCEPTION_UNDERFLOW,
          BigDecimal::EXCEPTION_OVERFLOW, BigDecimal::EXCEPTION_ZERODIVIDE].each do |exc|
            value =  ((keep_exceptions & exc)!=0)
-           BigDecimal.mode(exc, value)               
+           BigDecimal.mode(exc, value)
         end
-      end   
+      end
       if result.instance_of?(Decimal)
         if result.finite?
           e =  result.adjusted_exponent
-          if e>@emax 
+          if e>@emax
             #result = infinity(result.sign)
             result = nan
             @flags << Overflow if @signal_flags && !quiet
@@ -527,15 +527,15 @@ class Decimal
             raise Underflow if trp[Underflow]
           end
         elsif @signal_flags && !quiet
-          @flags << InvalidOperation if result.nan?        
+          @flags << InvalidOperation if result.nan?
         end
       end
       result
-    end          
-    
+    end
+
     def update_precision
       if @exact || @precision==0
-        @exact = true         
+        @exact = true
         @precision = 0
         @traps << Inexact
         @ignored_flags[Inexact] = false
@@ -543,23 +543,23 @@ class Decimal
         @traps[Inexact] = false
       end
     end
-    
+
     def as_bd(x)
       case x
       when Decimal
-        x._value      
+        x._value
       when BigDecimal
         x
       when Integer
         BigDecimal(x.to_s)
       when Rational
-        Decimal.new(x)._value        
+        Decimal.new(x)._value
       else
-        raise TypeError, "Unable to convert #{x.class} to Decimal" if error  
+        raise TypeError, "Unable to convert #{x.class} to Decimal" if error
       end
     end
-    
-    ROUNDING_MODES_NAMES = {  
+
+    ROUNDING_MODES_NAMES = {
       :half_even=>ROUND_HALF_EVEN,
       :half_up=>ROUND_HALF_UP,
       :half_down=>ROUND_HALF_DOWN,
@@ -567,10 +567,10 @@ class Decimal
       :ceiling=>ROUND_CEILING,
       :down=>ROUND_DOWN,
       :up=>ROUND_UP,
-      :up05=>ROUND_05UP    
+      :up05=>ROUND_05UP
     }
     ROUNDING_MODES = [
-      ROUND_HALF_EVEN, 
+      ROUND_HALF_EVEN,
       ROUND_HALF_DOWN,
       ROUND_HALF_UP,
       ROUND_FLOOR,
@@ -580,17 +580,17 @@ class Decimal
       ROUND_05UP
     ]
     def Context.big_decimal_rounding(m)
-      mode = m      
+      mode = m
       if mode.kind_of?(Symbol)
         mode = ROUNDING_MODES_NAMES[mode]
       end
       raise Error,"Invalid rounding mode #{m.inspect}"  unless mode && ROUNDING_MODES.include?(mode)
       mode
     end
-    
+
   end
-  
-  
+
+
   # the DefaultContext is the base for new contexts; it can be changed.
   DefaultContext = Decimal::Context.new(
                              :exact=>false, :precision=>28, :rounding=>:half_even,
@@ -600,17 +600,17 @@ class Decimal
                              :ignored_flags=>[],
                              :capitals=>true,
                              :clamp=>true)
-  
+
   BasicContext = Decimal::Context.new(DefaultContext,
                              :precision=>9, :rounding=>:half_up,
                              :traps=>[DivisionByZero, Overflow, InvalidOperation, Clamped, Underflow],
                              :flags=>[])
-                             
+
   ExtendedContext = Decimal::Context.new(DefaultContext,
                              :precision=>9, :rounding=>:half_even,
                              :traps=>[], :flags=>[], :clamp=>false)
-  
-  
+
+
   # Context constructor; if an options hash is passed, the options are
   # applied to the default context; if a Context is passed as the first
   # argument, it is used as the base instead of the default context.
@@ -635,36 +635,36 @@ class Decimal
       else
         raise ARgumentError,"wrong number of arguments (#{args.size} for 0, 1 or 2)"
     end
-        
+
     if options.nil? || options.empty?
       base
     else
       Context.new(base, options)
     end
-      
-  end        
-    
+
+  end
+
   # Define a context by passing either a Context object or a (possibly empty)
   # hash of options to alter de current context.
   def Decimal.define_context(*options)
     if options.size==1 && options.first.instance_of?(Context)
       options.first
-    else    
+    else
       Context(Decimal.context, *options)
     end
   end
-  
-  
+
+
   # The current context (thread-local).
   def Decimal.context
     Thread.current['FPNum::BD::Decimal.context'] ||= DefaultContext.dup
   end
-  
+
   # Change the current context (thread-local).
   def Decimal.context=(c)
-    Thread.current['FPNum::BD::Decimal.context'] = c.dup    
+    Thread.current['FPNum::BD::Decimal.context'] = c.dup
   end
-  
+
   # Defines a scope with a local context. A context can be passed which will be
   # set a the current context for the scope. Changes done to the current context
   # are reversed when the scope is exited.
@@ -672,8 +672,8 @@ class Decimal
     keep = context.dup
     if c.kind_of?(Hash)
       Decimal.context.assign c
-    else  
-      Decimal.context = c unless c.nil?    
+    else
+      Decimal.context = c unless c.nil?
     end
     result = yield Decimal.context
     Decimal.context = keep
@@ -688,7 +688,7 @@ class Decimal
   def nan
     compute(:quiet=>true) { Decimal(BigDecimal('0')/BigDecimal('0')) }
   end
-        
+
   def Decimal._sign_symbol(sign)
     sign<0 ? '-' : '+'
   end
@@ -702,7 +702,7 @@ class Decimal
   def Decimal.nan()
     Decimal.new('NaN')
   end
-    
+
   def initialize(*args)
     context = nil
     if args.size>0 && args.last.instance_of?(Context)
@@ -714,55 +714,55 @@ class Decimal
       args = [arg[:sign], args[:coefficient], args[:exponent]]
       context ||= arg # TO DO: remove sign, coeff, exp form arg
     end
-    
+
     context = Decimal.define_context(context)
-        
+
     case args.size
     when 3
       @value = BigDecimal.new("#{_sign_symbol(args[0])}#{args[1]}E#{args[2]}")
-      
-    when 1              
+
+    when 1
       arg = args.first
       case arg
-        
+
       when BigDecimal
         @value = arg
-        
+
       when Decimal
         @value = arg._value
       when Integer
         @value = BigDecimal.new(arg.to_s)
-        
-      when Rational      
+
+      when Rational
         if !context.exact? || ((arg.numerator % arg.denominator)==0)
           num = arg.numerator.to_s
           den = arg.denominator.to_s
           prec = context.exact? ? num.size + 4*den.size : context.precision
-          @value = BigDecimal.new(num).div(BigDecimal.new(den), prec)        
-        else  
+          @value = BigDecimal.new(num).div(BigDecimal.new(den), prec)
+        else
           raise Inexact
         end
-      
+
       when String
         arg = arg.to_s.sub(/Inf(?:\s|\Z)/i, 'Infinity')
         @value = BigDecimal.new(arg.to_s)
-        
+
       when Array
         @value = BigDecimal.new("#{_sign_symbol(arg[0])}#{arg[1]}E#{arg[2]}")
-        
+
       else
         raise TypeError, "invalid argument #{arg.inspect}"
       end
     else
       raise ArgumentError, "wrong number of arguments (#{args.size} for 1 or 3)"
-    end                
-        
+    end
+
   end
-  
+
   def _value # :nodoc:
     @value
   end
-  
+
   def coerce(other)
     case other
       when Decimal,Integer,Rational
@@ -771,7 +771,7 @@ class Decimal
         super
     end
   end
-  
+
   def _bin_op(op, meth, other, context=nil)
     case other
       when Decimal,Integer,Rational
@@ -783,7 +783,7 @@ class Decimal
     end
   end
   private :_bin_op
-  
+
   def -@(context=nil)
     Decimal.define_context(context).minus(self)
   end
@@ -795,15 +795,15 @@ class Decimal
   def +(other, context=nil)
     _bin_op :+, :add, other, context
   end
-  
+
   def -(other, context=nil)
     _bin_op :-, :substract, other, context
   end
-  
+
   def *(other, context=nil)
     _bin_op :*, :multiply, other, context
   end
-  
+
   def /(other, context=nil)
     _bin_op :/, :divide, other, context
   end
@@ -816,19 +816,19 @@ class Decimal
   def add(other, context=nil)
     Decimal.define_context(context).add(self,other)
   end
-  
+
   def substract(other, context=nil)
     Decimal.define_context(context).substract(self,other)
   end
-  
+
   def multiply(other, context=nil)
     Decimal.define_context(context).multiply(self,other)
   end
-  
+
   def divide(other, context=nil)
     Decimal.define_context(context).divide(self,other)
   end
-  
+
   def abs(context=nil)
     Decimal.define_context(context).abs(self)
   end
@@ -836,7 +836,7 @@ class Decimal
   def plus(context=nil)
     Decimal.define_context(context).plus(self)
   end
-  
+
   def minus(context=nil)
     Decimal.define_context(context).minus(self)
   end
@@ -844,7 +844,7 @@ class Decimal
   def sqrt(context=nil)
     Decimal.define_context(context).sqrt(self)
   end
-  
+
   def div(other, context=nil)
     Decimal.define_context(context).div(self,other)
   end
@@ -864,7 +864,7 @@ class Decimal
   def remainder(other, context=nil)
     Decimal.define_context(context).remainder(self,other)
   end
-  
+
   def remainder_near(other, context=nil)
     Decimal.define_context(context).remainder_near(self,other)
   end
@@ -917,7 +917,7 @@ class Decimal
   def round(opt={})
     Context.round(self, opt)
   end
-  
+
   def ceil(opt={})
     opt[:rounding] = :ceiling
     round opt
@@ -939,12 +939,12 @@ class Decimal
 
   def to_s(context=nil)
     Decimal.define_context(context).to_string(self)
-  end    
-  
+  end
+
   def inspect
     "Decimal('#{self}')"
   end
-  
+
   def <=>(other)
     case other
       when Decimal,Integer,Rational
@@ -962,7 +962,7 @@ class Decimal
     (self<=>other) == 0
   end
   include Comparable
-  
+
   extend Forwardable
   [:infinite?, :nan?, :zero?, :nonzero?].each do |m|
     def_delegator :@value, m, m
@@ -970,17 +970,17 @@ class Decimal
   def finite?
     _value.finite? || _value.zero?
   end
-  
+
   def special?
     !finite?
   end
-  
-  
-  # Exponent of the magnitude of the most significant digit of the operand 
+
+
+  # Exponent of the magnitude of the most significant digit of the operand
   def adjusted_exponent
     @value.exponent - 1
   end
-  
+
   def scientific_exponent
     adjusted_exponent
   end
@@ -988,23 +988,23 @@ class Decimal
   def fractional_exponent
     # scientific_exponent + 1
     @value.exponent
-  end  
-    
+  end
+
   # Number of digits in the significand
   def number_of_digits
     @value.split[1].size
   end
-  
+
   # Significand as an integer
   def integral_significand
     @value.split[1].to_i
   end
-  
+
   # Exponent of the significand as an integer
   def integral_exponent
     fractional_exponent - number_of_digits
   end
-  
+
   # +1 / -1 (also for zero and infinity); nil for NaN
   def sign
     if nan?
@@ -1013,7 +1013,7 @@ class Decimal
       @value.sign < 0 ? -1 : +1
     end
   end
-  
+
   def to_int_scale
     if special?
       nil
@@ -1021,7 +1021,7 @@ class Decimal
       [sign*integral_significand, integral_exponent]
     end
   end
- 
+
   def _fix(context)
     Decimal.new(context._fix_bd(@value))
   end
@@ -1040,15 +1040,15 @@ class Decimal
       raise TypeError, "Unable to convert #{x.class} to Decimal" if error
       nil
     end
-  end    
+  end
 
 
   private
-  
+
   def _fix!(context)
     @value = context._fix_bd(@value) if @value.finite?
   end
-  
+
 
 
 
@@ -1062,7 +1062,7 @@ def Decimal(v)
     else
       Decimal.new(v)
   end
-end  
+end
 module_function :Decimal
 
 end

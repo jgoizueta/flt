@@ -63,7 +63,7 @@ end
 class ExampleExpander
   def initialize(sep=" -> ", align=52)
     @sep = sep
-    @align = align    
+    @align = align
     @irb = MimickIRB.new
     @output = ""
   end
@@ -85,7 +85,7 @@ class ExampleExpander
       @output << line_output(line,msg)
       STDERR.puts "#{msg}\n"
     end
-    $stdout = STDOUT      
+    $stdout = STDOUT
   end
   def output
     @output
@@ -103,7 +103,7 @@ class ExampleExpander
     if output
       line_size = line.size
       output.split("\n").each do |out_line|
-        out << " "*[0,(@align-line_size)].max + @sep + out_line      
+        out << " "*[0,(@align-line_size)].max + @sep + out_line
         out << "\n"
         line_size = 0
       end
@@ -116,9 +116,9 @@ end
 def expand_text(txt,non_code_block_prefix=nil) # text with indented blocks of code
   exex = ExampleExpander.new
   indent = nil
-  
+
   txt_out = ""
-  
+
   line_num = 0
   accum = ""
   skip_until_blank = false
@@ -127,13 +127,13 @@ def expand_text(txt,non_code_block_prefix=nil) # text with indented blocks of co
     line_num += 1
     code = false
     line.chomp!
-        
+
     if skip_until_blank
       if line.strip.empty?
         skip_until_blank = false
       end
     else
-    
+
       unless line.strip.empty? || disabled
         line_indent = /^\s*/.match(line)[0]
         indent ||= line_indent
@@ -144,7 +144,7 @@ def expand_text(txt,non_code_block_prefix=nil) # text with indented blocks of co
         else
           if line_indent.size > indent.size
             code = true
-          end      
+          end
         end
       end
       if code
@@ -160,8 +160,8 @@ def expand_text(txt,non_code_block_prefix=nil) # text with indented blocks of co
     txt_out << line + "\n"
   end
   txt_out
-  
-end  
+
+end
 
 require 'rubygems'
 
