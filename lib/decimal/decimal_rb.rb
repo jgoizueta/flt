@@ -622,6 +622,23 @@ class Decimal
   # * The adjusted exponent is a = -2 (the adjusted representation is 1.204 with exponent -2)
   # * Given a precision p = 8, the normalized integral representation is 12040000 with exponent -9
   # * The normalized fractional representation is 0.1204 with exponent -1
+  #
+  # =Interoperatibility with other numeric types
+  #
+  # For some numeric types implicit conversion to Decimal is defined through these methods:
+  # * Decimal#coerce() is used when a Decimal is the right hand of an operator
+  #   and the left hand is another numeric type
+  # * Decimal#_bin_op() used internally to define binary operators and use the Ruby coerce protocol:
+  #   if the right-hand operand is of known type it is converted with Decimal; otherwise use coerce
+  # * Decimal._convert() converts known types to Decimal with Decimal() or raises an exception.
+  # * Decimal() casts know types and text representations of numbers to Decimal using the constructor.
+  # * Decimal#initialize performs the actual type conversion
+  #
+  # Currently, know types that are converted to Decimal are Integer and Rational.
+  # Other types:
+  # * BigDecimal will be considered to be included in the coercion mechanism
+  # * Float is more problematic due to the subtleties of binary to/from decimal conversion; probably
+  #   a separate explicit conversion mechanism will be introduced.
   #++
 
   # A decimal value can be defined by:
