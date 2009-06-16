@@ -646,11 +646,13 @@ class Decimal
   # * An Integer
   # * A Rational
   # * Another Decimal value.
-  # * A sign, coefficient and exponent (either as separate arguments or as an array). This is the internal representation
-  #   of Decimal, as returned by Decimal#split. The sign is +1 for plus and -1 for minus; the coefficient and exponent are
+  # * A sign, coefficient and exponent (either as separate arguments, as an array or as a Hash with symbolic keys).
+  #   This is the internal representation of Decimal, as returned by Decimal#split.
+  #   The sign is +1 for plus and -1 for minus; the coefficient and exponent are
   #   integers, except for special values which are defined by :inf, :nan or :snan for the exponent.
-  # An optional Context can be passed as the last argument to override the current context.
-  # See also the Decimal() constructor
+  # An optional Context can be passed as the last argument to override the current context; also a hash can be passed
+  # to override specific context parameters.
+  # The Decimal() admits the same parameters and can be used as a shortcut for Decimal creation.
   def initialize(*args)
     context = nil
     if args.size>0 && args.last.instance_of?(Context)
@@ -660,7 +662,10 @@ class Decimal
     elsif args.size==1 && args.last.instance_of?(Hash)
       arg = args.last
       args = [arg[:sign], args[:coefficient], args[:exponent]]
-      context ||= arg # TO DO: remove sign, coeff, exp form arg
+      arg.delete :sign
+      arg.delete :coefficient
+      arg.delete :exponent
+      context ||= arg
     end
 
     context = Decimal.define_context(context)
@@ -2135,7 +2140,8 @@ class Decimal
 
 end
 
-# Decimal constructor
+# Decimal constructor. See Decimal#new for the parameters.
+# If a Decimal is passed a reference to it is returned (no new object is created).
 def Decimal(*args)
   if args.size==1 && args.first.instance_of?(Decimal)
     args.first
