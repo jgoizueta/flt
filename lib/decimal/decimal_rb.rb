@@ -565,7 +565,75 @@ class Decimal
     Decimal.new([+1, nil, :nan])
   end
 
+  #--
+  # =Notes on the representation of Decimal numbers.
+  #
+  #   @sign is +1 for plus and -1 for minus
+  #   @coeff is the integral significand stored as an integer (so leading zeros cannot be kept)
+  #   @exp is the exponent to be applied to @coeff as an integer or one of :inf, :nan, :snan for special values
+  #
+  # The Python Decimal representation has these slots:
+  #   _sign is 1 for minus, 0 for plus
+  #   _int is the integral significand as a string of digits (leading zeroes are not kept)
+  #   _exp is the exponent as an integer or 'F' for infinity, 'n' for NaN , 'N' for sNaN
+  #   _is_especial is true for special values (infinity, NaN, sNaN)
+  # An additional class _WorkRep is used in Python for non-special decimal values with:
+  #   sign
+  #   int (significand as an integer)
+  #   exp
+  #
+  # =Exponent values
+  #
+  # In GDAS (General Decimal Arithmetic Specification) numbers are represented by an unnormalized integral
+  # significand and an exponent (also called 'scale'.)
+  #
+  # The reduce operation (originally called 'normalize') removes trailing 0s and increments the exponent if necessary;
+  # the representation is rescaled to use the maximum exponent possible (while maintaining an integral significand.)
+  #
+  # A classical floating-point normalize opration would remove leading 0s and decrement the exponent instead,
+  # rescaling to the minimum exponent theat maintains the significand value under some conventional limit (1 or the radix).
+  #
+  # The logb and adjusted operations return the exponent that applies to the most significand digit (logb as a Decimal
+  # and adjusted as an integer.) This is the normalized scientific exponent.
+  #
+  # The most common normalized exponent is the normalized integral exponent for a fixed number of precision digits.
+  #
+  # The normalized fractional exponent is what BigDecima#exponent returns.
+  #
+  # ==Relations between exponent values
+  #
+  # The number of (kept) significand digits is s = a - e + 1
+  # where a is the adjusted exponent and e is the internal exponent (the unnormalized integral exponent.)
+  #
+  # The number of significant digits (excluding leading and trailing zeroes) is sr = a - re + 1
+  # where re is the internal exponent of the reduced value.
+  #
+  # The normalized integral exponent is e - (p - s) = a - p + 1
+  # where p is the fixed precision.
+  #
+  # The normalized fractional exponent is e + s = a + 1
+  #
+  # ==Example: 0.01204
+  #
+  # * The integral significand is 120400 and the internal exponent that applies to it is e = -7
+  # * The number of significand digits is s = 6
+  # * The reduced representation is 1204 with internal exponent re = -5
+  # * The number of significant digits sr = 4
+  # * The adjusted exponent is a = -2 (the adjusted representation is 1.204 with exponent -2)
+  # * Given a precision p = 8, the normalized integral representation is 12040000 with exponent -9
+  # * The normalized fractional representation is 0.1204 with exponent -1
+  #++
 
+  # A decimal value can be defined by:
+  # * A String containing a text representation of the number
+  # * An Integer
+  # * A Rational
+  # * Another Decimal value.
+  # * A sign, coefficient and exponent (either as separate arguments or as an array). This is the internal representation
+  #   of Decimal, as returned by Decimal#split. The sign is +1 for plus and -1 for minus; the coefficient and exponent are
+  #   integers, except for special values which are defined by :inf, :nan or :snan for the exponent.
+  # An optional Context can be passed as the last argument to override the current context.
+  # See also the Decimal() constructor
   def initialize(*args)
     context = nil
     if args.size>0 && args.last.instance_of?(Context)
@@ -646,7 +714,11 @@ class Decimal
     end
   end
 
-
+  # Returns the internal representation of the number, composed of:
+  # * a sign which is +1 for plus and -1 for minus
+  # * a coefficient (significand) which is an integer
+  # * an exponent (an integer) or :inf, :nan or :snan for special values
+  # The value of non-special numbers is sign*coefficient*10^exponent
   def split
     [@sign, @coeff, @exp]
   end
