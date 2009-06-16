@@ -945,6 +945,14 @@ class Decimal
     "Decimal('#{self}')"
   end
 
+  def hash
+    _value.hash
+  end
+  def eql?(other)
+    return false unless other.is_a?(Decimal)
+    self._value.eql?(other._value)
+  end
+
   def <=>(other)
     case other
       when Decimal,Integer,Rational

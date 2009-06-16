@@ -30,5 +30,6 @@ PROJ.rdoc.opts = [
   "--line-numbers",
   "--inline-source"
   ]
+PROJ.test.file = 'test/test_all.rb'
 
 # EOF
