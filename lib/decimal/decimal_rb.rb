@@ -505,7 +505,7 @@ class Decimal
         base = args.first
         options = args.last
       else
-        raise ARgumentError,"wrong number of arguments (#{args.size} for 0, 1 or 2)"
+        raise ArgumentError,"wrong number of arguments (#{args.size} for 0, 1 or 2)"
     end
 
     if options.nil? || options.empty?
