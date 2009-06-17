@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/test_helper.rb'
 
-class TestBasic < Test::Unit::TestCase
+class TestComparisons < Test::Unit::TestCase
 
 
   def setup
