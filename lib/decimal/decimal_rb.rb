@@ -1958,11 +1958,9 @@ class Decimal
     end
     return Decimal.new(self) if @exp >= 0
     return Decimal.new([@sign, 0, 0]) if zero?
+    context.exception Rounded
     ans = _rescale(0, context.rounding)
-    if ans != self
-      context.exception Rounded
-      context.exception Inexact
-    end
+    context.exception Inexact if ans != self
     return ans
   end
 
