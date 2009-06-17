@@ -26,6 +26,47 @@ class Decimal
   ROUND_UP = :up
   ROUND_05UP = :up05
 
+  # Extensible conversions support
+  @coercible_types = [Integer, Rational] # numerical types that can be converted to Decimal
+  @coercible_handler = { # procedures for numberical conversion
+    Integer=>lambda{|x, context| x>=0 ? [+1,x,0] : [-1,-x,0]},
+    Rational=>lambda{|x, context|
+      x, y = Decimal.new(x.numerator), Decimal.new(x.denominator)
+      x.divide(y, context)
+    }
+  }
+  class <<self
+    attr_accessor :coercible_types
+    def coercible_types_or_decimal
+      [Decimal] + coercible_types
+    end
+    # Internally used to convert numeric types to Decimal (or to an array [sign,coefficient,exponent])
+    def _coerce(x, context)
+      c = x.class
+      while c!=Object && (h=@coercible_handler[c]).nil?
+        c = c.superclass
+      end
+      if h
+        h.call(x, context)
+      else
+        nil
+      end
+    end
+    # Define a numerical conversion from type to Decimal.
+    # The block that defines the conversion has two parameters: the value to be converted and the context and
+    # must return either a Decimal or [sign,coefficient,exponent]
+    def convert_from(type, &blk)
+      @coercible_types << type
+      @coercible_handler[type] = blk
+    end
+    # Define a numerical conversion from Decimal to type as an instance method of Decimal
+    def convert_to(type, method, &blk)
+      define_method method do
+        blk.call self
+      end
+    end
+  end
+
   # Numerical base of Decimal.
   def self.radix
     10
@@ -631,14 +672,11 @@ class Decimal
   # * Decimal#_bin_op() used internally to define binary operators and use the Ruby coerce protocol:
   #   if the right-hand operand is of known type it is converted with Decimal; otherwise use coerce
   # * Decimal._convert() converts known types to Decimal with Decimal() or raises an exception.
-  # * Decimal() casts know types and text representations of numbers to Decimal using the constructor.
+  # * Decimal() casts known types and text representations of numbers to Decimal using the constructor.
   # * Decimal#initialize performs the actual type conversion
   #
-  # Currently, know types that are converted to Decimal are Integer and Rational.
-  # Other types:
-  # * BigDecimal will be considered to be included in the coercion mechanism
-  # * Float is more problematic due to the subtleties of binary to/from decimal conversion; probably
-  #   a separate explicit conversion mechanism will be introduced.
+  # The known or 'coercible' types are initially Integer and Rational, but this can be extended to
+  # other types using Decimal.convert_from()
   #++
 
   # A decimal value can be defined by:
@@ -681,19 +719,10 @@ class Decimal
 
       when Decimal
         @sign, @coeff, @exp = arg.split
-      when Integer
-        if arg>=0
-          @sign = +1
-          @coeff = arg
-        else
-          @sign = -1
-          @coeff = -arg
-        end
-        @exp = 0
 
-      when Rational
-        x, y = Decimal.new(arg.numerator), Decimal.new(arg.denominator)
-        @sign, @coeff, @exp = x.divide(y, context).split
+      when *Decimal.coercible_types
+        v = Decimal._coerce(arg, context)
+        @sign, @coeff, @exp = v.is_a?(Decimal) ? v.split : v
 
       when String
         m = _parser(arg)
@@ -779,7 +808,7 @@ class Decimal
 
   def coerce(other)
     case other
-      when Decimal,Integer,Rational
+      when *Decimal.coercible_types_or_decimal
         [Decimal(other),self]
       else
         super
@@ -788,7 +817,7 @@ class Decimal
 
   def _bin_op(op, meth, other, context=nil)
     case other
-      when Decimal,Integer,Rational
+      when *Decimal.coercible_types_or_decimal
         self.send meth, Decimal(other), context
       else
         x, y = other.coerce(self)
@@ -1446,7 +1475,7 @@ class Decimal
 
   def <=>(other)
     case other
-      when Decimal,Integer,Rational
+      when *Decimal.coercible_types_or_decimal
         other = Decimal(other)
         if self.special? || other.special?
           if self.nan? || other.nan?
@@ -2151,7 +2180,7 @@ class Decimal
     case x
     when Decimal
       x
-    when Integer, Rational
+    when *coercible_types
       Decimal.new(x)
     else
       raise TypeError, "Unable to convert #{x.class} to Decimal" if error

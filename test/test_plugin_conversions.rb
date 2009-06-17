@@ -12,10 +12,11 @@ class TestPluginConversions < Test::Unit::TestCase
   def test_big_decimal_conversions
     mod = FPNum::RB
 
-    mod::Decimal.convert_from(BigDecimal) do |x|
-      Decimal(x.to_s) # or use x.split etc.
+    mod::Decimal.convert_from(BigDecimal) do |x, context|
+      mod::Decimal(x.to_s) # or use x.split etc.
     end
 
+    assert mod::Decimal('0') == BigDecimal.new('0')
     assert_equal BigDecimal.new('0'), mod::Decimal('0')
     assert_equal BigDecimal.new('1.2345'), mod::Decimal('1.2345')
     assert_equal BigDecimal.new('-1.2345'), mod::Decimal('-1.2345')
@@ -41,26 +42,27 @@ class TestPluginConversions < Test::Unit::TestCase
   def test_float_conversions
     mod = FPNum::RB
 
-    mod::Decimal.convert_from(Float) do |x|
+    # Exact Float to Decimal conversion => Decimal('0.1') != Decimal(0.1) unless precision is low enough
+    mod::Decimal.convert_from(Float) do |x, context|
       s,e = Math.frexp(x)
       significand = Math.ldexp(s, Float::MANT_DIG).to_i
       exponent = e - Float::MANT_DIG
       # the number is (as a Rational) significand * exponent**Float::RADIX
-      mod::Decimal(significand*(exponent**Float::RADIX))
+      mod::Decimal(significand*(Float::RADIX**exponent ))
     end
 
     assert_equal 0.0, mod::Decimal('0')
     assert_equal mod::Decimal('0'), 0.0
-    assert_equal 1.2345, Decimal('1.2345')
-    assert_equal mod::Decimal('1.2345'), 1.2345
-    assert_equal -1.2345, mod::Decimal('-1.2345')
-    assert_equal 1.2345, mod::Decimal('0.0012345000E3')
-    mod::assert_equal mod::Decimal('7.1'), 7.0+mod::Decimal('0.1')
-    Decimal.local_context(:precision=>12) do
+    assert_equal 1234.5, mod::Decimal('1234.5')
+    assert_equal mod::Decimal('1234.5'), 1234.5
+    assert_equal -1234.5, mod::Decimal('-1234.5')
+    assert_equal 1234.5, mod::Decimal('0.0012345000E6')
+    assert_equal mod::Decimal('7.1'), 7.0+mod::Decimal('0.1')
+    mod::Decimal.local_context(:precision=>12) do
       assert_equal mod::Decimal('7.1'), mod::Decimal('7')+0.1
     end
     assert_equal mod::Decimal('11'), mod::Decimal(11.0)
-    assert mod::dDecimal(11.0).is_a?(mod::Decimal)
+    assert mod::Decimal(11.0).is_a?(mod::Decimal)
 
   end
 
