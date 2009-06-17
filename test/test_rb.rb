@@ -2,3 +2,4 @@
 require File.dirname(__FILE__) + '/test_helper.rb'
 $implementations_to_test = [FPNum::RB]
 require File.dirname(__FILE__) + '/all_tests.rb'
+require File.dirname(__FILE__) + '/rb_tests.rb'
