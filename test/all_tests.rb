@@ -6,3 +6,4 @@
  require File.dirname(__FILE__) + '/test_multithreading.rb'
  require File.dirname(__FILE__) + '/test_comparisons.rb'
  require File.dirname(__FILE__) + '/test_coercion.rb'
+ require File.dirname(__FILE__) + '/test_to_int.rb'

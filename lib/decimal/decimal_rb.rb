@@ -1349,8 +1349,8 @@ class Decimal
 
   def to_i
     if special?
-      return Decimal.context.exception(InvalidContext) if nan?
-      raise OverflowError, "Cannot convert infinity to Integer"
+      return nil if nan?
+      raise Error, "Cannot convert infinity to Integer"
     end
     if @exp >= 0
       return @sign*Decimal.int_mult_radix_power(@coeff,@exp)
@@ -1958,9 +1958,11 @@ class Decimal
     end
     return Decimal.new(self) if @exp >= 0
     return Decimal.new([@sign, 0, 0]) if zero?
-    context.exception Rounded
     ans = _rescale(0, context.rounding)
-    context.exception(Inexact) if ans != self
+    if ans != self
+      context.exception Rounded
+      context.exception Inexact
+    end
     return ans
   end
 
