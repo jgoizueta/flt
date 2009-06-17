@@ -1408,6 +1408,36 @@ class Decimal
     end
   end
 
+  # Conversion to Rational.
+  # Conversion of special values will raise an exception under Ruby 1.9
+  def to_r
+    if special?
+      num = (@exp == :inf) ? @sign : 0
+      Rational.respond_to?(:new!) ? Rational.new!(num,0) : Rational(num,0)
+    else
+      if @exp < 0
+        Rational(@sign*@coeff, Decimal.int_radix_power(-@exp))
+      else
+        Rational(Decimal.int_mult_radix_power(@sign*@coeff,@exp), 1)
+      end
+    end
+  end
+
+  # Conversion to Float
+  def to_f
+    if special?
+      if @exp==:inf
+        @sign/0.0
+      else
+        0.0/0.0
+      end
+    else
+      # to_rational.to_f
+      # to_s.to_f
+      @sign*@coeff*(10.0**@exp)
+    end
+  end
+
   def inspect
     #"Decimal('#{self}')"
     #debug:

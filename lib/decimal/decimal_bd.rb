@@ -941,6 +941,21 @@ class Decimal
     Decimal.define_context(context).to_string(self)
   end
 
+  def to_f
+    @value.to_f
+  end
+
+  def to_r
+    sign, digits, base, power = @value.split
+    num = sign*digits.to_i
+    den_power = power - digits.size
+    if den_power < 0
+      Rational(num, base**(-den_power))
+    else
+      Rational(num * base**(den_power), 1)
+    end
+  end
+
   def inspect
     "Decimal('#{self}')"
   end
