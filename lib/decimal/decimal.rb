@@ -457,6 +457,18 @@ class Decimal
       Decimal._convert(x).to_integral_value(self)
     end
 
+    def next_minus(x)
+      Decimal._convert(x).next_minus(self)
+    end
+
+    def next_plus(x)
+      Decimal._convert(x).next_plus(self)
+    end
+
+    def next_toward(x, y)
+      Decimal._convert(x).next_toward(y, self)
+    end
+
     def to_s
       inspect
     end
@@ -464,6 +476,15 @@ class Decimal
       "<#{self.class}:\n" +
       instance_variables.map { |v| "  #{v}: #{eval(v)}"}.join("\n") +
       ">\n"
+    end
+
+    def maximum_significand
+      if exact?
+        context.exception(InvalidOperation, 'Exact maximum significand')
+        nil
+      else
+        Decimal.int_radix_power(precision)-1
+      end
     end
 
     def coercible_types
@@ -1052,6 +1073,99 @@ class Decimal
 
   def minus(context=nil)
     _neg(context)
+  end
+
+  # Largest representable number smaller than itself
+  def next_minus(context=nil)
+    context = Decimal.define_context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      if infinite?
+        return Decimal.new(self) if @sign == -1
+        # @sign == +1
+        if context.exact?
+           return context.exception(InvalidOperation, 'Exact +INF next minus')
+        else
+          return Decimal.new(+1, context.maximum_significand, context.etop)
+        end
+      end
+    end
+
+    result = nil
+    Decimal.local_context(context) do |local|
+      local.rounding = :floor
+      local.ignore_all_flags
+      result = self._fix(local)
+      if result == self
+        result = self - Decimal(+1, 1, local.etiny-1)
+      end
+    end
+    result
+  end
+
+  # Smallest representable number larger than itself
+  def next_plus(context=nil)
+    context = Decimal.define_context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      if infinite?
+        return Decimal.new(self) if @sign == +1
+        # @sign == -1
+        if context.exact?
+           return context.exception(InvalidOperation, 'Exact -INF next plus')
+        else
+          return Decimal.new(-1, context.maximum_significand, context.etop)
+        end
+      end
+    end
+
+    result = nil
+    Decimal.local_context(context) do |local|
+      local.rounding = :ceiling
+      local.ignore_all_flags
+      result = self._fix(local)
+      if result == self
+        result = self + Decimal(+1, 1, local.etiny-1)
+      end
+    end
+    result
+
+  end
+
+  # Returns the number closest to self, in the direction towards other.
+  def next_toward(other, context=nil)
+    context = Decimal.define_context(context)
+    other = Decimal._convert(other)
+    ans = _check_nans(context,other)
+    return ans if ans
+
+    comparison = self <=> other
+    return self.copy_sign(other) if comparison == 0
+
+    if comparison == -1
+      result = self.next_plus(context)
+    else # comparison == 1
+      result = self.next_minus(context)
+    end
+
+    # decide which flags to raise using value of ans
+    if result.infinite?
+      context.exception Overflow, 'Infinite result from next_toward', result.sign
+      context.exception Rounded
+      context.exception Inexact
+    elsif result.adjusted_exponent < context.emin
+      context.exception Underflow
+      context.exception Subnormal
+      context.exception Rounded
+      context.exception Inexact
+      # if precision == 1 then we don't raise Clamped for a
+      # result 0E-etiny.
+      context.exception Clamped if result.zero?
+    end
+
+    result
   end
 
   def sqrt(context=nil)

@@ -34,7 +34,10 @@ FUNCTIONS = {
   'tointegralx'=>'to_integral_exact',
   'fma'=>'fma',
   'squareroot'=>'sqrt',
-  'abs'=>'abs'
+  'abs'=>'abs',
+  'nextminus'=>'next_minus',
+  'nextplus'=>'next_plus',
+  'nexttoward'=>'next_toward'
 }
 # Known functions not yet implemented
 PENDING = %w{
@@ -42,9 +45,6 @@ PENDING = %w{
   power
   ln
   log10
-  nextminus
-  nextplus
-  nexttoward
   apply
   tosci
   toeng
