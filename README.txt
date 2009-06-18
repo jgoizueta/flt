@@ -184,6 +184,7 @@ And individual parameters can be assigned like this:
   end                                                -> 9
                                                      -> down
 
+
 Contexts created with the Decimal::Context() constructor
 inherit from Decimal::DefaultContext.
 Default context attributes can be established by modifying
@@ -279,3 +280,77 @@ an interface compatible with the Ruby interface of Float:
 ==Special values
 
 ==Exceptions
+
+==Numerical conversion
+
+By default, Decimal is interoperable with Integer and Rational.
+Conversion happens automatically to operands:
+
+  puts Decimal('0.1') + 1                            -> 1.1
+  puts 7 + Decimal('0.2')                            -> 7.2
+  puts Rational(5,2) + Decimal('3')                  -> 5.5
+
+Conversion can also be done explicitely with
+the Decimal constructor:
+
+   puts Decimal(7)                                   -> 7
+   puts Decimal(Rational(1,10))                      -> 0.1
+
+Converting a Decimal to other numerical types can be done with specific Ruby-style methods.
+
+  puts Decimal('1.1').to_i                           -> 1
+  puts Decimal('1.1').to_r                           -> 11/10
+
+(note the truncated result of to_i)
+Or with a generic method:
+  puts Decimal('1.1').convert_to(Integer)            -> 1
+  puts Decimal('1.1').convert_to(Rational)           -> 11/10
+
+Conversion is also possible to Float:
+  puts Decimal('1.1').to_f                           -> 1.1
+  puts Decimal('1.1').convert_to(Float)              -> 1.1
+
+And with GDAS style operations:
+
+  puts Decimal('1.1').to_integral_value              -> 1
+
+The conversion system is extensible. For example, we can include BigDecimal into it
+by defining suitable conversion procedures:
+
+  Decimal.context.define_conversion_from(BigDecimal) do |x, context|
+    Decimal(x.to_s)
+  end
+  Decimal.context.define_conversion_to(BigDecimal) do |x|
+    BigDecimal.new(x.to_s)
+  end
+
+Now we can mix BigDecimals and Decimals in expressions and convert from Decimal
+to BigDecimal:
+
+  puts BigDecimal.new('1.1') + Decimal('2.2')        -> 3.3
+  puts Decimal('1.1').convert_to(BigDecimal)         -> 0.11E1
+
+Note that the conversions are defined in a Context object and will be available only
+when that context applies. That way we can define conversions for specific purposes
+without affecting a program globally.
+
+As another example consider conversion from Float to Decimal, which is not defined by
+default because it can be defined in different ways depending on the purpose.
+
+A Float constant such as 0.1 defines a Float object which has a numerical value close to,
+but not exactly 1/10. When converting that Float to Decimal we could decide to preserver
+the exact numerical value of the number or try to find a simple decimal expression within
+a given tolerance. If we take the first approach we can define this conversion:
+
+  Decimal.context.define_conversion_from(Float) do |x, context|
+    s,e = Math.frexp(x)
+    s = Math.ldexp(s, Float::MANT_DIG).to_i
+    e -= Float::MANT_DIG
+    Decimal(s*(Float::RADIX**e)) # use Rational to Decimal conversion
+  end
+
+Note that the conversion we've defined depends on the context precision:
+
+  Decimal.local_context(:precision=>20) { puts Decimal(0.1) } -> 0.10000000000000000555
+
+  Decimal.local_context(:precision=>12) { puts Decimal(0.1) } -> 0.100000000000
