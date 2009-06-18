@@ -37,34 +37,37 @@ FUNCTIONS = {
   'abs'=>'abs',
   'nextminus'=>'next_minus',
   'nextplus'=>'next_plus',
-  'nexttoward'=>'next_toward'
+  'nexttoward'=>'next_toward',
+  'tosci'=>'to_sci_string',
+  'toeng'=>'to_eng_string',
+  'class'=>'number_class'
 }
-# Known functions not yet implemented
+# Functions not yet implemented
 PENDING = %w{
   exp
   power
   ln
   log10
-  apply
-  tosci
-  toeng
-  class
-  comparetotal
-  comparetotmag
-  invert
-  maxmag
-  minmag
+
   rotate
   shift
   trim
+
   and
   or
   xor
+  invert
+
+  max
+  min
+  maxmag
+  minmag
+  comparetotal
+  comparetotmag
 }
 IGNORED = PENDING + %w{
   copy
-  max
-  min
+  apply
 }
 
 FLAG_NAMES = {
@@ -77,14 +80,19 @@ FLAG_NAMES = {
   'overflow'=>:Overflow,
   'division_by_zero'=>:DivisionByZero,
   'division_undefined'=>:InvalidOperation,
-  'division_impossible'=>:DivisionImpossible
+  'division_impossible'=>:DivisionImpossible,
+  'conversion_syntax'=>:ConversionSyntax
 }
 
 
 
 def unquote(txt)
-  txt = txt[1...-1] if txt[0,1]=="'" && txt[-1,1]=="'"
-  txt = txt[1...-1] if txt[0,1]=='"' && txt[-1,1]=='"'
+  if txt[0,1]=="'" && txt[-1,1]=="'"
+    txt = txt[1...-1].gsub("''","'")
+  end
+  if txt[0,1]=='"' && txt[-1,1]=='"'
+    txt = txt[1...-1].gsub('""','"')
+  end
   #txt = 'NaN' if txt=='#' || txt=='?'
   txt = 'sNaN' if txt=='#'
   txt = 'NaN' if txt=='?'
@@ -115,7 +123,8 @@ class TestBasic < Test::Unit::TestCase
               # test
               # to do :remove inline comments --... on the right of ->
               sides = line.split('->')
-              lhs = sides.first.strip.split
+              # now split by whitespace but avoid breaking quoted strings (and take care or repeated quotes!)
+              lhs = sides.first.strip.scan(/"(?:[^"]|"")*"|'(?:[^']|'')*'|\S+/)
               id = lhs.first
               funct = lhs[1].downcase
               valstemp = lhs[2..-1]
@@ -130,13 +139,22 @@ class TestBasic < Test::Unit::TestCase
               if funct
                 # do test
                 msg = "Test #{id}: #{funct}(#{valstemp.join(',')}) = #{ans}"
-                valstemp.map!{|v| Decimal(unquote(v))}
+                #File.open('dectests.txt','a'){|f| f.puts msg}
                 expected = result = result_flags = nil
                 Decimal.local_context do |context|
                   context.flags.clear!
+                  exact_input = !['apply','to_sci_string', 'to_eng_string'].include?(funct)
+                  if exact_input
+                    p = context.precision
+                    context.exact = true
+                  end
+                  valstemp.map!{|v| Decimal(unquote(v))}
+                  context.precision = p if exact_input
                   result = context.send(funct, *valstemp)
-                  expected = Decimal(unquote(ans))
-                  result_flags = context.flags
+                  result_flags = context.flags.dup
+                  expected = unquote(ans)
+                  context.exact = true
+                  expected = Decimal(expected) unless result.is_a?(String)
                 end
                 result = 1 if result==true
                 result = 0 if result==false
@@ -180,7 +198,9 @@ class TestBasic < Test::Unit::TestCase
       end
     end
 
-    assert_empty missing
+    # assert_empty missing
+    # In Ruby 1.8 there's no assert_empty
+    assert missing.empty?, "#{missing.inspect} is not empty"
 
   end
 

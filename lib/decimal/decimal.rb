@@ -171,7 +171,7 @@ class Decimal
 
 
   #EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal)
-  EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal, DivisionImpossible)
+  EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal, DivisionImpossible, ConversionSyntax)
 
   def self.Flags(*values)
     DecimalSupport::Flags(EXCEPTIONS,*values)
@@ -294,7 +294,7 @@ class Decimal
     end
 
     CONDITION_MAP = {
-      ConversionSyntax=>InvalidOperation,
+      #ConversionSyntax=>InvalidOperation,
       #DivisionImpossible=>InvalidOperation,
       DivisionUndefined=>InvalidOperation,
       InvalidContext=>InvalidOperation
@@ -333,8 +333,16 @@ class Decimal
       Decimal._convert(x)._neg(self)
     end
 
-    def to_string(eng=false)
-      Decimal._convert(x).to_s(eng, self)
+    def to_string(x, eng=false)
+      Decimal._convert(x)._fix(self).to_s(eng, self)
+    end
+
+    def to_sci_string(x)
+      to_string x, false
+    end
+
+    def to_eng_string(x)
+      to_string x, true
     end
 
     def reduce(x)
@@ -379,6 +387,18 @@ class Decimal
     # GDAS
     #  power
     #  exp log10 ln
+
+    def normal?(x)
+      Decimal._convert(x).normal?(self)
+    end
+
+    def subnormal?(x)
+      Decimal._convert(x).subnormal?(self)
+    end
+
+    def number_class(x)
+      Decimal._convert(x).number_class(self)
+    end
 
     def sqrt(x)
       Decimal._convert(x).sqrt(self)
@@ -480,10 +500,18 @@ class Decimal
 
     def maximum_significand
       if exact?
-        context.exception(InvalidOperation, 'Exact maximum significand')
+        exception(InvalidOperation, 'Exact maximum significand')
         nil
       else
         Decimal.int_radix_power(precision)-1
+      end
+    end
+
+    def maximum_nan_diagnostic_digits
+      if exact?
+        nil # ?
+      else
+        precision - (clamp ? 1 : 0)
       end
     end
 
@@ -760,8 +788,15 @@ class Decimal
         @sign, @coeff, @exp = v.is_a?(Decimal) ? v.split : v
 
       when String
+        if arg.strip != arg
+          @sign,@coeff,@exp = context.exception(ConversionSyntax, "no trailing or leading whitespace is permitted").split
+          return
+        end
         m = _parser(arg)
-        return (context.exception ConversionSyntax, "Invalid literal for Decimal: #{arg.inspect}") if m.nil?
+        if m.nil?
+          @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for Decimal: #{arg.inspect}").split
+          return
+        end
         @sign =  (m.sign == '-') ? -1 : +1
         if m.int || m.onlyfrac
           if m.int
@@ -783,6 +818,13 @@ class Decimal
             # NaN
             @coeff = (m.diag.nil? || m.diag.empty?) ? nil : m.diag.to_i
             @coeff = nil if @coeff==0
+             if @coeff
+               max_diag_len = context.maximum_nan_diagnostic_digits
+               if max_diag_len && @coeff >= Decimal.int_radix_power(max_diag_len)
+                  @sign,@coeff,@exp = context.exception(ConversionSyntax, "diagnostic info too long in NaN").split
+                 return
+               end
+             end
             @exp = m.signal ? :snan : :nan
           else
             # Infinity
@@ -839,6 +881,38 @@ class Decimal
 
   def nonzero?
     special? || @coeff>0
+  end
+
+  def subnormal?(context=nil)
+    return false if special? || zero?
+    context = Decimal.define_context(context)
+    self.adjusted_exponent < context.emin
+  end
+
+  def normal?(context=nil)
+    return true if special? || zero?
+    context = Decimal.define_context(context)
+    (context.emin <= self.adjusted_exponent) &&  (self.adjusted_exponent <= context.emax)
+  end
+
+  def number_class(context=nil)
+    return "sNaN" if snan?
+    return "NaN" if nan?
+    if infinite?
+      return '+Infinity' if @sign==+1
+      return '-Infinity' # if @sign==-1
+    end
+    if zero?
+      return '+Zero' if @sign==+1
+      return '-Zero' # if @sign==-1
+    end
+    context = Decimal.define_context(context)
+    if subnormal?(context)
+      return '+Subnormal' if @sign==+1
+      return '-Subnormal' # if @sign==-1
+    end
+    return '+Normal' if @sign==+1
+    return '-Normal' if @sign==-1
   end
 
   def coerce(other)
@@ -1523,6 +1597,7 @@ class Decimal
 
   def to_s(eng=false,context=nil)
     # (context || Decimal.context).to_string(self)
+    context = Decimal.define_context(context)
     sgn = sign<0 ? '-' : ''
     if special?
       if @exp==:inf
@@ -1561,7 +1636,6 @@ class Decimal
       if leftdigits == dotplace
         e = ''
       else
-        context = Decimal.define_context(context)
         e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
       end
 
@@ -1973,8 +2047,7 @@ class Decimal
         payload = @coeff
         payload = nil if payload==0
 
-        max_payload_len = context.precision
-        max_payload_len -= 1 if context.clamp
+        max_payload_len = context.maximum_nan_diagnostic_digits
 
         if number_of_digits > max_payload_len
             payload = payload.to_s[-max_payload_len..-1].to_i
