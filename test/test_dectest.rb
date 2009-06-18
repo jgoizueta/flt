@@ -35,6 +35,36 @@ FUNCTIONS = {
   'fma'=>'fma',
   'squareroot'=>'sqrt'
 }
+# Known functions not yet implemented
+PENDING = %w{
+  abs
+  subtract
+  apply
+  and
+  tosci
+  toeng
+  class
+  comparetotal
+  comparetotmag
+  copy
+  exp
+  power
+  invert
+  ln
+  log10
+  max
+  maxmag
+  min
+  minmag
+  nextminus
+  nextplus
+  nexttoward
+  or
+  rotate
+  shift
+  trim
+  xor
+}
 
 FLAG_NAMES = {
   'inexact'=>:Inexact,
@@ -63,7 +93,7 @@ end
 class TestBasic < Test::Unit::TestCase
 
   def test_dec
-
+   missing = []
     dir = File.join(File.dirname(__FILE__), 'dectest')
     dir = nil unless File.exists?(dir)
     if dir
@@ -95,8 +125,7 @@ class TestBasic < Test::Unit::TestCase
               next unless valstemp.grep(/#/).empty?
 
               $test_id = id
-
-              funct = FUNCTIONS[funct]
+              funct = FUNCTIONS[original_funct=funct]
               if funct
                 # do test
                 msg = "Test #{id}: #{funct}(#{valstemp.join(',')}) = #{ans}"
@@ -115,6 +144,9 @@ class TestBasic < Test::Unit::TestCase
                   assert_equal expected.to_s, result.to_s, msg
                 end
                 assert_equal expected_flags, result_flags, msg
+
+              else
+                missing << original_funct unless PENDING.include?(original_funct) || missing.include?(original_funct)
               end
 
             elsif line.include?(':')
@@ -146,6 +178,9 @@ class TestBasic < Test::Unit::TestCase
         end
       end
     end
+
+    assert_empty missing
+
   end
 
 end
