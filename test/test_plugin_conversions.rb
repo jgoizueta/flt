@@ -74,32 +74,32 @@ class TestPluginConversions < Test::Unit::TestCase
 
   end
 
-  # def test_float_conversions
-  #   mod = FPNum::RB
-  #
-  #   # Exact Float to Decimal conversion limited to context precision
-  #   # => Decimal('0.1') != Decimal(0.1) unless precision is low enough
-  #   mod::Decimal.context.convert_from(Float) do |x, context|
-  #     s,e = Math.frexp(x)
-  #     significand = Math.ldexp(s, Float::MANT_DIG).to_i
-  #     exponent = e - Float::MANT_DIG
-  #     # the number is (as a Rational) significand * exponent**Float::RADIX
-  #     mod::Decimal(significand*(Float::RADIX**exponent ))
-  #   end
-  #
-  #   assert_equal 0.0, mod::Decimal('0')
-  #   assert_equal mod::Decimal('0'), 0.0
-  #   assert_equal 1234.5, mod::Decimal('1234.5')
-  #   assert_equal mod::Decimal('1234.5'), 1234.5
-  #   assert_equal -1234.5, mod::Decimal('-1234.5')
-  #   assert_equal 1234.5, mod::Decimal('0.0012345000E6')
-  #   assert_equal mod::Decimal('7.1'), 7.0+mod::Decimal('0.1')
-  #   mod::Decimal.context.local_context(:precision=>12) do
-  #     assert_equal mod::Decimal('7.1'), mod::Decimal('7')+0.1
-  #   end
-  #   assert_equal mod::Decimal('11'), mod::Decimal(11.0)
-  #   assert mod::Decimal(11.0).is_a?(mod::Decimal)
-  #
-  # end
+  def test_float_conversions
+    mod = FPNum::RB
+
+    # Exact Float to Decimal conversion limited to context precision
+    # => Decimal('0.1') != Decimal(0.1) unless precision is low enough
+    mod::Decimal.context.define_conversion_from(Float) do |x, context|
+      s,e = Math.frexp(x)
+      significand = Math.ldexp(s, Float::MANT_DIG).to_i
+      exponent = e - Float::MANT_DIG
+      # the number is (as a Rational) significand * exponent**Float::RADIX
+      mod::Decimal(significand*(Float::RADIX**exponent ))
+    end
+
+    assert_equal 0.0, mod::Decimal('0')
+    assert_equal mod::Decimal('0'), 0.0
+    assert_equal 1234.5, mod::Decimal('1234.5')
+    assert_equal mod::Decimal('1234.5'), 1234.5
+    assert_equal -1234.5, mod::Decimal('-1234.5')
+    assert_equal 1234.5, mod::Decimal('0.0012345000E6')
+    assert_equal mod::Decimal('7.1'), 7.0+mod::Decimal('0.1')
+    mod::Decimal.local_context(:precision=>12) do
+      assert_equal mod::Decimal('7.1'), mod::Decimal('7')+0.1
+    end
+    assert_equal mod::Decimal('11'), mod::Decimal(11.0)
+    assert mod::Decimal(11.0).is_a?(mod::Decimal)
+
+  end
 
 end
