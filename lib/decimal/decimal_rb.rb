@@ -698,7 +698,7 @@ class Decimal
   # * Decimal#initialize performs the actual type conversion
   #
   # The known or 'coercible' types are initially Integer and Rational, but this can be extended to
-  # other types using Decimal.convert_from()
+  # other types using define_conversion_from() in a Context object.
   #++
 
   # A decimal value can be defined by:
