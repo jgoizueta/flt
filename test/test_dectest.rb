@@ -14,7 +14,7 @@ FUNCTIONS = {
   'add'=>'add',
   'divide'=>'divide',
   'multiply'=>'multiply',
-  'substract'=>'substract',
+  'subtract'=>'subtract',
   'compare'=>'compare',
   'copyabs'=>'copy_abs',
   'copynegate'=>'copy_negate',
@@ -38,7 +38,6 @@ FUNCTIONS = {
 # Known functions not yet implemented
 PENDING = %w{
   abs
-  subtract
   apply
   and
   tosci

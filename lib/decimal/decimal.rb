@@ -311,8 +311,8 @@ class Decimal
     def add(x,y)
       Decimal._convert(x).add(y,self)
     end
-    def substract(x,y)
-      Decimal._convert(x).substract(y,self)
+    def subtract(x,y)
+      Decimal._convert(x).subtract(y,self)
     end
     def multiply(x,y)
       Decimal._convert(x).multiply(y,self)
@@ -856,7 +856,7 @@ class Decimal
   end
 
   def -(other, context=nil)
-    _bin_op :-, :substract, other, context
+    _bin_op :-, :subtract, other, context
   end
 
   def *(other, context=nil)
@@ -944,7 +944,7 @@ class Decimal
   end
 
 
-  def substract(other, context=nil)
+  def subtract(other, context=nil)
 
     context = Decimal.define_context(context)
     other = Decimal._convert(other)

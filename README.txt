@@ -257,7 +257,7 @@ EXPAND-
 Decimal solves some of the difficulties of using BigDecimal.
 
 One of the major problems with BigDecimal is that it's not easy to control the number of
-significant digits: while addition, substraction and multiplication are exact (unless a limit is used),
+significant digits: while addition, subtraction and multiplication are exact (unless a limit is used),
 divisions will need to be passed precision explicitly or they will loose an indeterminate number of digits.
 With Decimal, Context objects are used to specify the exact number of digits to be used for all operations:
   Decimal.context.precision = 10
