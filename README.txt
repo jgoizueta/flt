@@ -1,9 +1,13 @@
 = Introduction
 
 Decimal is a standards-compliant arbitrary precision decimal floating-point type for Ruby.
+It is based on the Python Decimal class.
+
 The current implementation is written completely in Ruby, so it is rather slow.
-An implementation using a C extension wrapper around the decNumber library could
-solve this.
+The intentention is to experiment with this pure-ruby implementation to
+define a nice feature-set and API for Decimal and have a good test suite for its
+specification. Then an efficient implementation could be written, for example
+by using a C extension wrapper around the decNumber library.
 
 == Standars compliance.
 
