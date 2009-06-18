@@ -4,18 +4,12 @@ require 'rational'
 require 'monitor'
 require 'ostruct'
 
-module FPNum
-
-# Pure Ruby Decimal Implementation
-module RB
-
 # Decimal arbitrary precision floating point number.
 # This implementation of Decimal is based on the Decimal module of Python,
 # written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
 class Decimal
 
-  extend FPNum # allows use of unqualified FlagValues(), Flags()
-  include RB # allows use of unqualified Decimal()
+  extend DecimalSupport # allows use of unqualified FlagValues(), Flags()
 
   ROUND_HALF_EVEN = :half_even
   ROUND_HALF_DOWN = :half_down
@@ -180,15 +174,13 @@ class Decimal
   EXCEPTIONS = FlagValues(Clamped, InvalidOperation, DivisionByZero, Inexact, Overflow, Underflow, Rounded, Subnormal, DivisionImpossible)
 
   def self.Flags(*values)
-    FPNum::Flags(EXCEPTIONS,*values)
+    DecimalSupport::Flags(EXCEPTIONS,*values)
   end
 
 
   # The context defines the arithmetic context: rounding mode, precision,...
   # Decimal.context is the current (thread-local) context.
   class Context
-
-    include RB # allows use of unqualified Decimal()
 
     def initialize(*options)
 
@@ -593,12 +585,12 @@ class Decimal
 
   # The current context (thread-local).
   def Decimal.context
-    Thread.current['FPNum::RB::Decimal.context'] ||= DefaultContext.dup
+    Thread.current['Decimal.context'] ||= DefaultContext.dup
   end
 
   # Change the current context (thread-local).
   def Decimal.context=(c)
-    Thread.current['FPNum::RB::Decimal.context'] = c.dup
+    Thread.current['Decimal.context'] = c.dup
   end
 
   # Defines a scope with a local context. A context can be passed which will be
@@ -1502,56 +1494,56 @@ class Decimal
 
   def <=>(other)
     case other
-      when *Decimal.context.coercible_types_or_decimal
-        other = Decimal(other)
-        if self.special? || other.special?
-          if self.nan? || other.nan?
-            1
-          else
-            self_v = self.finite? ? 0 : self.sign
-            other_v = other.finite? ? 0 : other.sign
-            self_v <=> other_v
-          end
+    when *Decimal.context.coercible_types_or_decimal
+      other = Decimal(other)
+      if self.special? || other.special?
+        if self.nan? || other.nan?
+          1
         else
-          if self.zero?
-            if other.zero?
-              0
-            else
-              -other.sign
-            end
-          elsif other.zero?
-            self.sign
-          elsif other.sign < self.sign
-            +1
-          elsif self.sign < other.sign
-            -1
-          else
-            self_adjusted = self.adjusted_exponent
-            other_adjusted = other.adjusted_exponent
-            if self_adjusted == other_adjusted
-              self_padded,other_padded = self.integral_significand,other.integral_significand
-              d = self.integral_exponent - other.integral_exponent
-              if d>0
-                self_padded *= Decimal.int_radix_power(d)
-              else
-                other_padded *= Decimal.int_radix_power(-d)
-              end
-              (self_padded <=> other_padded)*self.sign
-            elsif self_adjusted > other_adjusted
-              self.sign
-            else
-              -self.sign
-            end
-          end
+          self_v = self.finite? ? 0 : self.sign
+          other_v = other.finite? ? 0 : other.sign
+          self_v <=> other_v
         end
       else
-        if defined? other.coerce
-          x, y = other.coerce(self)
-          x <=> y
+        if self.zero?
+          if other.zero?
+            0
+          else
+            -other.sign
+          end
+        elsif other.zero?
+          self.sign
+        elsif other.sign < self.sign
+          +1
+        elsif self.sign < other.sign
+          -1
         else
-          nil
+          self_adjusted = self.adjusted_exponent
+          other_adjusted = other.adjusted_exponent
+          if self_adjusted == other_adjusted
+            self_padded,other_padded = self.integral_significand,other.integral_significand
+            d = self.integral_exponent - other.integral_exponent
+            if d>0
+              self_padded *= Decimal.int_radix_power(d)
+            else
+              other_padded *= Decimal.int_radix_power(-d)
+            end
+            (self_padded <=> other_padded)*self.sign
+          elsif self_adjusted > other_adjusted
+            self.sign
+          else
+            -self.sign
+          end
         end
       end
+    else
+      if defined? other.coerce
+        x, y = other.coerce(self)
+        x <=> y
+      else
+        nil
+      end
+    end
   end
   def ==(other)
     (self<=>other) == 0
@@ -2234,8 +2226,4 @@ def Decimal(*args)
   else
     Decimal.new(*args)
   end
-end
-module_function :Decimal
-
-end
 end

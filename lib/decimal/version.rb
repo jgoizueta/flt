@@ -1,4 +1,4 @@
-module FPNum
+module DecimalSupport
   module VERSION #:nodoc:
     MAJOR = 0
     MINOR = 0

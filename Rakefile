@@ -20,7 +20,7 @@ PROJ.name = 'ruby-decimal'
 PROJ.description = "Ruby Decimal Type"
 PROJ.authors = 'Javier Goizueta'
 PROJ.email = 'javier@goizueta.info'
-PROJ.version = FPNum::VERSION::STRING
+PROJ.version = DecimalSupport::VERSION::STRING
 PROJ.rubyforge.name = 'ruby-decimal'
 PROJ.url = "http://#{PROJ.rubyforge.name}.rubyforge.org"
 PROJ.rdoc.opts = [
@@ -30,6 +30,6 @@ PROJ.rdoc.opts = [
   "--line-numbers",
   "--inline-source"
   ]
-PROJ.test.file = 'test/test_all.rb'
+#PROJ.test.file = 'test/all_tests.rb'
 
 # EOF

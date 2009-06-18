@@ -168,9 +168,7 @@ require 'rubygems'
 $:.unshift File.dirname(__FILE__) + '/lib'
 
 
-require File.dirname(__FILE__) + '/lib/decimal/flags'
-require File.dirname(__FILE__) + '/lib/decimal/decimal_rb'
-require File.dirname(__FILE__) + '/lib/decimal/decimal_bd'
+require File.dirname(__FILE__) + '/lib/decimal'
 
 
 puts expand_text(File.read(ARGV.shift),"[")
