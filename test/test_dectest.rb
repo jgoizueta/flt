@@ -33,36 +33,38 @@ FUNCTIONS = {
   'tointegral'=>'to_integral_value',
   'tointegralx'=>'to_integral_exact',
   'fma'=>'fma',
-  'squareroot'=>'sqrt'
+  'squareroot'=>'sqrt',
+  'abs'=>'abs'
 }
 # Known functions not yet implemented
 PENDING = %w{
-  abs
+  exp
+  power
+  ln
+  log10
+  nextminus
+  nextplus
+  nexttoward
   apply
-  and
   tosci
   toeng
   class
   comparetotal
   comparetotmag
-  copy
-  exp
-  power
   invert
-  ln
-  log10
-  max
   maxmag
-  min
   minmag
-  nextminus
-  nextplus
-  nexttoward
-  or
   rotate
   shift
   trim
+  and
+  or
   xor
+}
+IGNORED = PENDING + %w{
+  copy
+  max
+  min
 }
 
 FLAG_NAMES = {
@@ -145,7 +147,7 @@ class TestBasic < Test::Unit::TestCase
                 assert_equal expected_flags, result_flags, msg
 
               else
-                missing << original_funct unless PENDING.include?(original_funct) || missing.include?(original_funct)
+                missing << original_funct unless IGNORED.include?(original_funct) || missing.include?(original_funct)
               end
 
             elsif line.include?(':')
