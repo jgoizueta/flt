@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/test_helper.rb'
 
-class TestPluginConversions < Test::Unit::TestCase
+class TestDefineConversions < Test::Unit::TestCase
 
 
   def setup
