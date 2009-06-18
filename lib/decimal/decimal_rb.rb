@@ -26,45 +26,21 @@ class Decimal
   ROUND_UP = :up
   ROUND_05UP = :up05
 
-  # Extensible conversions support
-  @coercible_types = [Integer, Rational] # numerical types that can be converted to Decimal
-  @coercible_handler = { # procedures for numberical conversion
+  # Numerical conversion base support
+  # base (default) coercible types associated to procedures for numerical conversion
+  @base_coercible_types = {
     Integer=>lambda{|x, context| x>=0 ? [+1,x,0] : [-1,-x,0]},
     Rational=>lambda{|x, context|
       x, y = Decimal.new(x.numerator), Decimal.new(x.denominator)
       x.divide(y, context)
     }
   }
+  @base_conversions = {
+    Integer=>:to_i, Rational=>:to_r, Float=>:to_f
+  }
   class <<self
-    attr_accessor :coercible_types
-    def coercible_types_or_decimal
-      [Decimal] + coercible_types
-    end
-    # Internally used to convert numeric types to Decimal (or to an array [sign,coefficient,exponent])
-    def _coerce(x, context)
-      c = x.class
-      while c!=Object && (h=@coercible_handler[c]).nil?
-        c = c.superclass
-      end
-      if h
-        h.call(x, context)
-      else
-        nil
-      end
-    end
-    # Define a numerical conversion from type to Decimal.
-    # The block that defines the conversion has two parameters: the value to be converted and the context and
-    # must return either a Decimal or [sign,coefficient,exponent]
-    def convert_from(type, &blk)
-      @coercible_types << type
-      @coercible_handler[type] = blk
-    end
-    # Define a numerical conversion from Decimal to type as an instance method of Decimal
-    def convert_to(type, method, &blk)
-      define_method method do
-        blk.call self
-      end
-    end
+    attr_reader :base_coercible_types
+    attr_reader :base_conversions
   end
 
   # Numerical base of Decimal.
@@ -223,6 +199,8 @@ class Decimal
         @ignored_flags = Decimal::Flags()
         @traps = Decimal::Flags()
         @flags = Decimal::Flags()
+        @coercible_type_handlers = Decimal.base_coercible_types.dup
+        @conversions = Decimal.base_conversions.dup
       end
       assign options.first
 
@@ -301,6 +279,9 @@ class Decimal
       end
     end
 
+    attr_reader :coercible_type_handlers, :conversions
+    protected :coercible_type_handlers, :conversions
+
     def copy_from(other)
       @rounding = other.rounding
       @precision = other.precision
@@ -312,6 +293,8 @@ class Decimal
       @capitals = other.capitals
       @clamp = other.clamp
       @exact = other.exact
+      @coercible_type_handlers = other.coercible_type_handlers.dup
+      @conversions = other.conversions.dup
     end
 
     def dup
@@ -489,6 +472,45 @@ class Decimal
       "<#{self.class}:\n" +
       instance_variables.map { |v| "  #{v}: #{eval(v)}"}.join("\n") +
       ">\n"
+    end
+
+    def coercible_types
+      @coercible_type_handlers.keys
+    end
+    def coercible_types_or_decimal
+      [Decimal] + coercible_types
+    end
+    # Internally used to convert numeric types to Decimal (or to an array [sign,coefficient,exponent])
+    def _coerce(x)
+      c = x.class
+      while c!=Object && (h=@coercible_type_handlers[c]).nil?
+        c = c.superclass
+      end
+      if h
+        h.call(x, self)
+      else
+        nil
+      end
+    end
+    # Define a numerical conversion from type to Decimal.
+    # The block that defines the conversion has two parameters: the value to be converted and the context and
+    # must return either a Decimal or [sign,coefficient,exponent]
+    def define_conversion_from(type, &blk)
+      @coercible_type_handlers[type] = blk
+    end
+    # Define a numerical conversion from Decimal to type as an instance method of Decimal
+    def define_conversion_to(type, &blk)
+      @conversions[type] = blk
+    end
+    def convert_to(type, x)
+      converter = @conversions[type]
+      if converter.nil?
+        raise TypeError, "Undefined conversion from Decimal to #{type}."
+      elsif converter.is_a?(Symbol)
+        x.send converter
+      else
+        converter.call(x)
+      end
     end
 
     private
@@ -720,8 +742,8 @@ class Decimal
       when Decimal
         @sign, @coeff, @exp = arg.split
 
-      when *Decimal.coercible_types
-        v = Decimal._coerce(arg, context)
+      when *context.coercible_types
+        v = context._coerce(arg)
         @sign, @coeff, @exp = v.is_a?(Decimal) ? v.split : v
 
       when String
@@ -808,7 +830,7 @@ class Decimal
 
   def coerce(other)
     case other
-      when *Decimal.coercible_types_or_decimal
+      when *Decimal.context.coercible_types_or_decimal
         [Decimal(other),self]
       else
         super
@@ -816,9 +838,10 @@ class Decimal
   end
 
   def _bin_op(op, meth, other, context=nil)
+    context = Decimal.define_context(context)
     case other
-      when *Decimal.coercible_types_or_decimal
-        self.send meth, Decimal(other), context
+      when *context.coercible_types_or_decimal
+        self.send meth, Decimal(other, context), context
       else
         x, y = other.coerce(self)
         x.send op, y
@@ -1375,6 +1398,10 @@ class Decimal
 
   end
 
+  def convert_to(type, context=nil)
+    context = Decimal.define_context(context)
+    context.convert_to(type, self)
+  end
 
   def to_i
     if special?
@@ -1475,7 +1502,7 @@ class Decimal
 
   def <=>(other)
     case other
-      when *Decimal.coercible_types_or_decimal
+      when *Decimal.context.coercible_types_or_decimal
         other = Decimal(other)
         if self.special? || other.special?
           if self.nan? || other.nan?
@@ -2180,7 +2207,7 @@ class Decimal
     case x
     when Decimal
       x
-    when *coercible_types
+    when *Decimal.context.coercible_types
       Decimal.new(x)
     else
       raise TypeError, "Unable to convert #{x.class} to Decimal" if error
