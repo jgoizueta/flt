@@ -2546,12 +2546,25 @@ class Decimal
   # Options can be passed as a Hash instead; valid options are:
   # * :rounding method for rounding (see Context#new())
   # The precision can be specified as:
-  # * :places number of fractional digits as abovve
-  # * :precision or :significan_digits number of digits
-  # * :exponent desired exponent
-  # * :power
-  # * :index index of the digit to be rounded
-  # * :rindex right-index of the digit to be rounded
+  # * :places number of fractional digits as above.
+  # * :exponent specifies the exponent corresponding to the
+  #   digit to be rounded (exponent == -places)
+  # * :precision or :significan_digits is the number of digits
+  # * :power 10^exponent, value of the digit to be rounded,
+  #   should be passed as a type convertible to Decimal.
+  # * :index 0-based index of the digit to be rounded
+  # * :rindex right 0-based index of the digit to be rounded
+  #
+  # The default is :places=>0 (round to integer).
+  #
+  # Example: ways of specifiying the rounding position
+  #   number:     1   2   3   4  .  5    6    7    8
+  #   :places    -3  -2  -1   0     1    2    3    4
+  #   :exponent   3   2   1   0    -1   -2   -3   -4
+  #   :precision  1   2   3   4     5    6    7    8
+  #   :power    1E3 1E2  10   1   0.1 1E-2 1E-3 1E-4
+  #   :index      0   1   2   3     4    5    6    7
+  #   :index      7   6   5   4     3    2    1    0
   def round(opt={})
     opt = { :places=>opt } if opt.kind_of?(Integer)
     r = opt[:rounding] || :half_up
