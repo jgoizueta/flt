@@ -83,6 +83,20 @@ class TestBasic < Test::Unit::TestCase
     }
     assert_equal 10, Decimal.context.precision
 
+    Decimal.local_context(Decimal::BasicContext) {
+      assert_equal :half_up, Decimal.context.rounding
+      assert_equal 9, Decimal.context.precision
+    }
+    assert_equal :half_even, Decimal.context.rounding
+    assert_equal 10, Decimal.context.precision
+
+    Decimal.local_context(Decimal::BasicContext, :precision=>4) {
+      assert_equal :half_up, Decimal.context.rounding
+      assert_equal 4, Decimal.context.precision
+    }
+    assert_equal :half_even, Decimal.context.rounding
+    assert_equal 10, Decimal.context.precision
+
 
     assert_equal Decimal("0."+"3"*100), Decimal(1)./(Decimal(3),Decimal.Context(:precision=>100))
     assert_equal 10, Decimal.context.precision

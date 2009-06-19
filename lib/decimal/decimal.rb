@@ -620,17 +620,19 @@ class Decimal
 
   end
 
-  # Define a context by passing either a Context object or a (possibly empty)
-  # hash of options to alter de current context.
+  # Define a context by passing either of:
+  # * A Context object
+  # * A hash of options (or nothing) to alter a copy of the current context.
+  # * A Context object and a hash of options to alter a copy of it
   def Decimal.define_context(*options)
-    if options.size==1 && options.first.instance_of?(Context)
-      options.first
+    context = options.shift if options.first.instance_of?(Context)
+    if context && options.empty?
+      context
     else
-      Context(Decimal.context, *options)
+      context ||= Decimal.context
+      Context(context, *options)
     end
   end
-
-
 
   # The current context (thread-local).
   def Decimal.context
@@ -643,21 +645,16 @@ class Decimal
   end
 
   # Defines a scope with a local context. A context can be passed which will be
-  # set a the current context for the scope. Changes done to the current context
-  # are reversed when the scope is exited.
-  def Decimal.local_context(c=nil)
+  # set a the current context for the scope; also a hash can be passed with
+  # options to apply to the local scope.
+  # Changes done to the current context are reversed when the scope is exited.
+  def Decimal.local_context(*args)
     keep = context.dup
-    if c.kind_of?(Hash)
-      Decimal.context.assign c
-    else
-      Decimal.context = c unless c.nil?
-    end
+    Decimal.context = define_context(*args)
     result = yield Decimal.context
     Decimal.context = keep
     result
   end
-
-
 
   def Decimal.zero(sign=+1)
     Decimal.new([sign, 0, 0])
