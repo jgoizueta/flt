@@ -2819,7 +2819,7 @@ class Decimal
     if (self_adj >= 0) == (other.sign == +1)
       # self > 1 and other +ve, or self < 1 and other -ve
       # possibility of overflow
-      if bound >= context.emax.str.length
+      if bound >= context.emax.to_s.length
         ans = Decimal(result_sign, 1, context.emax+1)
       end
     else
@@ -2851,6 +2851,7 @@ class Decimal
       # compute correctly rounded result:  start with precision +3,
       # then increase precision until result is unambiguously roundable
       extra = 3
+      coeff, exp = nil, nil
       loop do
         coeff, exp = _dpower(xc, xe, yc, ye, p+extra)
         break if coeff % Decimal.int_mult_radix_power(5,coeff.to_s.length-p-1)
@@ -3166,9 +3167,9 @@ class Decimal
     if ye >= 0
       m, n = yc*10**ye, 1
     else
-      return nil if xe != 0 and len(str(abs(yc*xe))) <= -ye
+      return nil if xe != 0 and (yc*xe).abs.to_s.length <= -ye
       xc_bits = _nbits(xc)
-      return nil if xc != 1 and len(str(abs(yc)*xc_bits)) <= -ye
+      return nil if xc != 1 and (yc.abs*xc_bits).to_s.length <= -ye
       m, n = yc, Decimal.int_radix_power(-ye)
       while ((m % 2) == 0) && ((n % 2) == 0)
         m /= 2
@@ -3260,7 +3261,7 @@ class Decimal
           'c'=> 0, 'd'=> 0, 'e'=> 0, 'f'=> 0})
     raise  TypeError, "The argument to _nbits should be nonnegative." if n < 0
     hex_n = "%x" % n
-    4*len(hex_n) - correction[hex_n[0,1]]
+    4*hex_n.length - correction[hex_n[0,1]]
   end
 
   # Compute a lower bound for the adjusted exponent of self.log10()
@@ -3360,7 +3361,7 @@ class Decimal
       else
           cshift = c/10**-shift
       end
-      quot, rem = cshift.divmod(_log10_digits(q))
+      quot, rem = cshift.divmod(Decimal._log_10_digits(q))
 
       # reduce remainder back to original precision
       rem = _div_nearest(rem, 10**extra)
@@ -3401,7 +3402,7 @@ class Decimal
   end
 
   # Given an integer p >= 0, return floor(10**p)*log(10).
-  def Decimal.log_10_digits(p)
+  def Decimal._log_10_digits(p)
     # digits are stored as a string, for quick conversion to
     # integer in the case that we've already computed enough
     # digits; the stored digits should always be correct
@@ -3471,8 +3472,8 @@ class Decimal
       t = -(-10*m.to_s.length/(3*l)).to_i
       yshift = _rshift_nearest(y, r)
       w = _div_nearest(m, t)
-      # (0..t-1).reverse_each do |k| # Ruby 1.9
-      (0..t-1).to_a.reverse.each do |k|
+      # (1...t).reverse_each do |k| # Ruby 1.9
+      (1...t).to_a.reverse.each do |k|
          w = _div_nearest(m, k) - _div_nearest(yshift*w, m)
       end
 
@@ -3523,9 +3524,9 @@ class Decimal
 	    if f
 	        extra = f.abs.to_s.length - 1
 	        if p + extra >= 0
-	            # error in f * _log10_digits(p+extra) < |f| * 1 = |f|
+	            # error in f * Decimal._log_10_digits(p+extra) < |f| * 1 = |f|
 	            # after division, error < |f|/10**extra + 0.5 < 10 + 0.5 < 11
-	            f_log_ten = _div_nearest(f*_log10_digits(p+extra), 10**extra)
+	            f_log_ten = _div_nearest(f*Decimal._log_10_digits(p+extra), 10**extra)
 	        else
 	            f_log_ten = 0
 	        end
@@ -3535,6 +3536,46 @@ class Decimal
 
 	    # error in sum < 11+27 = 38; error after division < 0.38 + 0.5 < 1
 	    return _div_nearest(f_log_ten + log_d, 100)
+  end
+
+  # Given integers x and M, M > 0, such that x/M is small in absolute
+  # value, compute an integer approximation to M*exp(x/M).  For 0 <=
+  # x/M <= 2.4, the absolute error in the result is bounded by 60 (and
+  # is usually much smaller).
+  def _iexp(x, m, l=8)
+
+      # Algorithm: to compute exp(z) for a real number z, first divide z
+      # by a suitable power R of 2 so that |z/2**R| < 2**-L.  Then
+      # compute expm1(z/2**R) = exp(z/2**R) - 1 using the usual Taylor
+      # series
+      #
+      #     expm1(x) = x + x**2/2! + x**3/3! + ...
+      #
+      # Now use the identity
+      #
+      #     expm1(2x) = expm1(x)*(expm1(x)+2)
+      #
+      # R times to compute the sequence expm1(z/2**R),
+      # expm1(z/2**(R-1)), ... , exp(z/2), exp(z).
+
+      # Find R such that x/2**R/M <= 2**-L
+      r = _nbits((x<<l)/m)
+
+      # Taylor series.  (2**L)**T > M
+      t = -(-10*m.to_s.length/(3*l)).to_i
+      y = _div_nearest(x, t)
+      mshift = m<<r
+      (1...t).to_a.reverse.each do |i|
+          y = _div_nearest(x*(mshift + y), mshift * i)
+      end
+
+      # Expansion
+      (0...r).to_a.reverse.each do |k|
+          mshift = m<<(k+2)
+          y = _div_nearest(y*(y+mshift), mshift)
+      end
+
+      return m+y
   end
 
 end
