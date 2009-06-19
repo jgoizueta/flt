@@ -16,8 +16,8 @@ and the revised IEEE 754 standard (IEEE 754-2008).
 
 = Examples of use
 
-To install the library use gem from the command line:
-  gem install ruby-decimal
+To install the library use gem from the command line: (you may not need sudo)
+  sudo gem install ruby-decimal
 
 Then require the library in your code:
   require 'decimal'
