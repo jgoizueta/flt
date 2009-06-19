@@ -40,14 +40,14 @@ FUNCTIONS = {
   'nexttoward'=>'next_toward',
   'tosci'=>'to_sci_string',
   'toeng'=>'to_eng_string',
-  'class'=>'number_class'
+  'class'=>'number_class',
+  'power'=>'power'
 }
 # Functions not yet implemented
 PENDING = %w{
-  exp
-  power
-  ln
   log10
+  exp
+  ln
 
   rotate
   shift
