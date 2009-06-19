@@ -16,7 +16,10 @@ and the revised IEEE 754 standard (IEEE 754-2008).
 
 = Examples of use
 
-First we must require the library:
+To install the library use gem from the command line:
+  gem install ruby-decimal
+
+Then require the library in your code:
   require 'decimal'
 
 Now we can use the Decimal class simply like this:
@@ -151,9 +154,6 @@ digits trigger the Decimal::Inexact exception.
   puts Decimal(16)/Decimal(4)                        -> 4
   puts Decimal(1)/Decimal(3)                         -> 0.33333
 
-
-  # TODO: quantize, etc
-
 There are also some methods for explicit rounding that provide
 an interface compatible with the Ruby interface of Float:
 
@@ -248,7 +248,11 @@ Note that the conversion we've defined depends on the context precision:
 
   Decimal.local_context(:precision=>12) { puts Decimal(0.1) } -> 0.100000000000
 
-== Decimal vs BigDecimal
+== Available functionality
+
+Consult the documentation for the classes Decimal and Decimal::Context.
+
+= Decimal vs BigDecimal
 
 --
 EXPAND-
@@ -294,3 +298,9 @@ The result of this method does not have trailing insignificant digits, as is com
 --
 EXPAND+
 ++
+
+= Roadmap
+
+* Complete documentation (README sections on special values & exceptions, etc. and method descriptions.)
+* Version 0.2.0: Implement GDAS exp(), power(), ln() log10() and also the Ruby-style operator **.
+* Version 0.3.0:
