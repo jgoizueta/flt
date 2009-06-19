@@ -27,7 +27,7 @@ Decimal() is a constructor that can be used instead of Decimal.new()
 
 == Contexts
 
-Contexts are envrionments for arithmetic operations. They govern precision, set rules
+Contexts are environments for arithmetic operations. They govern precision, set rules
 for rounding, determine which signals are treated as exceptions, and limit the range
 for exponents.
 
