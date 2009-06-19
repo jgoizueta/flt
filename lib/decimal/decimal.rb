@@ -2526,7 +2526,7 @@ class Decimal
     return ans
   end
 
-  # Rounds to a nearby integerwithout raising Inexact or Rounded.
+  # Rounds to a nearby integer. Doesn't raise Inexact or Rounded.
   def to_integral_value(context=nil)
     context = Decimal.define_context(context)
     if special?
