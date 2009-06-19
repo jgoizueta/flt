@@ -635,8 +635,20 @@ class Decimal
   end
 
   # The current context (thread-local).
-  def Decimal.context
-    Thread.current['Decimal.context'] ||= DefaultContext.dup
+  # If arguments are passed they are interpreted as in Decimal.define_context() to change
+  # the current context.
+  # If a block is given, this method is a synonim for Decimal.local_context().
+  def Decimal.context(*args, &blk)
+    if blk
+      # setup a local context
+      local_context(*args, &blk)
+    elsif args.empty?
+      # return the current context
+      Thread.current['Decimal.context'] ||= DefaultContext.dup
+    else
+      # change the current context
+      Decimal.context = define_context(*args)
+    end
   end
 
   # Change the current context (thread-local).

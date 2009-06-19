@@ -46,7 +46,7 @@ The active context can be globally for the current thread:
 
 Or it can be altered locally inside a block:
 
-  Decimal.local_context do
+  Decimal.context do
     Decimal.context.precision = 5
     puts Decimal.context.precision
   end                                                -> 5
@@ -54,8 +54,8 @@ Or it can be altered locally inside a block:
 
 The block for a local context can be passed the current context as an argument:
 
-  Decimal.local_context do |context|
-    context.precision = 5
+  Decimal.context do |local_context|
+    local_context.precision = 5
     puts Decimal.context.precision
   end                                                -> 5
   puts Decimal.context.precision                     -> 9
@@ -63,7 +63,7 @@ The block for a local context can be passed the current context as an argument:
 A context object can be used to define the local context:
 
   my_context = Decimal::Context(:precision=>20)
-  Decimal.local_context(my_context) do |context|
+  Decimal.context(my_context) do |context|
     puts context.precision
   end                                                -> 20
 
@@ -71,7 +71,7 @@ And individual parameters can be assigned like this:
 
   puts Decimal.context.precision                     -> 9
   puts Decimal.context.rounding                      -> half_even
-  Decimal.local_context(:rounding=>:down) do |context|
+  Decimal.context(:rounding=>:down) do |context|
     puts context.precision
     puts context.rounding
   end
@@ -85,15 +85,15 @@ that object:
   Decimal.context = Decimal::Context(:rounding=>:half_up)
   puts Decimal.context.precision                     -> 10
 
-Note that a context object assigned to Decimal.context are copied,
-so they are not altered through Decimal.context:
+Note that a context object assigned to Decimal.context is copied,
+so it is not altered through Decimal.context:
 
   puts my_context.precision                          -> 20
   Decimal.context = my_context
   Decimal.context.precision = 2
   puts my_context.precision                          -> 20
 
-So DefaultContext is not altered when modifying Decimal.context.
+So, DefaultContext is not altered when modifying Decimal.context.
 
 Methods that use a context have an optional parameter to override
 the active context (Decimal.context) :
@@ -102,13 +102,13 @@ the active context (Decimal.context) :
   puts Decimal(1).divide(3)                          -> 0.333
   puts Decimal(1).divide(3, my_context)              -> 0.33333333333333333333
 
-And individual context parameter can also be overriden:
+Individual context parameters can also be overriden:
 
   puts Decimal(1).divide(3, :precision=>6)           -> 0.333333
 
 There are two additional predefined contexts Decimal::ExtendedContext
 and Decimal::BasicContext that are not meant to be modified; they
-can be use to achieve reproducible results. We will use
+can be used to achieve reproducible results. We will use
 Decimal::ExtendedContext in the following examples:
 
   Decimal.context = Decimal::ExtendedContext
