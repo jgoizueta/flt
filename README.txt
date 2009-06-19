@@ -9,6 +9,10 @@ define a nice feature-set and API for Decimal and have a good test suite for its
 specification. Then an efficient implementation could be written, for example
 by using a C extension wrapper around the decNumber library.
 
+The documentation for this package is available at http://ruby-decimal.rubyforge.org/
+
+The code is at http://github.com/jgoizueta/ruby-decimal/
+
 == Standars compliance.
 
 Decimal pretends to be conformant to the General Decimal Arithmetic Specification
@@ -248,7 +252,7 @@ Note that the conversion we've defined depends on the context precision:
 
   Decimal.local_context(:precision=>12) { puts Decimal(0.1) } -> 0.100000000000
 
-== Available functionality
+== More Information
 
 Consult the documentation for the classes Decimal and Decimal::Context.
 
