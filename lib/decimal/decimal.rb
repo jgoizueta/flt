@@ -2256,7 +2256,7 @@ class Decimal
   def _round_half_up(i)
     if ROUND_ARITHMETIC
       m = Decimal.int_radix_power(i)
-      if (m>1) && ((@coeff%m) >= m/2)
+      if (m>1) && ((@coeff % m) >= m/2)
         1
       else
         (@coeff % m)==0 ? 0 : -1
@@ -2713,7 +2713,7 @@ class Decimal
   # always exact.
   def power(other, modulo=nil, context=nil)
 
-    if context.nil? && modulo.is_a?(Context) || modulo.is_a?(Hash)
+    if context.nil? && (modulo.is_a?(Context) || modulo.is_a?(Hash))
       context = modulo
       modulo = nil
     end
@@ -2827,7 +2827,7 @@ class Decimal
       # possibility of underflow to 0
       etiny = context.etiny
       if bound >= (-etiny).to_s.length
-        ans = Decimal(result_sign, '1', etiny-1)
+        ans = Decimal(result_sign, 1, etiny-1)
       end
     end
 
@@ -2856,8 +2856,9 @@ class Decimal
       coeff, exp = nil, nil
       loop do
         coeff, exp = _dpower(xc, xe, yc, ye, p+extra)
-#        puts "c=#{coeff} e=#{exp}"
-        break if coeff % Decimal.int_mult_radix_power(5,coeff.to_s.length-p-1)
+#        puts "c=#{coeff.inspect} e=#{exp}"
+        #break if (coeff % Decimal.int_mult_radix_power(5,coeff.to_s.length-p-1)) != 0
+        break if (coeff % (5*10**(coeff.to_s.length-p-1))) != 0
         extra += 3
       end
 
@@ -3077,14 +3078,14 @@ class Decimal
 
     xc = self.integral_significand
     xe = self.integral_exponent
-    while xc % Decimal.radix == 0
+    while (xc % Decimal.radix) == 0
       xc /= Decimal.radix
       xe += 1
     end
 
     yc = other.integral_significand
     ye = other.integral_exponent
-    while yc % Decimal.radix == 0
+    while (yc % Decimal.radix) == 0
       yc /= Decimal.radix
       ye += 1
     end
@@ -3096,11 +3097,11 @@ class Decimal
         exponent = xe*yc*Decimal.int_radix_power(ye)
       else
         exponent, remainder = (xe*yc).divmod(Decimal.int_radix_power(-ye))
-        return nil if remainder
+        return nil if remainder!=0
       end
       exponent = -exponent if other.sign == -1
       # if other is a nonnegative integer, use ideal exponent
-      if other.integral? and other.sign == +1
+      if other.integral? and (other.sign == +1)
         ideal_exponent = self.integral_exponent*other.to_i
         zeros = [exponent-ideal_exponent, p-1].min
       else
@@ -3112,7 +3113,7 @@ class Decimal
     # case where y is negative: xc must be either a power
     # of 2 or a power of 5.
     if other.sign == -1
-      last_digit = xc % 10
+      last_digit = (xc % 10)
       if [2,4,6,8].include?(last_digit)
         # quick test for power of 2
         return nil if xc & -xc != xc
@@ -3126,9 +3127,9 @@ class Decimal
         else
           ten_pow = Decimal.int_radix_power(-ye)
           e, remainder = (e*yc).divmod(ten_pow)
-          return nil if remainder
+          return nil if remainder!=0
           xe, remainder = (xe*yc).divmod(ten_pow)
-          return nil if remainder
+          return nil if remainder!=0
         end
 
         return nil if e*65 >= p*93 # 93/65 > log(10)/log(5)
@@ -3138,8 +3139,8 @@ class Decimal
         # equality all the way up to xc=5**2658
         e = _nbits(xc)*28/65
         xc, remainder = (5**e).divmod(xc)
-        return nil if remainder
-        while xc % 5 == 0
+        return nil if remainder!=0
+        while (xc % 5) == 0
           xc /= 5
           e -= 1
         end
@@ -3170,9 +3171,9 @@ class Decimal
     if ye >= 0
       m, n = yc*10**ye, 1
     else
-      return nil if xe != 0 and (yc*xe).abs.to_s.length <= -ye
+      return nil if (xe != 0) and ((yc*xe).abs.to_s.length <= -ye)
       xc_bits = _nbits(xc)
-      return nil if xc != 1 and (yc.abs*xc_bits).to_s.length <= -ye
+      return nil if (xc != 1) and ((yc.abs*xc_bits).to_s.length <= -ye)
       m, n = yc, Decimal.int_radix_power(-ye)
       while ((m % 2) == 0) && ((n % 2) == 0)
         m /= 2
@@ -3199,7 +3200,7 @@ class Decimal
         break if a <= q
         a = (a*(n-1) + q)/n
       end
-      return nil if !(a == q and r == 0)
+      return nil if !((a == q) and (r == 0))
       xc = a
     end
 
@@ -3208,7 +3209,7 @@ class Decimal
 
     # if m > p*100/_log10_lb(xc) then m > p/log10(xc), hence xc**m >
     # 10**p and the result is not representable.
-    return nil if xc > 1 and m > p*100/_log10_lb(xc)
+    return nil if (xc > 1) and (m > p*100/_log10_lb(xc))
     xc = xc**m
     xe *= m
     return nil if xc > 10**p
@@ -3312,13 +3313,11 @@ class Decimal
     #
     # We assume that: x is positive and not equal to 1, and y is nonzero.
     def _dpower(xc, xe, yc, ye, p)
-      puts "xc=#{xc} xe=#{xe}"
       # Find b such that 10**(b-1) <= |y| <= 10**b
       b = yc.abs.to_s.length + ye
 
       # log(x) = lxc*10**(-p-b-1), to p+b+1 places after the decimal point
       lxc = _dlog(xc, xe, p+b+1)
-      puts "lxc=#{lxc} -p-b-1=#{-p-b-1}"
 
       # compute product y*log(x) = yc*lxc*10**(-p-b-1+ye) = pc*10**(-p-1)
       shift = ye-b
@@ -3327,7 +3326,6 @@ class Decimal
       else
           pc = _div_nearest(lxc*yc, 10**-shift)
       end
-      puts "pc=#{pc}"
 
       if pc == 0
           # we prefer a result that isn't exactly 1; this makes it
@@ -3339,7 +3337,6 @@ class Decimal
           end
       else
           coeff, exp = _dexp(pc, -(p+1), p+1)
-          puts "coeff=#{coeff} exp=#{exp}"
           coeff = _div_nearest(coeff, 10)
           exp += 1
       end
@@ -3373,7 +3370,7 @@ class Decimal
         else
             cshift = c/10**-shift
         end
-        quot, rem = cshift.divmod(_log_10_digits(q))
+        quot, rem = cshift.divmod(Decimal._log_10_digits(q))
 
         # reduce remainder back to original precision
         rem = _div_nearest(rem, 10**extra)
@@ -3386,7 +3383,7 @@ class Decimal
     # in the case of a tie.
     def _div_nearest(a, b)
       q, r = a.divmod(b)
-      return q + (2*r + (((q&1) > b) ? 1 : 0))
+      q + (((2*r + (q&1)) > b) ? 1 : 0)
     end
 
     # Closest integer to the square root of the positive integer n.  a is
@@ -3409,36 +3406,10 @@ class Decimal
     # Given an integer x and a nonnegative integer shift, return closest
     # integer to x / 2**shift; use round-to-even in case of a tie.
     def _rshift_nearest(x, shift)
-        b, q = 1 << shift, x >> shift
-        return q + (2*(x & (b-1)) + (((q&1) > b) ? 1 : 0))
+        b, q = (1 << shift), (x >> shift)
+        return q + (((2*(x & (b-1)) + (q&1)) > b) ? 1 : 0)
+        #return q + (2*(x & (b-1)) + (((q&1) > b) ? 1 : 0))
     end
-
-    # Given an integer p >= 0, return floor(10**p)*log(10).
-    def _log_10_digits(p)
-      # digits are stored as a string, for quick conversion to
-      # integer in the case that we've already computed enough
-      # digits; the stored digits should always be correct
-      # (truncated, not rounded to nearest).
-      raise ArgumentError, "p should be nonnegative" if p<0
-
-      if p >= @log_10_digits.length
-          # compute p+3, p+6, p+9, ... digits; continue until at
-          # least one of the extra digits is nonzero
-          extra = 3
-          loop do
-            # compute p+extra digits, correct to within 1ulp
-            m = 10**(p+extra+2)
-            digits = _div_nearest(_ilog(10*m, m), 100).to_s
-            break if digits[-extra..-1] != '0'*extra
-            extra += 3
-          end
-          # keep all reliable digits so far; remove trailing zeros
-          # and next nonzero digit
-          @log_10_digits = digits.sub(/0*$/,'')[0...-1]
-      end
-      return (@log_10_digits[0...p+1]).to_i
-    end
-    @log_10_digits = "23025850929940456840179914546843642076011014886"
 
     # Integer approximation to M*log(x/M), with absolute error boundable
     # in terms only of x/M.
@@ -3473,8 +3444,10 @@ class Decimal
         y = x-m
         # argument reduction; R = number of reductions performed
         r = 0
-        while (r <= l && y.abs << l-r >= m ||
-               r > l and y.abs>> r-l >= m)
+        # while (r <= l && y.abs << l-r >= m ||
+        #        r > l and y.abs>> r-l >= m)
+        while (((r <= l) && ((y.abs << (l-r)) >= m)) ||
+               ((r > l) && ((y.abs>>(r-l)) >= m)))
             y = _div_nearest((m*y) << 1,
                              m + _sqrt_nearest(m*(m+_rshift_nearest(y, r)), m))
             r += 1
@@ -3538,7 +3511,7 @@ class Decimal
             if p + extra >= 0
                 # error in f * _log_10_digits(p+extra) < |f| * 1 = |f|
                 # after division, error < |f|/10**extra + 0.5 < 10 + 0.5 < 11
-                f_log_ten = _div_nearest(f*_log_10_digits(p+extra), 10**extra)
+                f_log_ten = _div_nearest(f*Decimal._log_10_digits(p+extra), 10**extra)
             else
                 f_log_ten = 0
             end
@@ -3592,6 +3565,34 @@ class Decimal
 
   end # AuxiliarFunctions
   include AuxiliarFunctions
+
+  # Given an integer p >= 0, return floor(10**p)*log(10).
+  def Decimal._log_10_digits(p)
+    # digits are stored as a string, for quick conversion to
+    # integer in the case that we've already computed enough
+    # digits; the stored digits should always be correct
+    # (truncated, not rounded to nearest).
+    raise ArgumentError, "p should be nonnegative" if p<0
+    if p >= @log_10_digits.length
+        digits = nil
+        # compute p+3, p+6, p+9, ... digits; continue until at
+        # least one of the extra digits is nonzero
+        extra = 3
+        loop do
+          # compute p+extra digits, correct to within 1ulp
+          m = 10**(p+extra+2)
+          digits = AuxiliarFunctions._div_nearest(AuxiliarFunctions._ilog(10*m, m), 100).to_s
+          break if digits[-extra..-1] != '0'*extra
+          extra += 3
+        end
+        # keep all reliable digits so far; remove trailing zeros
+        # and next nonzero digit
+        @log_10_digits = digits.sub(/0*$/,'')[0...-1]
+    end
+    return (@log_10_digits[0...p+1]).to_i
+  end
+  @log_10_digits = "23025850929940456840179914546843642076011014886"
+
 
 end
 
