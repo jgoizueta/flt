@@ -3702,7 +3702,7 @@ class Decimal
   include AuxiliarFunctions
   # If we need to use them from Decimal class methods, we can avoid
   # the use of the prefix with:
-  # expand AuxiliarFunctions
+  # extend AuxiliarFunctions
 
 end
 
