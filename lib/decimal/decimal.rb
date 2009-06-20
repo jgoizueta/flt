@@ -322,6 +322,13 @@ class Decimal
 
     attr_accessor :rounding, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp
 
+    # TODO: consider the convenience of adding accessors of this kind:
+    # def rounding(new_rounding=nil)
+    #   old_rounding = @rounding
+    #   @rounding = new_rounding unless new_rounding.nil?
+    #   old_rounding
+    # end
+
     # Ignore all flags if they are raised
     def ignore_all_flags
       #@ignored_flags << EXCEPTIONS
@@ -902,6 +909,13 @@ class Decimal
     keep = context.dup
     Decimal.context = define_context(*args)
     result = yield Decimal.context
+    # TODO: consider the convenience of copying the flags from Decimal.context to keep
+    # This way a local context does not affect the settings of the previous context,
+    # but flags are transferred.
+    # (this could be done always or be controlled by some option)
+    #   keep.flags = Decimal.context.flags
+    # Another alternative to consider: logically or the flags:
+    #   keep.flags ||= Decimal.context.flags # (this requires implementing || in Flags)
     Decimal.context = keep
     result
   end
