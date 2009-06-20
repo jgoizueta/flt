@@ -1847,7 +1847,11 @@ class Decimal
   # Ruby-style to integer conversion.
   def to_i
     if special?
-      return nil if nan?
+      if nan?
+        #return Decimal.context.exception(InvalidContext)
+        Decimal.context.exception InvalidContext
+        return nil
+      end
       raise Error, "Cannot convert infinity to Integer"
     end
     if @exp >= 0
@@ -3370,7 +3374,7 @@ class Decimal
         else
             cshift = c/10**-shift
         end
-        quot, rem = cshift.divmod(Decimal._log_10_digits(q))
+        quot, rem = cshift.divmod(_log_10_digits(q))
 
         # reduce remainder back to original precision
         rem = _div_nearest(rem, 10**extra)
@@ -3511,7 +3515,7 @@ class Decimal
             if p + extra >= 0
                 # error in f * _log_10_digits(p+extra) < |f| * 1 = |f|
                 # after division, error < |f|/10**extra + 0.5 < 10 + 0.5 < 11
-                f_log_ten = _div_nearest(f*Decimal._log_10_digits(p+extra), 10**extra)
+                f_log_ten = _div_nearest(f*_log_10_digits(p+extra), 10**extra)
             else
                 f_log_ten = 0
             end
@@ -3563,36 +3567,46 @@ class Decimal
         return m+y
     end
 
-  end # AuxiliarFunctions
-  include AuxiliarFunctions
-
-  # Given an integer p >= 0, return floor(10**p)*log(10).
-  def Decimal._log_10_digits(p)
-    # digits are stored as a string, for quick conversion to
-    # integer in the case that we've already computed enough
-    # digits; the stored digits should always be correct
-    # (truncated, not rounded to nearest).
-    raise ArgumentError, "p should be nonnegative" if p<0
-    if p >= @log_10_digits.length
-        digits = nil
-        # compute p+3, p+6, p+9, ... digits; continue until at
-        # least one of the extra digits is nonzero
-        extra = 3
-        loop do
-          # compute p+extra digits, correct to within 1ulp
-          m = 10**(p+extra+2)
-          digits = AuxiliarFunctions._div_nearest(AuxiliarFunctions._ilog(10*m, m), 100).to_s
-          break if digits[-extra..-1] != '0'*extra
-          extra += 3
-        end
-        # keep all reliable digits so far; remove trailing zeros
-        # and next nonzero digit
-        @log_10_digits = digits.sub(/0*$/,'')[0...-1]
+    # We'll memoize the digits of log(10):
+    @log_10_digits = "23025850929940456840179914546843642076011014886"
+    class <<self
+      attr_accessor :log_10_digits
     end
-    return (@log_10_digits[0...p+1]).to_i
-  end
-  @log_10_digits = "23025850929940456840179914546843642076011014886"
 
+    # Given an integer p >= 0, return floor(10**p)*log(10).
+    def _log_10_digits(p)
+      # digits are stored as a string, for quick conversion to
+      # integer in the case that we've already computed enough
+      # digits; the stored digits should always be correct
+      # (truncated, not rounded to nearest).
+      raise ArgumentError, "p should be nonnegative" if p<0
+      if p >= AuxiliarFunctions.log_10_digits.length
+          digits = nil
+          # compute p+3, p+6, p+9, ... digits; continue until at
+          # least one of the extra digits is nonzero
+          extra = 3
+          loop do
+            # compute p+extra digits, correct to within 1ulp
+            m = 10**(p+extra+2)
+            digits = _div_nearest(_ilog(10*m, m), 100).to_s
+            break if digits[-extra..-1] != '0'*extra
+            extra += 3
+          end
+          # keep all reliable digits so far; remove trailing zeros
+          # and next nonzero digit
+          AuxiliarFunctions.log_10_digits = digits.sub(/0*$/,'')[0...-1]
+      end
+      return (AuxiliarFunctions.log_10_digits[0...p+1]).to_i
+    end
+
+  end # AuxiliarFunctions
+
+  # This is for using auxiliar functions from Decimal instance method
+  # without the "AuxiliarFunctions." prefix
+  include AuxiliarFunctions
+  # If we need to use them from Decimal class methods, we can avoid
+  # the use of the prefix with:
+  # expand AuxiliarFunctions
 
 end
 
