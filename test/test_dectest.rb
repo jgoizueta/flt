@@ -90,6 +90,7 @@ EXCEPTIONS = %w{
   powx4008 powx4010 powx4012 powx4014
   logx901  logx902  logx903  logx903  logx905
   expx901  expx902  expx903  expx905
+  lnx901   lnx902   lnx903   lnx905
 }
 
 

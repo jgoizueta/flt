@@ -1324,9 +1324,6 @@ class Decimal
       result_sign = +1
     end
 
-    #puts "op1=#{op1.inspect} op2=#{op2.inspect}"
-
-
     if op2.sign == +1
       result_coeff = op1.integral_significand + op2.integral_significand
     else
@@ -1334,8 +1331,6 @@ class Decimal
     end
 
     result_exp = op1.integral_exponent
-
-    #puts "->#{Decimal([result_sign, result_coeff, result_exp]).inspect}"
 
     return Decimal([result_sign, result_coeff, result_exp])._fix(context)
 
@@ -2760,14 +2755,13 @@ class Decimal
     loop do
       coeff = _dlog(c, e, places)
       # assert coeff.to_s.length-p >= 1
-      break if (coeff % (5*10**(coeff.to_s.length-p-1))) != 0
+      break if (coeff % (5*10**(coeff.abs.to_s.length-p-1))) != 0
       places += 3
     end
     ans = Decimal((coeff<0) ? -1 : +1, coeff.abs, -places)
 
     Decimal.context(context, :rounding=>:half_even) do |local_context|
       ans = ans._fix(local_context)
-      puts local_context.flags.inspect
       context.flags = local_context.flags
     end
     return ans
@@ -3525,7 +3519,6 @@ class Decimal
 
     # Normalizes op1, op2 to have the same exp and length of coefficient. Used for addition.
     def _normalize(op1, op2, prec=0)
-      #puts "N: #{op1.inspect} #{op2.inspect} p=#{prec}"
       if op1.integral_exponent < op2.integral_exponent
         swap = true
         tmp,other = op2,op1
