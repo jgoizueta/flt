@@ -156,8 +156,12 @@ class Decimal
   # This occurs and signals inexact whenever the result of an operation is
   # not exact (that is, it needed to be rounded and any discarded digits
   # were non-zero), or if an overflow or underflow condition occurs.  The
-  # result in all cases is unchanged.
+  # result in all cases is unchanged unless the context has exact precision,
+  # in which case the result is Nan
   class Inexact < Exception
+    def self.handle(context, *args)
+      Decimal.nan if context.exact?
+    end
   end
 
   # Overflow Exception.
@@ -1443,6 +1447,8 @@ class Decimal
       end
     end
 
+    return context.exception(InvalidOperation, 'Exact next minus') if context.exact?
+
     result = nil
     Decimal.local_context(context) do |local|
       local.rounding = :floor
@@ -1458,6 +1464,7 @@ class Decimal
   # Smallest representable number larger than itself
   def next_plus(context=nil)
     context = Decimal.define_context(context)
+
     if special?
       ans = _check_nans(context)
       return ans if ans
@@ -1471,6 +1478,8 @@ class Decimal
         end
       end
     end
+
+    return context.exception(InvalidOperation, 'Exact next plus') if context.exact?
 
     result = nil
     Decimal.local_context(context) do |local|
@@ -1491,6 +1500,8 @@ class Decimal
     other = _convert(other)
     ans = _check_nans(context,other)
     return ans if ans
+
+    return context.exception(InvalidOperation, 'Exact next_toward') if context.exact?
 
     comparison = self <=> other
     return self.copy_sign(other) if comparison == 0
@@ -2442,6 +2453,7 @@ class Decimal
     # depend on the exponent of self, and on whether other is a
     # positive integer, a negative integer, or neither
     if _self == Decimal(1)
+      return _self if context.exact?
       if other.integral?
         # exp = max(self._exp*max(int(other), 0),
         # 1-context.prec) but evaluating int(other) directly
@@ -2509,14 +2521,27 @@ class Decimal
 
     # try for an exact result with precision +1
     if ans.nil?
-      ans = _self._power_exact(other, context.precision + 1)
+      if context.exact?
+        if other.adjusted_exponent < 100
+          test_precision = _self.number_of_digits*other.to_i+1
+        else
+          test_precision = _self.number_of_digits+1
+        end
+      else
+        test_precision = context.precision + 1
+      end
+      ans = _self._power_exact(other, test_precision)
       if !ans.nil? && (result_sign == -1)
         ans = Decimal(-1, ans.integral_significand, ans.integral_exponent)
       end
     end
 
     # usual case: inexact result, x**y computed directly as exp(y*log(x))
-    if ans.nil?
+    if !ans.nil?
+      return ans if context.exact?
+    else
+      return context.exception(Inexact, "Inexact power") if context.exact?
+
       p = context.precision
       xc = _self.integral_significand
       xe = _self.integral_exponent
@@ -2578,8 +2603,10 @@ class Decimal
     if digits.first == 1 && digits[1..-1].all?{|d| d==0}
       # answer may need rounding
       ans = Decimal(self.integral_exponent + digits.size - 1)
+      return ans if context.exact?
     else
       # result is irrational, so necessarily inexact
+      return context.exception(Inexact, "Inexact power") if context.exact?
       c = self.integral_significand
       e = self.integral_exponent
       p = context.precision
