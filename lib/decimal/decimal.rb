@@ -1271,7 +1271,7 @@ class Decimal
       return self._rescale(exp, context.rounding)._fix(context)
     end
 
-    op1, op2 = Decimal._normalize(self, other, context.precision)
+    op1, op2 = _normalize(self, other, context.precision)
 
     result_sign = result_coeff = result_exp = nil
     if op1.sign != op2.sign
@@ -2400,29 +2400,6 @@ class Decimal
 
   end
 
-  # Normalizes op1, op2 to have the same exp and length of coefficient. Used for addition.
-  def Decimal._normalize(op1, op2, prec=0)
-    #puts "N: #{op1.inspect} #{op2.inspect} p=#{prec}"
-    if op1.integral_exponent < op2.integral_exponent
-      swap = true
-      tmp,other = op2,op1
-    else
-      swap = false
-      tmp,other = op1,op2
-    end
-    tmp_len = tmp.number_of_digits
-    other_len = other.number_of_digits
-    exp = tmp.integral_exponent + [-1, tmp_len - prec - 2].min
-    #puts "exp=#{exp}"
-    if (other_len+other.integral_exponent-1 < exp) && prec>0
-      other = Decimal.new([other.sign, 1, exp])
-      #puts "other = #{other.inspect}"
-    end
-    tmp = Decimal.new([tmp.sign, int_mult_radix_power(tmp.integral_significand, tmp.integral_exponent-other.integral_exponent), other.integral_exponent])
-    #puts "tmp=#{tmp.inspect}"
-    return swap ? [other, tmp] : [tmp, other]
-  end
-
   # Returns a copy of with the sign set to +
   def copy_abs
     Decimal.new([+1,@coeff,@exp])
@@ -3331,7 +3308,7 @@ class Decimal
     return num.length + e - ((num < "231") ? 1 : 0) - 1
   end
 
-  module AuxiliarFunctions
+  module AuxiliarFunctions #:nodoc:
 
     module_function
 
@@ -3342,6 +3319,28 @@ class Decimal
         OpenStruct.new :sign=>md[1], :int=>md[2], :frac=>md[3], :onlyfrac=>md[4], :exp=>md[5],
                        :signal=>md[6], :diag=>md[7]
       end
+    end
+
+    # Normalizes op1, op2 to have the same exp and length of coefficient. Used for addition.
+    def _normalize(op1, op2, prec=0)
+      #puts "N: #{op1.inspect} #{op2.inspect} p=#{prec}"
+      if op1.integral_exponent < op2.integral_exponent
+        swap = true
+        tmp,other = op2,op1
+      else
+        swap = false
+        tmp,other = op1,op2
+      end
+      tmp_len = tmp.number_of_digits
+      other_len = other.number_of_digits
+      exp = tmp.integral_exponent + [-1, tmp_len - prec - 2].min
+      if (other_len+other.integral_exponent-1 < exp) && prec>0
+        other = Decimal.new([other.sign, 1, exp])
+      end
+      tmp = Decimal.new(tmp.sign,
+                        Decimal.int_mult_radix_power(tmp.integral_significand, tmp.integral_exponent-other.integral_exponent),
+                        other.integral_exponent)
+      return swap ? [other, tmp] : [tmp, other]
     end
 
     # Number of bits in binary representation of the positive integer n, or 0 if n == 0.
