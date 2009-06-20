@@ -305,6 +305,5 @@ EXPAND+
 
 = Roadmap
 
-* Complete documentation (README sections on special values & exceptions, etc. and method descriptions.)
-* Version 0.2.0: Implement GDA exp(), power(), ln() log10() and also the Ruby-style operator **.
 * Version 0.3.0: Implement the remaining of GDA functions
+* Complete documentation (README sections on special values & exceptions, etc. and method descriptions.)

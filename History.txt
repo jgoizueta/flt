@@ -1,3 +1,9 @@
 == 0.1.0 2009-06-19
 
-* Initial release
+* Initial release 0.1.0
+
+== 0.2.0 2009-06-21
+
+* Release 0.2.0
+  New functions implemented: exp(), ln(), log10(), power().
+
