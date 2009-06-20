@@ -548,6 +548,11 @@ class Decimal
       _convert(x).log10(self)
     end
 
+    # Exponential function: e**x
+    def exp(x)
+      _convert(x).exp(self)
+    end
+
     # Exponent in relation to the significand as an integer
     # normalized to precision digits. (minimum exponent)
     def normalized_integral_exponent(x)
@@ -2645,6 +2650,77 @@ class Decimal
     return ans
   end
 
+  # Exponential function
+  def exp(context=nil)
+    context = Decimal.define_context(context)
+
+    # exp(NaN) = NaN
+    ans = _check_nans(context)
+    return ans if ans
+
+    # exp(-Infinity) = 0
+    return Decimal.zero if self.infinite? && (self.sign == -1)
+
+    # exp(0) = 1
+    return Decimal(1) if self.zero?
+
+    # exp(Infinity) = Infinity
+    return Decimal(self) if self.infinite?
+
+    # the result is now guaranteed to be inexact (the true
+    # mathematical result is transcendental). There's no need to
+    # raise Rounded and Inexact here---they'll always be raised as
+    # a result of the call to _fix.
+    return context.exception(Inexact, 'Inexact exp') if context.exact?
+    p = context.precision
+    adj = self.adjusted_exponent
+
+    # we only need to do any computation for quite a small range
+    # of adjusted exponents---for example, -29 <= adj <= 10 for
+    # the default context.  For smaller exponent the result is
+    # indistinguishable from 1 at the given precision, while for
+    # larger exponent the result either overflows or underflows.
+    if self.sign == +1 and adj > ((context.emax+1)*3).to_s.length
+      # overflow
+      ans = Decimal(+1, 1, context.emax+1)
+    elsif self.sign == -1 and adj > ((-context.etiny+1)*3).to_s.length
+      # underflow to 0
+      ans = Decimal(+1, 1, context.etiny-1)
+    elsif self.sign == +1 and adj < -p
+      # p+1 digits; final round will raise correct flags
+      ans = Decimal(+1, Decimal.int_radix_power(p)+1, -p)
+    elsif self.sign == -1 and adj < -p-1
+      # p+1 digits; final round will raise correct flags
+      ans = Decimal(+1, Decimal.int_radix_power(p+1)-1, -p-1)
+    else
+      # general case
+      c = self.integral_significand
+      e = self.integral_exponent
+      c = -c if self.sign == -1
+
+      # compute correctly rounded result: increase precision by
+      # 3 digits at a time until we get an unambiguously
+      # roundable result
+      extra = 3
+      coeff = exp = nil
+      loop do
+        coeff, exp = _dexp(c, e, p+extra)
+        break if (coeff % (5*10**(coeff.to_s.length-p-1)))!=0
+        extra += 3
+      end
+      ans = Decimal(+1, coeff, exp)
+    end
+
+    # at this stage, ans should round correctly with *any*
+    # rounding mode, not just with ROUND_HALF_EVEN
+    Decimal.context(context, :rounding=>:half_even) do |local_context|
+      ans = ans._fix(local_context)
+      context.flags = local_context.flags
+    end
+
+    return ans
+  end
+
   # Auxiliar Methods
 
   # Check if the number or other is NaN, signal if sNaN or return NaN;
@@ -3736,6 +3812,43 @@ class Decimal
           AuxiliarFunctions.log10_digits = digits.sub(/0*$/,'')[0...-1]
       end
       return (AuxiliarFunctions.log10_digits[0...p+1]).to_i
+    end
+
+    # Compute an approximation to exp(c*10**e), with p decimal places of
+    # precision.
+    #
+    # Returns integers d, f such that:
+    #
+    #   10**(p-1) <= d <= 10**p, and
+    #   (d-1)*10**f < exp(c*10**e) < (d+1)*10**f
+    #
+    # In other words, d*10**f is an approximation to exp(c*10**e) with p
+    # digits of precision, and with an error in d of at most 1.  This is
+    # almost, but not quite, the same as the error being < 1ulp: when d
+    # = 10**(p-1) the error could be up to 10 ulp.
+    def dexp(c, e, p)
+      # we'll call iexp with M = 10**(p+2), giving p+3 digits of precision
+      p += 2
+
+      # compute log(10) with extra precision = adjusted exponent of c*10**e
+      extra = [0, e + c.to_s.length - 1].max
+      q = p + extra
+
+      # compute quotient c*10**e/(log(10)) = c*10**(e+q)/(log(10)*10**q),
+      # rounding down
+      shift = e+q
+      if shift >= 0
+          cshift = c*10**shift
+      else
+          cshift = c/10**-shift
+      end
+      quot, rem = cshift.divmod(_log10_digits(q))
+
+      # reduce remainder back to original precision
+      rem = _div_nearest(rem, 10**extra)
+
+      # error in result of _iexp < 120;  error after division < 0.62
+      return _div_nearest(_iexp(rem, 10**p), 1000), quot - p + 3
     end
 
   end # AuxiliarFunctions

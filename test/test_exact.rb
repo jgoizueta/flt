@@ -45,6 +45,12 @@ class TestExact < Test::Unit::TestCase
     assert !Decimal.context.flags[Decimal::Inexact]
     assert_equal Decimal('-5'),Decimal('0.00001').log10
     assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal.infinity, Decimal.infinity.exp
+    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal.zero, Decimal.infinity(-1).exp
+    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal(1), Decimal(0).exp
+    assert !Decimal.context.flags[Decimal::Inexact]
 
     assert((Decimal(1)/Decimal(3)).nan?)
     assert Decimal.context.flags[Decimal::Inexact]
@@ -56,6 +62,12 @@ class TestExact < Test::Unit::TestCase
     assert Decimal.context.flags[Decimal::Inexact]
     Decimal.context.flags[Decimal::Inexact] = false
     assert Decimal(18).log10.nan?
+    assert Decimal.context.flags[Decimal::Inexact]
+    Decimal.context.flags[Decimal::Inexact] = false
+    assert Decimal(1).exp.nan?
+    assert Decimal.context.flags[Decimal::Inexact]
+    Decimal.context.flags[Decimal::Inexact] = false
+    assert Decimal('-1.2').exp.nan?
     assert Decimal.context.flags[Decimal::Inexact]
     Decimal.context.flags[Decimal::Inexact] = false
 
@@ -78,6 +90,12 @@ class TestExact < Test::Unit::TestCase
     assert_equal Decimal(2), Decimal('4').sqrt
     assert !Decimal.context.flags[Decimal::Inexact]
     assert_equal Decimal(4), Decimal('16').sqrt
+    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal.infinity, Decimal.infinity.exp
+    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal.zero, Decimal.infinity(-1).exp
+    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal(1), Decimal(0).exp
     assert !Decimal.context.flags[Decimal::Inexact]
 
     assert_equal Decimal('42398.78077199232'), Decimal('1.23456')*Decimal('34343.232222')
@@ -103,7 +121,9 @@ class TestExact < Test::Unit::TestCase
     assert_raise(Decimal::Inexact){ Decimal(1)/Decimal(3) }
     assert_raise(Decimal::Inexact){ Decimal(18).power(Decimal('0.5')) }
     assert_raise(Decimal::Inexact){ Decimal(18).power(Decimal('1.5')) }
-    assert_raise(Decimal::Inexact){ Decimal(18).log10.nan? }
+    assert_raise(Decimal::Inexact){ Decimal(18).log10 }
+    assert_raise(Decimal::Inexact){ Decimal(1).exp }
+    assert_raise(Decimal::Inexact){ Decimal('1.2').exp }
 
   end
 
