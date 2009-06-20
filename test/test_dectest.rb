@@ -41,11 +41,11 @@ FUNCTIONS = {
   'tosci'=>'to_sci_string',
   'toeng'=>'to_eng_string',
   'class'=>'number_class',
-  'power'=>'power'
+  'power'=>'power',
+  'log10'=>'log10'
 }
 # Functions not yet implemented
 PENDING = %w{
-  log10
   exp
   ln
 
@@ -85,11 +85,12 @@ FLAG_NAMES = {
 }
 
 # Excluded tests that we don't currently pass
-# powx1183,4 powx4001,2,3 & 5 require detection of invalid contexts which we don't currently do
+# powx1183,4 powx4001,2,3 & 5, logx901-5 require detection of invalid contexts which we don't currently do
 EXCEPTIONS = %w{
   powx1183 powx1184
   powx4001 powx4002 powx4003 powx4005
   powx4008 powx4010 powx4012 powx4014
+  logx901  logx902  logx903  logx903  logx905
 }
 
 

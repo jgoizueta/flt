@@ -532,6 +532,11 @@ class Decimal
       Decimal._convert(x).power(y,modulo,self)
     end
 
+    # Returns the base 10 logarithm
+    def log10(x)
+      Decimal._convert(x).log10(self)
+    end
+
     # Exponent in relation to the significand as an integer
     # normalized to precision digits. (minimum exponent)
     def normalized_integral_exponent(x)
@@ -2182,7 +2187,6 @@ class Decimal
     end
 
     if @exp < exp_min
-      #puts "_fix(#{self}) rounded; e=#{@exp} em=#{exp_min}"
       context.exception Rounded
       # dig is the digits number from 0 (MS) to number_of_digits-1 (LS)
       # dg = numberof_digits-dig is from 1 (LS) to number_of_digits (MS)
@@ -2300,7 +2304,7 @@ class Decimal
       d = @coeff.to_s
       p = d.size - i
 
-      if d[p..-1].match(/\A#{radix/2}0*\Z/) && (p==0 || ((d[p-1,1].to_i%2)==0))
+      if d[p..-1].match(/\A#{Decimal.radix/2}0*\Z/) && (p==0 || ((d[p-1,1].to_i%2)==0))
         -1
       else
         _round_half_up(i)
@@ -2977,6 +2981,54 @@ class Decimal
 
   end
 
+  # Returns the base 10 logarithm
+  def log10(context=nil)
+    context = Decimal.define_context(context)
+
+    # log10(NaN) = NaN
+    ans = _check_nans(context)
+    return ans if ans
+
+    # log10(0.0) == -Infinity
+    return Decimal.infinity(-1) if self.zero?
+
+    # log10(Infinity) = Infinity
+    return Decimal.infinity if self.infinite? && self.sign == +1
+
+    # log10(negative or -Infinity) raises InvalidOperation
+    return context.exception(InvalidOperation, 'log10 of a negative value') if self.sign == -1
+
+    digits = self.digits
+    # log10(10**n) = n
+    if digits.first == 1 && digits[1..-1].all?{|d| d==0}
+      # answer may need rounding
+      ans = Decimal(self.integral_exponent + digits.size - 1)
+    else
+      # result is irrational, so necessarily inexact
+      c = self.integral_significand
+      e = self.integral_exponent
+      p = context.precision
+
+      # correctly rounded result: repeatedly increase precision
+      # until result is unambiguously roundable
+      places = p-self._log10_exp_bound+2
+      coeff = nil
+      loop do
+        coeff = _dlog10(c, e, places)
+        # assert coeff.abs.to_s.length-p >= 1
+        break if (coeff % (5*10**(coeff.abs.to_s.length-p-1)))!=0
+        places += 3
+      end
+      ans = Decimal(coeff<0 ? -1 : +1, coeff.abs, -places)
+    end
+
+    Decimal.context(context, :rounding=>:half_even) do |local_context|
+      ans = ans._fix(local_context)
+      context.flags = local_context.flags
+    end
+    return ans
+  end
+
   # Power-modulo: self._power_modulo(other, modulo) == (self**other) % modulo
   # This is equivalent to Python's 3-argument version of pow()
   def _power_modulo(other, modulo, context=nil)
@@ -3380,7 +3432,7 @@ class Decimal
         else
             cshift = c/10**-shift
         end
-        quot, rem = cshift.divmod(_log_10_digits(q))
+        quot, rem = cshift.divmod(_log10_digits(q))
 
         # reduce remainder back to original precision
         rem = _div_nearest(rem, 10**extra)
@@ -3431,48 +3483,82 @@ class Decimal
     # both cases these are upper bounds on the error; it will usually be
     # much smaller.
     def _ilog(x, m, l = 8)
+      # The basic algorithm is the following: let log1p be the function
+      # log1p(x) = log(1+x).  Then log(x/M) = log1p((x-M)/M).  We use
+      # the reduction
+      #
+      #    log1p(y) = 2*log1p(y/(1+sqrt(1+y)))
+      #
+      # repeatedly until the argument to log1p is small (< 2**-L in
+      # absolute value).  For small y we can use the Taylor series
+      # expansion
+      #
+      #    log1p(y) ~ y - y**2/2 + y**3/3 - ... - (-y)**T/T
+      #
+      # truncating at T such that y**T is small enough.  The whole
+      # computation is carried out in a form of fixed-point arithmetic,
+      # with a real number z being represented by an integer
+      # approximation to z*M.  To avoid loss of precision, the y below
+      # is actually an integer approximation to 2**R*y*M, where R is the
+      # number of reductions performed so far.
 
-        # The basic algorithm is the following: let log1p be the function
-        # log1p(x) = log(1+x).  Then log(x/M) = log1p((x-M)/M).  We use
-        # the reduction
-        #
-        #    log1p(y) = 2*log1p(y/(1+sqrt(1+y)))
-        #
-        # repeatedly until the argument to log1p is small (< 2**-L in
-        # absolute value).  For small y we can use the Taylor series
-        # expansion
-        #
-        #    log1p(y) ~ y - y**2/2 + y**3/3 - ... - (-y)**T/T
-        #
-        # truncating at T such that y**T is small enough.  The whole
-        # computation is carried out in a form of fixed-point arithmetic,
-        # with a real number z being represented by an integer
-        # approximation to z*M.  To avoid loss of precision, the y below
-        # is actually an integer approximation to 2**R*y*M, where R is the
-        # number of reductions performed so far.
+      y = x-m
+      # argument reduction; R = number of reductions performed
+      r = 0
+      # while (r <= l && y.abs << l-r >= m ||
+      #        r > l and y.abs>> r-l >= m)
+      while (((r <= l) && ((y.abs << (l-r)) >= m)) ||
+             ((r > l) && ((y.abs>>(r-l)) >= m)))
+          y = _div_nearest((m*y) << 1,
+                           m + _sqrt_nearest(m*(m+_rshift_nearest(y, r)), m))
+          r += 1
+      end
 
-        y = x-m
-        # argument reduction; R = number of reductions performed
-        r = 0
-        # while (r <= l && y.abs << l-r >= m ||
-        #        r > l and y.abs>> r-l >= m)
-        while (((r <= l) && ((y.abs << (l-r)) >= m)) ||
-               ((r > l) && ((y.abs>>(r-l)) >= m)))
-            y = _div_nearest((m*y) << 1,
-                             m + _sqrt_nearest(m*(m+_rshift_nearest(y, r)), m))
-            r += 1
+      # Taylor series with T terms
+      t = -(-10*m.to_s.length/(3*l)).to_i
+      yshift = _rshift_nearest(y, r)
+      w = _div_nearest(m, t)
+      # (1...t).reverse_each do |k| # Ruby 1.9
+      (1...t).to_a.reverse.each do |k|
+         w = _div_nearest(m, k) - _div_nearest(yshift*w, m)
+      end
+
+      return _div_nearest(w*y, m)
+    end
+
+    # Given integers c, e and p with c > 0, p >= 0, compute an integer
+    # approximation to 10**p * log10(c*10**e), with an absolute error of
+    # at most 1.  Assumes that c*10**e is not exactly 1.
+    def _dlog10(c, e, p)
+       # increase precision by 2; compensate for this by dividing
+      # final result by 100
+      p += 2
+
+      # write c*10**e as d*10**f with either:
+      #   f >= 0 and 1 <= d <= 10, or
+      #   f <= 0 and 0.1 <= d <= 1.
+      # Thus for c*10**e close to 1, f = 0
+      l = c.to_s.length
+      f = e+l - ((e+l >= 1) ? 1 : 0)
+
+      if p > 0
+        m = 10**p
+        k = e+p-f
+        if k >= 0
+          c *= 10**k
+        else
+          c = _div_nearest(c, 10**-k)
         end
+        log_d = _ilog(c, m) # error < 5 + 22 = 27
+        log_10 = _log10_digits(p) # error < 1
+        log_d = _div_nearest(log_d*m, log_10)
+        log_tenpower = f*m # exact
+      else
+        log_d = 0  # error < 2.31
+        log_tenpower = _div_nearest(f, 10**-p) # error < 0.5
+      end
 
-        # Taylor series with T terms
-        t = -(-10*m.to_s.length/(3*l)).to_i
-        yshift = _rshift_nearest(y, r)
-        w = _div_nearest(m, t)
-        # (1...t).reverse_each do |k| # Ruby 1.9
-        (1...t).to_a.reverse.each do |k|
-           w = _div_nearest(m, k) - _div_nearest(yshift*w, m)
-        end
-
-        return _div_nearest(w*y, m)
+      return _div_nearest(log_tenpower+log_d, 100)
     end
 
     # Compute a lower bound for 100*log10(c) for a positive integer c.
@@ -3519,9 +3605,9 @@ class Decimal
         if f
             extra = f.abs.to_s.length - 1
             if p + extra >= 0
-                # error in f * _log_10_digits(p+extra) < |f| * 1 = |f|
+                # error in f * _log10_digits(p+extra) < |f| * 1 = |f|
                 # after division, error < |f|/10**extra + 0.5 < 10 + 0.5 < 11
-                f_log_ten = _div_nearest(f*_log_10_digits(p+extra), 10**extra)
+                f_log_ten = _div_nearest(f*_log10_digits(p+extra), 10**extra)
             else
                 f_log_ten = 0
             end
@@ -3574,19 +3660,19 @@ class Decimal
     end
 
     # We'll memoize the digits of log(10):
-    @log_10_digits = "23025850929940456840179914546843642076011014886"
+    @log10_digits = "23025850929940456840179914546843642076011014886"
     class <<self
-      attr_accessor :log_10_digits
+      attr_accessor :log10_digits
     end
 
     # Given an integer p >= 0, return floor(10**p)*log(10).
-    def _log_10_digits(p)
+    def _log10_digits(p)
       # digits are stored as a string, for quick conversion to
       # integer in the case that we've already computed enough
       # digits; the stored digits should always be correct
       # (truncated, not rounded to nearest).
       raise ArgumentError, "p should be nonnegative" if p<0
-      if p >= AuxiliarFunctions.log_10_digits.length
+      if p >= AuxiliarFunctions.log10_digits.length
           digits = nil
           # compute p+3, p+6, p+9, ... digits; continue until at
           # least one of the extra digits is nonzero
@@ -3600,9 +3686,9 @@ class Decimal
           end
           # keep all reliable digits so far; remove trailing zeros
           # and next nonzero digit
-          AuxiliarFunctions.log_10_digits = digits.sub(/0*$/,'')[0...-1]
+          AuxiliarFunctions.log10_digits = digits.sub(/0*$/,'')[0...-1]
       end
-      return (AuxiliarFunctions.log_10_digits[0...p+1]).to_i
+      return (AuxiliarFunctions.log10_digits[0...p+1]).to_i
     end
 
   end # AuxiliarFunctions
