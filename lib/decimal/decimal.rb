@@ -37,6 +37,16 @@ class Decimal
     attr_reader :base_conversions
   end
 
+  #--
+  # Some functions use the next methods instead of 10, 10**x, etc.
+  # This has been done for two reasons:
+  # * Much of the code of Decimal is generic enough to work for non-decimal floating-point numbers.
+  #   In the future a binary (or arbitrary radix) class could be derived from Decimal.
+  # * The radix power operations could be optimized (specinally for binary)
+  # But note that some code (e.g. powers & logarithms, auxiliar funtions) use algorithms
+  # that assume radix=10.
+  #++
+
   # Numerical base of Decimal.
   def self.radix
     10
