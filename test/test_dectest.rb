@@ -43,12 +43,11 @@ FUNCTIONS = {
   'class'=>'number_class',
   'power'=>'power',
   'log10'=>'log10',
-  'exp'=>'exp'
+  'exp'=>'exp',
+  'ln'=>'ln'
 }
 # Functions not yet implemented
 PENDING = %w{
-  ln
-
   rotate
   shift
   trim

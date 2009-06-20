@@ -553,6 +553,11 @@ class Decimal
       _convert(x).exp(self)
     end
 
+    # Returns the natural (base e) logarithm
+    def ln(x)
+      _convert(x).ln(self)
+    end
+
     # Exponent in relation to the significand as an integer
     # normalized to precision digits. (minimum exponent)
     def normalized_integral_exponent(x)
@@ -2721,6 +2726,53 @@ class Decimal
     return ans
   end
 
+  # Returns the natural (base e) logarithm
+  def ln(context=nil)
+    context = Decimal.define_context(context)
+
+    # ln(NaN) = NaN
+    ans = _check_nans(context)
+    return ans if ans
+
+    # ln(0.0) == -Infinity
+    return Decimal.infinity(-1) if self.zero?
+
+    # ln(Infinity) = Infinity
+    return Decimal.infinity if self.infinite? && self.sign == +1
+
+    # ln(1.0) == 0.0
+    return Decimal.zero if self == Decimal(1)
+
+    # ln(negative) raises InvalidOperation
+    return context.exception(InvalidOperation, 'ln of a negative value') if self.sign==-1
+
+    # result is irrational, so necessarily inexact
+    return context.exception(Inexact, 'Inexact exp') if context.exact?
+
+    c = self.integral_significand
+    e = self.integral_exponent
+    p = context.precision
+
+    # correctly rounded result: repeatedly increase precision by 3
+    # until we get an unambiguously roundable result
+    places = p - self._ln_exp_bound + 2 # at least p+3 places
+    coeff = nil
+    loop do
+      coeff = _dlog(c, e, places)
+      # assert coeff.to_s.length-p >= 1
+      break if (coeff % (5*10**(coeff.to_s.length-p-1))) != 0
+      places += 3
+    end
+    ans = Decimal((coeff<0) ? -1 : +1, coeff.abs, -places)
+
+    Decimal.context(context, :rounding=>:half_even) do |local_context|
+      ans = ans._fix(local_context)
+      puts local_context.flags.inspect
+      context.flags = local_context.flags
+    end
+    return ans
+  end
+
   # Auxiliar Methods
 
   # Check if the number or other is NaN, signal if sNaN or return NaN;
@@ -3418,6 +3470,32 @@ class Decimal
     num = (Decimal.int_radix_power(-e)-c).to_s
     return num.length + e - ((num < "231") ? 1 : 0) - 1
   end
+
+  # Compute a lower bound for the adjusted exponent of self.ln().
+  # In other words, compute r such that self.ln() >= 10**r.  Assumes
+  # that self is finite and positive and that self != 1.
+  def _ln_exp_bound
+    # for 0.1 <= x <= 10 we use the inequalities 1-1/x <= ln(x) <= x-1
+    adj = self.integral_exponent + number_of_digits - 1
+    if adj >= 1
+      # argument >= 10; we use 23/10 = 2.3 as a lower bound for ln(10)
+      return (adj*23/10).to_s.length - 1
+    end
+    if adj <= -2
+      # argument <= 0.1
+      return ((-1-adj)*23/10).to_s.length - 1
+    end
+    c = self.integral_significand
+    e = self.integral_exponent
+    if adj == 0
+      # 1 < self < 10
+      num = (c-(10**-e)).to_s
+      den = c.to_s
+      return num.length - den.length - ((num < den) ? 1 : 0)
+    end
+    # adj == -1, 0.1 <= self < 1
+    return e + (10**-e - c).to_s.length - 1
+ end
 
   module AuxiliarFunctions #:nodoc:
 

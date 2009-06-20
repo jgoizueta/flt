@@ -51,6 +51,13 @@ class TestExact < Test::Unit::TestCase
     assert !Decimal.context.flags[Decimal::Inexact]
     assert_equal Decimal(1), Decimal(0).exp
     assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal.infinity(-1), Decimal(0).ln
+    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal.infinity, Decimal.infinity.ln
+    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal(0), Decimal(1).ln
+    assert !Decimal.context.flags[Decimal::Inexact]
+
 
     assert((Decimal(1)/Decimal(3)).nan?)
     assert Decimal.context.flags[Decimal::Inexact]
@@ -68,6 +75,9 @@ class TestExact < Test::Unit::TestCase
     assert Decimal.context.flags[Decimal::Inexact]
     Decimal.context.flags[Decimal::Inexact] = false
     assert Decimal('-1.2').exp.nan?
+    assert Decimal.context.flags[Decimal::Inexact]
+    Decimal.context.flags[Decimal::Inexact] = false
+    assert Decimal('1.1').ln.nan?
     assert Decimal.context.flags[Decimal::Inexact]
     Decimal.context.flags[Decimal::Inexact] = false
 
@@ -116,6 +126,12 @@ class TestExact < Test::Unit::TestCase
     assert !Decimal.context.flags[Decimal::Inexact]
     assert_equal Decimal('-5'),Decimal('0.00001').log10
     assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal.infinity(-1), Decimal(0).ln
+    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal.infinity, Decimal.infinity.ln
+    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal Decimal(0), Decimal(1).ln
+    assert !Decimal.context.flags[Decimal::Inexact]
 
     assert_raise(Decimal::Inexact){ Decimal(2).sqrt }
     assert_raise(Decimal::Inexact){ Decimal(1)/Decimal(3) }
@@ -124,6 +140,7 @@ class TestExact < Test::Unit::TestCase
     assert_raise(Decimal::Inexact){ Decimal(18).log10 }
     assert_raise(Decimal::Inexact){ Decimal(1).exp }
     assert_raise(Decimal::Inexact){ Decimal('1.2').exp }
+    assert_raise(Decimal::Inexact){ Decimal('1.2').ln }
 
   end
 
