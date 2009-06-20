@@ -2862,20 +2862,16 @@ class Decimal
       ye = other.integral_exponent
       yc = -yc if other.sign == -1
 
-#      puts "xc=#{xc} xe=#{xe} yc=#{yc} ye=#{ye}"
-
       # compute correctly rounded result:  start with precision +3,
       # then increase precision until result is unambiguously roundable
       extra = 3
       coeff, exp = nil, nil
       loop do
         coeff, exp = _dpower(xc, xe, yc, ye, p+extra)
-#        puts "c=#{coeff.inspect} e=#{exp}"
         #break if (coeff % Decimal.int_mult_radix_power(5,coeff.to_s.length-p-1)) != 0
         break if (coeff % (5*10**(coeff.to_s.length-p-1))) != 0
         extra += 3
       end
-
       ans = Decimal(result_sign, coeff, exp)
     end
 
@@ -2887,13 +2883,12 @@ class Decimal
     if !other.integral?
       context.exception Inexact
       # pad with zeros up to length context.precision+1 if necessary
-      if ans.to_s.length <= context.precision
+      if ans.number_of_digits <= context.precision
         expdiff = context.precision+1 - ans.number_of_digits
         ans = Decimal(ans.sign, Decimal.int_mult_radix_power(ans.integral_significand, expdiff), ans.integral_exponent-expdiff)
       end
       context.exception Underflow if ans.adjusted_exponent < context.emin
     end
-
     # unlike exp, ln and log10, the power function respects the
     # rounding mode; no need to use ROUND_HALF_EVEN here
     ans._fix(context)
@@ -3209,6 +3204,7 @@ class Decimal
 
       # compute nth root of xc using Newton's method
       a = 1 << -(-_nbits(xc)/n) # initial estimate
+      q = r = nil
       loop do
         q, r = xc.divmod(a**(n-1))
         break if a <= q
@@ -3344,7 +3340,7 @@ class Decimal
       if pc == 0
           # we prefer a result that isn't exactly 1; this makes it
           # easier to compute a correctly rounded result in __pow__
-          if (xc.to_s.lenght + xe >= 1) == (yc > 0) # if x**y > 1:
+          if (xc.to_s.length + xe >= 1) == (yc > 0) # if x**y > 1:
               coeff, exp = 10**(p-1)+1, 1-p
           else
               coeff, exp = 10**p-1, -p
