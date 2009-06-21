@@ -1055,13 +1055,25 @@ class Decimal
       arg.delete :exponent
       context ||= arg
     end
+    args = args.first if args.size==1 && args.first.is_a?(Array)
 
     context = Decimal.define_context(context)
 
     case args.size
     when 3
+      # internal representation
       @sign, @coeff, @exp = args
       # TO DO: validate
+
+    when 2
+      # signed integer and scale
+      @coeff, @exp = args
+      if @coeff < 0
+        @sign = -1
+        @coeff = -@coeff
+      else
+        @sign = +1
+      end
 
     when 1
       arg = args.first
@@ -1119,19 +1131,17 @@ class Decimal
             @exp = :inf
           end
         end
-      when Array
-        @sign, @coeff, @exp = arg
       else
         raise TypeError, "invalid argument #{arg.inspect}"
       end
     else
-      raise ArgumentError, "wrong number of arguments (#{args.size} for 1 or 3)"
+      raise ArgumentError, "wrong number of arguments (#{args.size} for 1, 2 or 3)"
     end
   end
 
   # Returns the internal representation of the number, composed of:
   # * a sign which is +1 for plus and -1 for minus
-  # * a coefficient (significand) which is an integer
+  # * a coefficient (significand) which is a nonnegative integer
   # * an exponent (an integer) or :inf, :nan or :snan for special values
   # The value of non-special numbers is sign*coefficient*10^exponent
   def split
@@ -2154,7 +2164,7 @@ class Decimal
     @exp
   end
 
-  # Return the value of the number as an integer and a scale.
+  # Return the value of the number as an signed integer and a scale.
   def to_int_scale
     if special?
       nil
