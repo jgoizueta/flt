@@ -562,14 +562,14 @@ class Decimal
     # normalized to precision digits. (minimum exponent)
     def normalized_integral_exponent(x)
       x = _convert(x)
-      x.integral_exponent - (precision - x.number_of_digits)
+      x.exponent - (precision - x.number_of_digits)
     end
 
     # Significand normalized to precision digits
     # x == normalized_integral_significand(x) * radix**(normalized_integral_exponent)
     def normalized_integral_significand(x)
       x = _convert(x)
-      x.integral_significand*(Decimal.int_radix_power(precision - x.number_of_digits))
+      x.coefficient*(Decimal.int_radix_power(precision - x.number_of_digits))
     end
 
     # Returns both the (signed) normalized integral significand and the corresponding exponent
@@ -1289,7 +1289,7 @@ class Decimal
       return Decimal(other) if other.infinite?
     end
 
-    exp = [self.integral_exponent, other.integral_exponent].min
+    exp = [self.exponent, other.exponent].min
     negativezero = (context.rounding == ROUND_FLOOR && self.sign != other.sign)
 
     if self.zero? && other.zero?
@@ -1300,12 +1300,12 @@ class Decimal
     end
 
     if self.zero?
-      exp = [exp, other.integral_exponent - context.precision - 1].max unless context.exact?
+      exp = [exp, other.exponent - context.precision - 1].max unless context.exact?
       return other._rescale(exp, context.rounding)._fix(context)
     end
 
     if other.zero?
-      exp = [exp, self.integral_exponent - context.precision - 1].max unless context.exact?
+      exp = [exp, self.exponent - context.precision - 1].max unless context.exact?
       return self._rescale(exp, context.rounding)._fix(context)
     end
 
@@ -1313,8 +1313,8 @@ class Decimal
 
     result_sign = result_coeff = result_exp = nil
     if op1.sign != op2.sign
-      return ans = Decimal.new([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.integral_significand == op2.integral_significand
-      op1,op2 = op2,op1 if op1.integral_significand < op2.integral_significand
+      return ans = Decimal.new([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.coefficient == op2.coefficient
+      op1,op2 = op2,op1 if op1.coefficient < op2.coefficient
       result_sign = op1.sign
       op1,op2 = op1.copy_negate, op2.copy_negate if result_sign < 0
     elsif op1.sign < 0
@@ -1325,12 +1325,12 @@ class Decimal
     end
 
     if op2.sign == +1
-      result_coeff = op1.integral_significand + op2.integral_significand
+      result_coeff = op1.coefficient + op2.coefficient
     else
-      result_coeff = op1.integral_significand - op2.integral_significand
+      result_coeff = op1.coefficient - op2.coefficient
     end
 
-    result_exp = op1.integral_exponent
+    result_exp = op1.exponent
 
     return Decimal([result_sign, result_coeff, result_exp])._fix(context)
 
@@ -1369,13 +1369,13 @@ class Decimal
       end
     end
 
-    resultexp = self.integral_exponent + other.integral_exponent
+    resultexp = self.exponent + other.exponent
 
     return Decimal([resultsign, 0, resultexp])._fix(context) if self.zero? || other.zero?
-    #return Decimal([resultsign, other.integral_significand, resultexp])._fix(context) if self.integral_significand==1
-    #return Decimal([resultsign, self.integral_significand, resultexp])._fix(context) if other.integral_significand==1
+    #return Decimal([resultsign, other.coefficient, resultexp])._fix(context) if self.coefficient==1
+    #return Decimal([resultsign, self.coefficient, resultexp])._fix(context) if other.coefficient==1
 
-    return Decimal([resultsign, other.integral_significand*self.integral_significand, resultexp])._fix(context)
+    return Decimal([resultsign, other.coefficient*self.coefficient, resultexp])._fix(context)
 
   end
 
@@ -1403,22 +1403,22 @@ class Decimal
     end
 
     if self.zero?
-      exp = self.integral_exponent - other.integral_exponent
+      exp = self.exponent - other.exponent
       coeff = 0
     else
       prec = context.exact? ? self.number_of_digits + 4*other.number_of_digits : context.precision # this assumes radix==10
       shift = other.number_of_digits - self.number_of_digits + prec + 1
-      exp = self.integral_exponent - other.integral_exponent - shift
+      exp = self.exponent - other.exponent - shift
       if shift >= 0
-        coeff, remainder = (self.integral_significand*Decimal.int_radix_power(shift)).divmod(other.integral_significand)
+        coeff, remainder = (self.coefficient*Decimal.int_radix_power(shift)).divmod(other.coefficient)
       else
-        coeff, remainder = self.integral_significand.divmod(other.integral_significand*Decimal.int_radix_power(-shift))
+        coeff, remainder = self.coefficient.divmod(other.coefficient*Decimal.int_radix_power(-shift))
       end
       if remainder != 0
         return context.exception(Inexact) if context.exact?
         coeff += 1 if (coeff%(Decimal.radix/2)) == 0
       else
-        ideal_exp = self.integral_exponent - other.integral_exponent
+        ideal_exp = self.exponent - other.exponent
         while (exp < ideal_exp) && ((coeff % Decimal.radix)==0)
           coeff /= Decimal.radix
           exp += 1
@@ -1794,7 +1794,7 @@ class Decimal
       return Decimal.new(self)._fix(context)
     end
 
-    ideal_exp = [self.integral_exponent, other.integral_exponent].min
+    ideal_exp = [self.exponent, other.exponent].min
     if self.zero?
       return Decimal([self.sign, 0, ideal_exp])._fix(context)
     end
@@ -1806,9 +1806,9 @@ class Decimal
       return self._rescale(ideal_exp, context.rounding)._fix(context)
     end
 
-      self_coeff = self.integral_significand
-      other_coeff = other.integral_significand
-      de = self.integral_exponent - other.integral_exponent
+      self_coeff = self.coefficient
+      other_coeff = other.coefficient
+      de = self.exponent - other.exponent
       if de >= 0
         self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
       else
@@ -1848,8 +1848,8 @@ class Decimal
 
     exp_max = context.clamp? ? context.etop : context.emax
     end_d = nd = dup.number_of_digits
-    exp = dup.integral_exponent
-    coeff = dup.integral_significand
+    exp = dup.exponent
+    coeff = dup.coefficient
     dgs = dup.digits
     while (dgs[end_d-1]==0) && (exp < exp_max)
       exp += 1
@@ -1881,7 +1881,7 @@ class Decimal
     other = _convert(other)
     ans = _check_nans(context, other)
     return ans if ans
-    return context.exception(InvalidOperation) if other.infinite? || other.integral_exponent != 0
+    return context.exception(InvalidOperation) if other.infinite? || other.exponent != 0
     unless context.exact?
       liminf = -2 * (context.emax + context.precision)
       limsup =  2 * (context.emax + context.precision)
@@ -2035,8 +2035,8 @@ class Decimal
           self_adjusted = self.adjusted_exponent
           other_adjusted = other.adjusted_exponent
           if self_adjusted == other_adjusted
-            self_padded,other_padded = self.integral_significand,other.integral_significand
-            d = self.integral_exponent - other.integral_exponent
+            self_padded,other_padded = self.coefficient,other.coefficient
+            d = self.exponent - other.exponent
             if d>0
               self_padded *= Decimal.int_radix_power(d)
             else
@@ -2117,12 +2117,12 @@ class Decimal
     @coeff.to_s.size
   end
 
-  # Significand as an integer, unsigned
+  # Significand as an integer, unsigned. Synonym of coefficient
   def integral_significand
     @coeff
   end
 
-  # Exponent of the significand as an integer
+  # Exponent of the significand as an integer. Synonym of exponent
   def integral_exponent
     # fractional_exponent - number_of_digits
     @exp
@@ -2131,6 +2131,16 @@ class Decimal
   # Sign of the number: +1 for plus / -1 for minus.
   def sign
     @sign
+  end
+
+  # Significand as an integer, unsigned
+  def coefficient
+    @coeff
+  end
+
+  # Exponent of the significand as an integer.
+  def exponent
+    @exp
   end
 
   # Return the value of the number as an integer and a scale.
@@ -2254,7 +2264,7 @@ class Decimal
         return context.exception(InvalidOperation, 'quantize with one INF')
       end
     end
-    exp = exp.integral_exponent
+    exp = exp.exponent
     _watched_rescale(exp, context, watch_exp)
   end
 
@@ -2269,7 +2279,7 @@ class Decimal
     if self.special? || other.special?
       return (self.nan? && other.nan?) || (self.infinite? && other.infinite?)
     end
-    return self.integral_exponent == other.integral_exponent
+    return self.exponent == other.exponent
   end
 
   # Rounds to a nearby integer. May raise Inexact or Rounded.
@@ -2394,7 +2404,7 @@ class Decimal
         product = Decimal.infinity(self.sign*other.sign)
       end
     else
-      product = Decimal.new([self.sign*other.sign,self.integral_significand*other.integral_significand, self.integral_exponent+other.integral_exponent])
+      product = Decimal.new([self.sign*other.sign,self.coefficient*other.coefficient, self.exponent+other.exponent])
     end
     return product.add(third, context)
   end
@@ -2488,7 +2498,7 @@ class Decimal
           multiplier = other.to_i
         end
 
-        exp = _self.integral_exponent * multiplier
+        exp = _self.exponent * multiplier
         if exp < 1-context.precision
           exp = 1-context.precision
           context.exception Rounded
@@ -2553,7 +2563,7 @@ class Decimal
       end
       ans = _self._power_exact(other, test_precision)
       if !ans.nil? && (result_sign == -1)
-        ans = Decimal(-1, ans.integral_significand, ans.integral_exponent)
+        ans = Decimal(-1, ans.coefficient, ans.exponent)
       end
     end
 
@@ -2564,10 +2574,10 @@ class Decimal
       return context.exception(Inexact, "Inexact power") if context.exact?
 
       p = context.precision
-      xc = _self.integral_significand
-      xe = _self.integral_exponent
-      yc = other.integral_significand
-      ye = other.integral_exponent
+      xc = _self.coefficient
+      xe = _self.exponent
+      yc = other.coefficient
+      ye = other.exponent
       yc = -yc if other.sign == -1
 
       # compute correctly rounded result:  start with precision +3,
@@ -2593,7 +2603,7 @@ class Decimal
       # pad with zeros up to length context.precision+1 if necessary
       if ans.number_of_digits <= context.precision
         expdiff = context.precision+1 - ans.number_of_digits
-        ans = Decimal(ans.sign, Decimal.int_mult_radix_power(ans.integral_significand, expdiff), ans.integral_exponent-expdiff)
+        ans = Decimal(ans.sign, Decimal.int_mult_radix_power(ans.coefficient, expdiff), ans.exponent-expdiff)
       end
       context.exception Underflow if ans.adjusted_exponent < context.emin
     end
@@ -2623,13 +2633,13 @@ class Decimal
     # log10(10**n) = n
     if digits.first == 1 && digits[1..-1].all?{|d| d==0}
       # answer may need rounding
-      ans = Decimal(self.integral_exponent + digits.size - 1)
+      ans = Decimal(self.exponent + digits.size - 1)
       return ans if context.exact?
     else
       # result is irrational, so necessarily inexact
       return context.exception(Inexact, "Inexact power") if context.exact?
-      c = self.integral_significand
-      e = self.integral_exponent
+      c = self.coefficient
+      e = self.exponent
       p = context.precision
 
       # correctly rounded result: repeatedly increase precision
@@ -2696,8 +2706,8 @@ class Decimal
       ans = Decimal(+1, Decimal.int_radix_power(p+1)-1, -p-1)
     else
       # general case
-      c = self.integral_significand
-      e = self.integral_exponent
+      c = self.coefficient
+      e = self.exponent
       c = -c if self.sign == -1
 
       # compute correctly rounded result: increase precision by
@@ -2746,8 +2756,8 @@ class Decimal
     # result is irrational, so necessarily inexact
     return context.exception(Inexact, 'Inexact exp') if context.exact?
 
-    c = self.integral_significand
-    e = self.integral_exponent
+    c = self.coefficient
+    e = self.exponent
     p = context.precision
 
     # correctly rounded result: repeatedly increase precision by 3
@@ -2800,9 +2810,9 @@ class Decimal
 
     return Decimal.new(self) if special?
     return Decimal.new([sign, 0, exp]) if zero?
-    return Decimal.new([sign, @coeff*Decimal.int_radix_power(self.integral_exponent - exp), exp]) if self.integral_exponent > exp
-    #nd = number_of_digits + self.integral_exponent - exp
-    nd = exp - self.integral_exponent
+    return Decimal.new([sign, @coeff*Decimal.int_radix_power(self.exponent - exp), exp]) if self.exponent > exp
+    #nd = number_of_digits + self.exponent - exp
+    nd = exp - self.exponent
     if number_of_digits < nd
       slf = Decimal.new([sign, 1, exp-1])
       nd = number_of_digits
@@ -2819,7 +2829,7 @@ class Decimal
   def _watched_rescale(exp, context, watch_exp)
     if !watch_exp
       ans = _rescale(exp, context.rounding)
-      context.exception(Rounded) if ans.integral_exponent > self.integral_exponent
+      context.exception(Rounded) if ans.exponent > self.exponent
       context.exception(Inexact) if ans != self
       return ans
     end
@@ -2837,7 +2847,7 @@ class Decimal
     ans = _rescale(exp, context.rounding)
     return context.exception(InvalidOperation,"exponent of rescale result too large for current context") if ans.adjusted_exponent > context.emax
     return context.exception(InvalidOperation,"rescale result has too many digits for current context") if (ans.number_of_digits > context.precision) && !context.exact?
-    if ans.integral_exponent > self.integral_exponent
+    if ans.exponent > self.exponent
       context.exception(Rounded)
       context.exception(Inexact) if ans!=self
     end
@@ -2943,7 +2953,7 @@ class Decimal
         d = Decimal.new(self)
       end
       changed = d._round(context.rounding, dg)
-      coeff = Decimal.int_div_radix_power(d.integral_significand, dg)
+      coeff = Decimal.int_div_radix_power(d.coefficient, dg)
       coeff += 1 if changed==1
       ans = Decimal.new([sign, coeff, exp_min])
       if changed!=0
@@ -2954,8 +2964,8 @@ class Decimal
             context.exception Clamped
           end
         elsif ans.number_of_digits == context.precision+1
-          if ans.integral_exponent< etop
-            ans = Decimal.new([ans.sign, Decimal.int_div_radix_power(ans.integral_significand,1), ans.integral_exponent+1])
+          if ans.exponent< etop
+            ans = Decimal.new([ans.sign, Decimal.int_div_radix_power(ans.coefficient,1), ans.exponent+1])
           else
             ans = context.exception(Overflow, 'above Emax', d.sign)
           end
@@ -2996,9 +3006,9 @@ class Decimal
     context = Decimal.define_context(context)
     sign = self.sign * other.sign
     if other.infinite?
-      ideal_exp = self.integral_exponent
+      ideal_exp = self.exponent
     else
-      ideal_exp = [self.integral_exponent, other.integral_exponent].min
+      ideal_exp = [self.exponent, other.exponent].min
     end
 
     expdiff = self.adjusted_exponent - other.adjusted_exponent
@@ -3006,9 +3016,9 @@ class Decimal
       return [Decimal.new([sign, 0, 0]), _rescale(ideal_exp, context.rounding)]
     end
     if (expdiff <= context.precision) || context.exact?
-      self_coeff = self.integral_significand
-      other_coeff = other.integral_significand
-      de = self.integral_exponent - other.integral_exponent
+      self_coeff = self.coefficient
+      other_coeff = other.coefficient
+      de = self.exponent - other.exponent
       if de >= 0
         self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
       else
@@ -3029,9 +3039,9 @@ class Decimal
     context = Decimal.define_context(context)
     sign = self.sign * other.sign
     if other.infinite?
-      ideal_exp = self.integral_exponent
+      ideal_exp = self.exponent
     else
-      ideal_exp = [self.integral_exponent, other.integral_exponent].min
+      ideal_exp = [self.exponent, other.exponent].min
     end
 
     expdiff = self.adjusted_exponent - other.adjusted_exponent
@@ -3039,9 +3049,9 @@ class Decimal
       return [Decimal.new([sign, 0, 0]), _rescale(ideal_exp, context.rounding)]
     end
     if (expdiff <= context.precision) || context.exact?
-      self_coeff = self.integral_significand*self.sign
-      other_coeff = other.integral_significand*other.sign
-      de = self.integral_exponent - other.integral_exponent
+      self_coeff = self.coefficient*self.sign
+      other_coeff = other.coefficient*other.sign
+      de = self.exponent - other.exponent
       if de >= 0
         self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
       else
@@ -3110,12 +3120,12 @@ class Decimal
     sign = other.even? ? +1 : -1
     modulo = modulo.to_i.abs
 
-    base = (self.integral_significand % modulo * (Decimal.int_radix_power(self.integral_exponent) % modulo)) % modulo
+    base = (self.coefficient % modulo * (Decimal.int_radix_power(self.exponent) % modulo)) % modulo
 
-    other.integral_exponent.times do
+    other.exponent.times do
       base = (base**Decimal.radix) % modulo
     end
-    base = (base**other.integral_significand) % modulo
+    base = (base**other.coefficient) % modulo
 
     Decimal(sign, base, 0)
   end
@@ -3129,8 +3139,8 @@ class Decimal
   # Assumes that elimination of special cases has already been
   # performed: self and other must both be nonspecial; self must
   # be positive and not numerically equal to 1; other must be
-  # nonzero.  For efficiency, other.integral_exponent should not be too large,
-  # so that 10**other.integral.exponent.abs is a feasible calculation.
+  # nonzero.  For efficiency, other.exponent should not be too large,
+  # so that 10**other.exponent.abs is a feasible calculation.
   def _power_exact(other, p)
 
     # In the comments below, we write x for the value of self and
@@ -3178,15 +3188,15 @@ class Decimal
     # Similarly, len(str(abs(yc)*xc_bits)) <= -ye implies |y|
     # < 1/nbits(xc).
 
-    xc = self.integral_significand
-    xe = self.integral_exponent
+    xc = self.coefficient
+    xe = self.exponent
     while (xc % Decimal.radix) == 0
       xc /= Decimal.radix
       xe += 1
     end
 
-    yc = other.integral_significand
-    ye = other.integral_exponent
+    yc = other.coefficient
+    ye = other.exponent
     while (yc % Decimal.radix) == 0
       yc /= Decimal.radix
       ye += 1
@@ -3204,7 +3214,7 @@ class Decimal
       exponent = -exponent if other.sign == -1
       # if other is a nonnegative integer, use ideal exponent
       if other.integral? and (other.sign == +1)
-        ideal_exponent = self.integral_exponent*other.to_i
+        ideal_exponent = self.exponent*other.to_i
         zeros = [exponent-ideal_exponent, p-1].min
       else
         zeros = 0
@@ -3322,7 +3332,7 @@ class Decimal
     # exponent, if necessary
     str_xc = xc.to_s
     if other.integral? && other.sign == +1
-      ideal_exponent = self.integral_exponent*other.to_i
+      ideal_exponent = self.exponent*other.to_i
       zeros = [xe-ideal_exponent, p-str_xc.length].min
     else
       zeros = 0
@@ -3450,12 +3460,12 @@ class Decimal
     # 1-1/x <= log(x) <= x-1. If x > 1 we have |log10(x)| >
     # (1-1/x)/2.31 > 0.  If x < 1 then |log10(x)| > (1-x)/2.31 > 0
 
-    adj = self.integral_exponent + number_of_digits - 1
+    adj = self.exponent + number_of_digits - 1
     return adj.to_s.length - 1 if adj >= 1 # self >= 10
     return (-1-adj).to_s.length-1 if adj <= -2 # self < 0.1
 
-    c = self.integral_significand
-    e = self.integral_exponent
+    c = self.coefficient
+    e = self.exponent
     if adj == 0
       # 1 < self < 10
       num = (c - Decimal.int_radix_power(-e)).to_s
@@ -3472,7 +3482,7 @@ class Decimal
   # that self is finite and positive and that self != 1.
   def _ln_exp_bound
     # for 0.1 <= x <= 10 we use the inequalities 1-1/x <= ln(x) <= x-1
-    adj = self.integral_exponent + number_of_digits - 1
+    adj = self.exponent + number_of_digits - 1
     if adj >= 1
       # argument >= 10; we use 23/10 = 2.3 as a lower bound for ln(10)
       return (adj*23/10).to_s.length - 1
@@ -3481,8 +3491,8 @@ class Decimal
       # argument <= 0.1
       return ((-1-adj)*23/10).to_s.length - 1
     end
-    c = self.integral_significand
-    e = self.integral_exponent
+    c = self.coefficient
+    e = self.exponent
     if adj == 0
       # 1 < self < 10
       num = (c-(10**-e)).to_s
@@ -3521,7 +3531,7 @@ class Decimal
 
     # Normalizes op1, op2 to have the same exp and length of coefficient. Used for addition.
     def _normalize(op1, op2, prec=0)
-      if op1.integral_exponent < op2.integral_exponent
+      if op1.exponent < op2.exponent
         swap = true
         tmp,other = op2,op1
       else
@@ -3530,13 +3540,13 @@ class Decimal
       end
       tmp_len = tmp.number_of_digits
       other_len = other.number_of_digits
-      exp = tmp.integral_exponent + [-1, tmp_len - prec - 2].min
-      if (other_len+other.integral_exponent-1 < exp) && prec>0
+      exp = tmp.exponent + [-1, tmp_len - prec - 2].min
+      if (other_len+other.exponent-1 < exp) && prec>0
         other = Decimal.new([other.sign, 1, exp])
       end
       tmp = Decimal.new(tmp.sign,
-                        Decimal.int_mult_radix_power(tmp.integral_significand, tmp.integral_exponent-other.integral_exponent),
-                        other.integral_exponent)
+                        Decimal.int_mult_radix_power(tmp.coefficient, tmp.exponent-other.exponent),
+                        other.exponent)
       return swap ? [other, tmp] : [tmp, other]
     end
 
