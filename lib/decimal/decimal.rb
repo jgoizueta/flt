@@ -310,6 +310,9 @@ class Decimal
         base = options.shift
         copy_from base
       else
+        @rounding = @emin = @emax = nil
+        @capitals = false
+        @clamp = false
         @ignored_flags = Decimal::Flags()
         @traps = Decimal::Flags()
         @flags = Decimal::Flags()
@@ -420,6 +423,9 @@ class Decimal
         @traps = Decimal::Flags(options[:traps]) unless options[:traps].nil?
         @flags = Decimal::Flags(options[:flags]) unless options[:flags].nil?
         @ignored_flags = Decimal::Flags(options[:ignored_flags]) unless options[:ignored_flags].nil?
+        if elimit=options[:elimit]
+          @emin, @emax = [elimit, 1-elimit].sort
+        end
         @emin = options[:emin] unless options[:emin].nil?
         @emax = options[:emax] unless options[:emax].nil?
         @capitals = options[:capitals ] unless options[:capitals ].nil?
@@ -809,6 +815,11 @@ class Decimal
     end
 
     def update_precision
+      if @emax && !@emin
+        @emin = 1 - @emax
+      elsif @emin && !@emax
+        @emax = 1 - @emin
+      end
       if @exact || @precision==0
         @exact = true
         @precision = 0
