@@ -95,6 +95,18 @@ class TestDefineConversions < Test::Unit::TestCase
     assert_equal Decimal('11'), Decimal(11.0)
     assert Decimal(11.0).is_a?(Decimal)
 
+    Decimal.context.define_conversion_from(Float) do |x, context|
+      Decimal.context(context, :exact=>true) do
+        s,e = Math.frexp(x)
+        s = Math.ldexp(s, Float::MANT_DIG).to_i
+        e -= Float::MANT_DIG
+        Decimal(s*(Float::RADIX**e))
+      end
+    end
+
+    assert_equal '0.1000000000000000055511151231257827021181583404541015625', Decimal(0.1).to_s
+    assert_equal '1.100000000000000088817841970012523233890533447265625', Decimal(1.1).to_s
+
   end
 
 end

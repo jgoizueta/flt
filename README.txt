@@ -176,7 +176,32 @@ an interface compatible with the Ruby interface of Float:
 TODO
 
 ==Exceptions
-TODO
+
+Exceptional conditions that may arise during operations have corresponding classes that represent them:
+* Decimal::InvalidOperation
+* Decimal::DivisionByZero
+* Decimal::DivisionImpossible
+* Decimal::DivisionUndefined
+* Decimal::Inexact
+* Decimal::Overflow
+* Decimal::Underflow
+* Decimal::Clamped
+* Decimal::InvalidContext
+* Decimal::Rounded
+* Decimal::Subnormal
+* Decimal::ConversionSyntax
+
+For each condition, a flag and a trap (boolean values) exist in the context.
+When a condition occurs, the corresponding flag in the context takes the value true (and remains
+set until cleared) and a exception is raised if the corresponding trap has the value true.
+
+  Decimal.context.traps[Decimal::DivisionByZero] = false
+  Decimal.context.flags[Decimal::DivisionByZero] = false
+  puts Decimal(1)/Decimal(0)                                -> Infinity
+  puts Decimal.context.flags[Decimal::DivisionByZero]       -> true
+  Decimal.context.traps[Decimal::DivisionByZero] = true
+  puts Decimal(1)/Decimal(0)
+
 
 ==Numerical conversion
 
@@ -251,6 +276,8 @@ Note that the conversion we've defined depends on the context precision:
   Decimal.local_context(:precision=>20) { puts Decimal(0.1) } -> 0.10000000000000000555
 
   Decimal.local_context(:precision=>12) { puts Decimal(0.1) } -> 0.100000000000
+
+  Decimal.local_context(:exact=>true) { puts Decimal(0.1) }   -> 0.1000000000000000055511151231257827021181583404541015625
 
 == More Information
 

@@ -50,8 +50,6 @@ def exp1(x, c=nil)
   return +y
 end
 
-
-
 class TestBasic < Test::Unit::TestCase
 
 
