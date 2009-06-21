@@ -173,7 +173,21 @@ an interface compatible with the Ruby interface of Float:
   puts Decimal('101.5').truncate                     -> 101
 
 ==Special values
-TODO
+
+In addition to finite numbers, a Decimal object can represent some special values:
+* Infinity (+Infinity, -Infinity). The method Decimal#infinite? returns true for these to values.
+  Decimal.infinity Decimal.infinity(-1) can be used to get these values.
+* NaN (not a number) represents indefined results. The method Decimal#nan? returns true for it and
+  Decimal.nan can be used to obtain it. There is a variant, sNaN (signaling NaN) that casues
+  an invalid operation condition if used; it can be detected with Decimal.snan?.
+  A NaN can also include diagnostic information in its sign and coefficient.
+
+Any of the special values can be detected with Decimal#special?
+Finite numbers can be clasified with
+these methods:
+* Decimal#zero? detects a zero value (note that there are two zero values: +0 and -0)
+* Decimal#normal? detects normal values: those whose adjusted exponents are not less than the the emin.
+* Decimal#subnormal? detects subnormal values: those whose adjusted exponents are less than the the emin.
 
 ==Exceptions
 
@@ -341,5 +355,4 @@ EXPAND+
 
 = Roadmap
 
-* Version 0.3.0: Implement the remaining of GDA functions
-* Complete documentation (README sections on special values & exceptions, etc. and method descriptions.)
+* Version 0.3.0: Implement the remaining GDA functions
