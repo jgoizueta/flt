@@ -265,25 +265,33 @@ EXPAND-
 Decimal solves some of the difficulties of using BigDecimal.
 
 One of the major problems with BigDecimal is that it's not easy to control the number of
-significant digits: while addition, subtraction and multiplication are exact (unless a limit is used),
-divisions will need to be passed precision explicitly or they will loose an indeterminate number of digits.
-With Decimal, Context objects are used to specify the exact number of digits to be used for all operations:
+significant digits of the results. While addition, subtraction and multiplication are exact (unless a limit is used),
+divisions will need to be passed precision explicitly or else an indeterminate number of significant digits will be lost.
+Part of the problem is that numbers don't keep track of its precision (0.1000 is not distinguishable from 0.1.)
+
+With Decimal, Context objects are used to specify the exact number of digits to be used for all operations making
+the code cleaner and the results more easily predictable.
+
   Decimal.context.precision = 10
   puts Decimal(1)/Decimal(3)
 Contexts are thread-safe and can be used for individual operations:
-  puts Decimal(1).divide(Decimal(e), Decimal::Context.new(:precision=>4))
+  puts Decimal(1).divide(Decimal(e), Decimal::Context(:precision=>4))
+Which can be abbreviated:
+puts Decimal(1).divide(Decimal(e), :precision=>4)
 Or use locally in a block without affecting other code:
-  Decimal.local_context {
+  Decimal.context {
     Decimal.context.precision = 3
     puts Decimal(1)/Decimal(3)
   }
   puts Decimal.context.precision
+Which can also be abbreviated:
+  Decimal.context(:precision=>3) { puts Decimal(1)/Decimal(3) }
 
 This allows in general to write simpler code; e.g. this is an exponential function, adapted from the
 'recipes' in Python's Decimal:
-    def exp(x,c=nil)
+    def exp(x, c=nil)
       i, lasts, s, fact, num = 0, 0, 1, 1, 1
-      Decimal.local_context(c) do |context|
+      Decimal.context(c) do |context|
         context.precision += 2
         while s != lasts
           lasts = s
@@ -295,9 +303,11 @@ This allows in general to write simpler code; e.g. this is an exponential functi
       end
       return +s
     end
+
 The final unary + applied to the result forces it to be rounded to the current precision
 (because we have computed it with two extra digits)
-The result of this method does not have trailing insignificant digits, as is common with BigDecimal.
+The result of this method does not have trailing non-significant digits, as is common with BigDecimal
+(e.g. in the exp implementation available in the standard Ruby library, in bigdecimal/math)
 
 --
 EXPAND+

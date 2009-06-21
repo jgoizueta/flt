@@ -1997,9 +1997,11 @@ class Decimal
   end
 
   def inspect
-    #"Decimal('#{self}')"
-    #debug:
-    "Decimal('#{self}') [coeff:#{@coeff.inspect} exp:#{@exp.inspect} s:#{@sign.inspect}]"
+    if $DEBUG
+      "Decimal('#{self}') [coeff:#{@coeff.inspect} exp:#{@exp.inspect} s:#{@sign.inspect}]"
+    else
+      "Decimal('#{self}')"
+    end
   end
 
   # Internal comparison operator: returns -1 if the first number is less than the second,
