@@ -299,7 +299,10 @@ class Decimal
     # * :traps : a Flags object with the exceptions to be trapped
     # * :flags : a Flags object with the raised flags
     # * :ignored_flags : a Flags object with the exceptions to be ignored
-    # * :emin, :emax : minimum and maximum exponents
+    # * :emin, :emax : minimum and maximum adjusted exponents
+    # * :elimit : the exponent limits can also be defined by a single value;
+    #   if positive it is taken as emax and emin=1-emax; otherwiae it is
+    #   taken as emin and emax=1-emin. Such limits comply with IEEE 754-2008
     # * :capitals : (true or false) to use capitals in text representations
     # * :clamp : (true or false) enables clamping
     #
@@ -349,14 +352,23 @@ class Decimal
       @ignored_flags.clear(*flags)
     end
 
-    # 'tiny' exponet (emin - precision + 1)
+    # 'tiny' exponent (emin - precision + 1)
+    # is the minimum valid value for the (integral) exponent
     def etiny
       emin - precision + 1
     end
 
-    # maximum exponent (emax - precision + 1)
+    # top exponent (emax - precision + 1)
+    # is the maximum valid value for the (integral) exponent
     def etop
       emax - precision + 1
+    end
+
+    # Set the exponent limits, according to IEEE 754-2008
+    # if e > 0 it is taken as emax and emin=1-emax
+    # if e < 0  it is taken as emin and emax=1-emin
+    def elimit=(e)
+      @emin, @emax = [elimit, 1-elimit].sort
     end
 
     # synonym for precision()
@@ -529,6 +541,12 @@ class Decimal
     # by removing trailing 0s and incrementing the exponent.
     # (formerly called normalize in GDAS)
     def reduce(x)
+      _convert(x).reduce(self)
+    end
+
+    # normalizes so that the coefficient has precision digits
+    # (this is not the old GDA normalize function)
+    def normalize(x)
       _convert(x).reduce(self)
     end
 
@@ -730,6 +748,40 @@ class Decimal
     # sign set to be the same as the sign of y.
     def next_toward(x, y)
       _convert(x).next_toward(y, self)
+    end
+
+    # ulp (unit in the last place) according to the definition proposed by J.M. Muller in
+    # "On the definition of ulp(x)" INRIA No. 5504
+    def ulp(x=nil)
+      x ||= 1
+      _convert(x).ulp(self)
+    end
+
+    # Maximum finite number
+    def maximum_finite
+      return exception(InvalidOperation, "Exact context maximum finite value") if exact?
+      # equals +Decimal(+1, 1, emax)
+      # equals Decimal.infinity.next_minus(self)
+      Decimal(+1, Decimal.int_radix_power(precision)-1, etop)
+    end
+
+    # Minimum positive normal number
+    def minimum_normal
+      return exception(InvalidOperation, "Exact context maximum normal value") if exact?
+      Decimal(+1, 1, emin)
+    end
+
+    # Maximum subnormal number
+    def maximum_subnormal
+      return exception(InvalidOperation, "Exact context maximum subnormal value") if exact?
+      # equals mininum_normal.next_minus(self)
+      Decimal(+1, Decimal.int_radix_power(precision-1)-1, etiny)
+    end
+
+    # Minimum nonzero positive number (minimum positive subnormal)
+    def minimum_nonzero
+      return exception(InvalidOperation, "Exact context minimum nonzero value") if exact?
+      Decimal(+1, 1, etiny)
     end
 
     def to_s
@@ -1013,6 +1065,16 @@ class Decimal
   # * The adjusted exponent is a = -2 (the adjusted representation is 1.204 with exponent -2)
   # * Given a precision p = 8, the normalized integral representation is 12040000 with exponent -9
   # * The normalized fractional representation is 0.1204 with exponent -1
+  #
+  # ==Exponent limits
+  #
+  # The (integral) exponent e must be within this limits: etiny <= e <= etop
+  # The adjusted exponent a must: emin <= a <= emax
+  # emin, emax are the limite of the exponent shown in scientific notation and are use to defined
+  # the exponent limits in the contexts.
+  # etiny = emin-precision+1 and etop=emax-precision+1 are the limits of the internal exponent.
+  # Note that for significands with less than precision digits we can use exponents greater than etop
+  # without causing overflow: +Decimal(+1,1,emax) == Decimal(+1,K,etop) where K=10**(precision-1)
   #
   # =Interoperatibility with other numeric types
   #
@@ -1877,7 +1939,22 @@ class Decimal
       end_d -= 1
     end
     return Decimal.new([dup.sign, coeff/Decimal.int_radix_power(nd-end_d), exp])
+  end
 
+  # normalizes so that the coefficient has precision digits
+  # (this is not the old GDA normalize function)
+  def normalize(context=nil)
+    context = Decimal.define_context(context)
+    return Decimal(self) if self.special? || self.zero?
+    return context.exception(InvalidOperation, "Normalize in exact context") if context.exact?
+    return context.exception(Subnormal, "Cannot normalize subnormal") if self.subnormal?
+    min_normal_coeff = Decimal.int_radix_power(context.precision-1)
+    sign, coeff, exp = self._fix(context).split
+    while coeff < min_normal_coeff
+      coeff *= Decimal.radix
+      exp -= 1
+    end
+    Decimal(sign, coeff, exp)
   end
 
   # Returns the exponent of the magnitude of the most significant digit.
@@ -2014,6 +2091,34 @@ class Decimal
       # to_rational.to_f
       # to_s.to_f
       @sign*@coeff*(10.0**@exp)
+    end
+  end
+
+  # ulp (unit in the last place) according to the definition proposed by J.M. Muller in
+  # "On the definition of ulp(x)" INRIA No. 5504
+  def ulp(context = nil)
+    context = Decimal.define_context(context)
+
+    return context.exception(InvalidOperation, "ulp in exact context") if context.exact?
+
+    sign = self.sign
+    sig = self.integral_significand
+    exp = self.integral_exponent
+    aexp = self.adjusted_exponent
+
+    if self.nan?
+      return Decimal(self)
+    elsif self.infinite?
+      return Decimal(+1, 1, context.etop)
+    elsif self.zero? || self.adjusted_exponent <= context.emin
+      return context.minimum_nonzero
+    else
+      # assert self.normal?
+      norm = self.normalize
+      exp = norm.integral_exponent
+      sig = norm.integral_significand
+      exp -= 1 if sig == Decimal.int_radix_power(context.precision-1)
+      return Decimal(+1, 1, exp)
     end
   end
 
