@@ -738,7 +738,7 @@ class Decimal
 
     def inspect
       "<#{self.class}:\n" +
-      instance_variables.map { |v| "  #{v}: #{eval(v)}"}.join("\n") +
+      instance_variables.map { |v| "  #{v}: #{eval(v).inspect}"}.join("\n") +
       ">\n"
     end
 
