@@ -11,4 +11,6 @@
 
 * Fixes:
   - Decimal#inspect was always producing debug information; now it uses $DEBUG
+  - Raising some exceptions caused error, because too many parameters were being
+    pase to the exception's base class initializer.
 

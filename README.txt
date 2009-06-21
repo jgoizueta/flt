@@ -200,8 +200,7 @@ set until cleared) and a exception is raised if the corresponding trap has the v
   puts Decimal(1)/Decimal(0)                                -> Infinity
   puts Decimal.context.flags[Decimal::DivisionByZero]       -> true
   Decimal.context.traps[Decimal::DivisionByZero] = true
-  puts Decimal(1)/Decimal(0)
-
+  puts Decimal(1)/Decimal(0)                                -> Exception : Decimal::DivisionByZero
 
 ==Numerical conversion
 

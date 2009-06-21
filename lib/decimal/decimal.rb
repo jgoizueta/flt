@@ -109,7 +109,7 @@ class Decimal
     end
     def initialize(context=nil, *args)
       @value = args.first if args.size>0
-      super
+      super context
     end
   end
 
@@ -123,7 +123,7 @@ class Decimal
     end
     def initialize(context=nil, sign=nil, *args)
       @sign = sign
-      super
+      super context
     end
   end
 
@@ -203,7 +203,7 @@ class Decimal
     end
     def initialize(context=nil, sign=nil, *args)
       @sign = sign
-      super
+      super context
     end
   end
 
