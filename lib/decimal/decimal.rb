@@ -819,7 +819,7 @@ class Decimal
 
     # This is the maximum relative error corresponding to 1/2 ulp:
     #  (radix/2)*radix**(-precision) == epsilon/2
-    # This is called "machine epsilon" in [Goldberg]
+    # This is called "machine epsilon" in Goldberg's "What Every Computer Scientist..."
     def half_epsilon(sign=+1)
       Decimal(sign, Decimal.radix/2, -precision)
     end
