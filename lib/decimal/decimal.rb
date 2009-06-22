@@ -914,7 +914,7 @@ class Decimal
         @emax = 1 - @emin
       end
       if @exact || @precision==0
-        quite = (@exact == :quiet)
+        quiet = (@exact == :quiet)
         @exact = true
         @precision = 0
         @traps << Inexact unless quiet
