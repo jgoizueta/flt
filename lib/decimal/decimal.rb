@@ -295,7 +295,8 @@ class Decimal
     # * :rounding : one of :half_even, :half_down, :half_up, :floor,
     #   :ceiling, :down, :up, :up05
     # * :precision : number of digits (or 0 for exact precision)
-    # * :exact : true or false (precision is ignored when true)
+    # * :exact : if true precision is ignored and Inexact conditions are trapped,
+    #            if :quiet it set exact precision but no trapping;
     # * :traps : a Flags object with the exceptions to be trapped
     # * :flags : a Flags object with the raised flags
     # * :ignored_flags : a Flags object with the exceptions to be ignored
@@ -913,9 +914,10 @@ class Decimal
         @emax = 1 - @emin
       end
       if @exact || @precision==0
+        quite = (@exact == :quiet)
         @exact = true
         @precision = 0
-        @traps << Inexact
+        @traps << Inexact unless quiet
         @ignored_flags[Inexact] = false
       else
         @traps[Inexact] = false
