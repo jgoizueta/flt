@@ -244,6 +244,7 @@ Or with a generic method:
 Conversion is also possible to Float:
   puts Decimal('1.1').to_f                           -> 1.1
   puts Decimal('1.1').convert_to(Float)              -> 1.1
+  puts Float(Decimal('1.1'))                         -> 1.1
 
 And with GDAS style operations:
 
