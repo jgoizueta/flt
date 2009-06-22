@@ -9,7 +9,7 @@
 
 == 0.2.1 2009-06-23
 
-* Fixes:
+* Bug fixes:
   - Decimal#inspect was always producing debug information; now it uses $DEBUG
   - Raising some exceptions caused error, because too many parameters were being
     passed to the exception's base class initializer.
@@ -17,5 +17,6 @@
   - ulp (unit in the last place)
   - normalize (in the classic sense, not in the original GDA sense)
   - maximum_finite, minimum_normal, minimum_nonzero value decimal constructors
+  - epsilon, strict_epsilon, half_epsilon
   - setting context exponent limits with elimit
 
