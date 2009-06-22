@@ -757,31 +757,71 @@ class Decimal
       _convert(x).ulp(self)
     end
 
+    # Some singular Decimal values that depend on the context
+
     # Maximum finite number
-    def maximum_finite
+    def maximum_finite(sign=+1)
       return exception(InvalidOperation, "Exact context maximum finite value") if exact?
       # equals +Decimal(+1, 1, emax)
       # equals Decimal.infinity.next_minus(self)
-      Decimal(+1, Decimal.int_radix_power(precision)-1, etop)
+      Decimal(sign, Decimal.int_radix_power(precision)-1, etop)
     end
 
     # Minimum positive normal number
-    def minimum_normal
+    def minimum_normal(sign=+1)
       return exception(InvalidOperation, "Exact context maximum normal value") if exact?
-      Decimal(+1, 1, emin)
+      Decimal(sign, 1, emin)
     end
 
     # Maximum subnormal number
-    def maximum_subnormal
+    def maximum_subnormal(sign=+1)
       return exception(InvalidOperation, "Exact context maximum subnormal value") if exact?
       # equals mininum_normal.next_minus(self)
-      Decimal(+1, Decimal.int_radix_power(precision-1)-1, etiny)
+      Decimal(sign, Decimal.int_radix_power(precision-1)-1, etiny)
     end
 
     # Minimum nonzero positive number (minimum positive subnormal)
-    def minimum_nonzero
+    def minimum_nonzero(sign=+1)
       return exception(InvalidOperation, "Exact context minimum nonzero value") if exact?
-      Decimal(+1, 1, etiny)
+      Decimal(sign, 1, etiny)
+    end
+
+    # This is the difference between 1 and the smallest Decimal
+    # value greater than 1: (Decimal(1).next_plus - Decimal(1))
+    def epsilon(sign=+1)
+      return exception(InvalidOperation, "Exact context epsilon") if exact?
+      Decimal(sign, 1, 1-precision)
+    end
+
+    # The strict epsilon is the smallest value that produces something different from 1
+    # wehen added to 1. It may be smaller than the general epsilon, because
+    # of the particular rounding rules used.
+    def strict_epsilon(sign=+1)
+      return exception(InvalidOperation, "Exact context strict epsilon") if exact?
+      coeff = 1
+      exp   = 1-precision
+      # assume radix is even (Decimal.radix%2 == 0)
+      case rounding
+      when :down, :floor
+        exp = 1-precision
+        coeff = 1
+      when :half_even, :half_down #, :up #  :up #     :down,    :half_down, :up05, :floor
+        exp = 1-2*precision
+        coeff = 1 + Decimal.int_radix_power(precision)/2
+      when :half_up
+        exp = 1-2*precision
+        coeff = Decimal.int_radix_power(precision)/2
+      when :up, :ceiling, :up05
+        return minimum_nonzero(sign)
+      end
+      return Decimal(sign, coeff, exp)
+    end
+
+    # This is the maximum relative error corresponding to 1/2 ulp:
+    #  (radix/2)*radix**(-precision) == epsilon/2
+    # This is called "machine epsilon" in [Goldberg]
+    def half_epsilon(sign=+1)
+      Decimal(sign, Decimal.radix/2, -precision)
     end
 
     def to_s
