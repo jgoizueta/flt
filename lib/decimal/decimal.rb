@@ -4,14 +4,14 @@ require 'rational'
 require 'monitor'
 require 'ostruct'
 
-# TODO: review uses of self.class (look for alternative, add instance method to return it?)
 # Consider renaming num(...) to FltPntBase or Num or ...
 # Consider renaming FltPntBase (FPNum, ...)
+# Move part of AuxiliarFunctions to FltPntBase
 
 # ongoing adaptation:
 # Decimal(...) -> num(...) consider renaming to FPNumber Num, ...
 # Decimal.define_context -> define_context
-# Decimal. -> self.class.
+# Decimal. -> num_class.
 
 class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
@@ -289,8 +289,8 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     # * :clamp : (true or false) enables clamping
     #
     # See also the context constructor method Decimal.Context().
-    def initialize(*options)
-      @fpclass = self.class
+    def initialize(num_class, *options)
+      @num_class = num_class
 
       if options.first.kind_of?(ContextBase)
         base = options.shift
@@ -309,25 +309,29 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
     end
 
+    def num_class
+      @num_class
+    end
+
     def radix
-      @fpclass.radix
+      @num_class.radix
     end
 
     # Integral power of the base: radix**n for integer n; returns an integer.
     def int_radix_power(n)
-      @fpclass.int_radix_power(n)
+      @num_class.int_radix_power(n)
     end
 
     # Multiply by an integral power of the base: x*(radix**n) for x,n integer;
     # returns an integer.
     def int_mult_radix_power(x,n)
-      @fpclass.int_mult_radix_power(x,n)
+      @num_class.int_mult_radix_power(x,n)
     end
 
     # Divide by an integral power of the base: x/(radix**n) for x,n integer;
     # returns an integer.
     def int_div_radix_power(x,n)
-      @fpclass.int_div_radix_power(x,n)
+      @num_class.int_div_radix_power(x,n)
     end
 
 
@@ -890,7 +894,11 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     private
 
     def _convert(x)
-      AuxiliarFunctions._convert(x)
+      # cannot call AuxiliarFunctions._convert now because it needs num_class
+      # alternatives:
+      #  num_class.send(:_convert, x) # cannot num_class._convert because it is private
+      #  extend ContextBase with AuxiliarFunctions
+      @num_class.send :_convert, x
     end
 
     def update_precision
@@ -1009,6 +1017,15 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     result
   end
 
+  def num_class
+    self.class
+  end
+
+  class <<self
+    def num_class
+      self
+    end
+  end
 
   class << self
     # A decimal number with value zero and the specified sign
@@ -1230,7 +1247,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
   # Used internally to convert numbers to be used in an operation to a suitable numeric type
   def coerce(other)
     case other
-      when *self.class.context.coercible_types_or_decimal
+      when *num_class.context.coercible_types_or_decimal
         [num(other),self]
       else
         super
@@ -1252,13 +1269,13 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
   # Unary minus operator
   def -@(context=nil)
-    #(context || self.class.context).minus(self)
+    #(context || num_class.context).minus(self)
     _neg(context)
   end
 
   # Unary plus operator
   def +@(context=nil)
-    #(context || self.class.context).plus(self)
+    #(context || num_class.context).plus(self)
     _pos(context)
   end
 
@@ -1383,11 +1400,11 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
       if self.infinite?
         return context.exception(InvalidOperation,"(+-)INF * 0") if other.zero?
-        return self.class.infinity(resultsign) # TODO: use just FltPntBase.infinity(resultsign) ?
+        return num_class.infinity(resultsign) # TODO: use just FltPntBase.infinity(resultsign) ?
       end
       if other.infinite?
         return context.exception(InvalidOperation,"0 * (+-)INF") if self.zero?
-        return self.class.infinity(resultsign) # TODO: revisit
+        return num_class.infinity(resultsign) # TODO: revisit
       end
     end
 
@@ -1411,11 +1428,11 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       return ans if ans
       if self.infinite?
         return context.exception(InvalidOperation,"(+-)INF/(+-)INF") if other.infinite?
-        return self.class.infinity(resultsign)
+        return num_class.infinity(resultsign)
       end
       if other.infinite?
         context.exception(Clamped,"Division by infinity")
-        return self.class.new([resultsign, 0, context.etiny])
+        return num_class.new([resultsign, 0, context.etiny])
       end
     end
 
@@ -1432,17 +1449,17 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       shift = other.number_of_digits - self.number_of_digits + prec + 1
       exp = self.exponent - other.exponent - shift
       if shift >= 0
-        coeff, remainder = (self.coefficient*self.class.int_radix_power(shift)).divmod(other.coefficient)
+        coeff, remainder = (self.coefficient*num_class.int_radix_power(shift)).divmod(other.coefficient)
       else
-        coeff, remainder = self.coefficient.divmod(other.coefficient*self.class.int_radix_power(-shift))
+        coeff, remainder = self.coefficient.divmod(other.coefficient*num_class.int_radix_power(-shift))
       end
       if remainder != 0
         return context.exception(Inexact) if context.exact?
-        coeff += 1 if (coeff%(self.class.radix/2)) == 0
+        coeff += 1 if (coeff%(num_class.radix/2)) == 0
       else
         ideal_exp = self.exponent - other.exponent
         while (exp < ideal_exp) && ((coeff % Decimal.radix)==0)
-          coeff /= self.class.radix
+          coeff /= num_class.radix
           exp += 1
         end
       end
@@ -1491,7 +1508,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     return context.exception(InvalidOperation, 'Exact next minus') if context.exact?
 
     result = nil
-    self.class.local_context(context) do |local|
+    num_class.local_context(context) do |local|
       local.rounding = :floor
       local.ignore_all_flags
       result = self._fix(local)
@@ -1523,7 +1540,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     return context.exception(InvalidOperation, 'Exact next plus') if context.exact?
 
     result = nil
-    self.class.local_context(context) do |local|
+    num_class.local_context(context) do |local|
       local.rounding = :ceiling
       local.ignore_all_flags
       result = self._fix(local)
@@ -1570,6 +1587,1232 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
     result
   end
+
+  # General Decimal Arithmetic Specification integer division and remainder:
+  #  (x/y).truncate, x - y*(x/y).truncate
+  def divrem(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    sign = self.sign * other.sign
+
+    if self.infinite?
+      if other.infinite?
+        ans = context.exception(InvalidOperation, 'divmod(INF,INF)')
+        return [ans,ans]
+      else
+        return [num_class.infinity(sign), context.exception(InvalidOperation, 'INF % x')]
+      end
+    end
+
+    if other.zero?
+      if self.zero?
+        ans = context.exception(DivisionUndefined, 'divmod(0,0)')
+        return [ans,ans]
+      else
+        return [context.exception(DivisionByZero, 'x // 0', sign),
+                 context.exception(InvalidOperation, 'x % 0')]
+      end
+    end
+
+    quotient, remainder = self._divide_truncate(other, context)
+    return [quotient, remainder._fix(context)]
+  end
+
+  # Ruby-style integer division and modulo: (x/y).floor, x - y*(x/y).floor
+  def divmod(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    sign = self.sign * other.sign
+
+    if self.infinite?
+      if other.infinite?
+        ans = context.exception(InvalidOperation, 'divmod(INF,INF)')
+        return [ans,ans]
+      else
+        return [num_class.infinity(sign), context.exception(InvalidOperation, 'INF % x')]
+      end
+    end
+
+    if other.zero?
+      if self.zero?
+        ans = context.exception(DivisionUndefined, 'divmod(0,0)')
+        return [ans,ans]
+      else
+        return [context.exception(DivisionByZero, 'x // 0', sign),
+                 context.exception(InvalidOperation, 'x % 0')]
+      end
+    end
+
+    quotient, remainder = self._divide_floor(other, context)
+    return [quotient, remainder._fix(context)]
+  end
+
+
+  # General Decimal Arithmetic Specification integer division: (x/y).truncate
+  def divide_int(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+
+    ans = _check_nans(context,other)
+    return ans if ans
+
+    sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'INF // INF') if other.infinite?
+      return num_class.infinity(sign)
+    end
+
+    if other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, '0 // 0')
+      else
+        return context.exception(DivisionByZero, 'x // 0', sign)
+      end
+    end
+    return self._divide_truncate(other, context).first
+  end
+
+  # Ruby-style integer division: (x/y).floor
+  def div(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+
+    ans = _check_nans(context,other)
+    return [ans,ans] if ans
+
+    sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'INF // INF') if other.infinite?
+      return num_class.infinity(sign)
+    end
+
+    if other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, '0 // 0')
+      else
+        return context.exception(DivisionByZero, 'x // 0', sign)
+      end
+    end
+    return self._divide_floor(other, context).first
+  end
+
+
+  # Ruby-style modulo: x - y*div(x,y)
+  def modulo(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+
+    ans = _check_nans(context,other)
+    return ans if ans
+
+    #sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'INF % x')
+    elsif other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, '0 % 0')
+      else
+        return context.exception(InvalidOperation, 'x % 0')
+      end
+    end
+
+    return self._divide_floor(other, context).last._fix(context)
+  end
+
+  # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
+  def remainder(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+
+    ans = _check_nans(context,other)
+    return ans if ans
+
+    #sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'INF % x')
+    elsif other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, '0 % 0')
+      else
+        return context.exception(InvalidOperation, 'x % 0')
+      end
+    end
+
+    return self._divide_truncate(other, context).last._fix(context)
+  end
+
+  # General Decimal Arithmetic Specification remainder-near:
+  #  x - y*round_half_even(x/y)
+  def remainder_near(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+
+    ans = _check_nans(context,other)
+    return ans if ans
+
+    sign = self.sign * other.sign
+
+    if self.infinite?
+      return context.exception(InvalidOperation, 'remainder_near(INF,x)')
+    elsif other.zero?
+      if self.zero?
+        return context.exception(DivisionUndefined, 'remainder_near(0,0)')
+      else
+        return context.exception(InvalidOperation, 'remainder_near(x,0)')
+      end
+    end
+
+    if other.infinite?
+      return num(self)._fix(context)
+    end
+
+    ideal_exp = [self.exponent, other.exponent].min
+    if self.zero?
+      return num([self.sign, 0, ideal_exp])._fix(context)
+    end
+
+    expdiff = self.adjusted_exponent - other.adjusted_exponent
+    if (expdiff >= context.precision+1) && !context.exact?
+      return context.exception(DivisionImpossible)
+    elsif expdiff <= -2
+      return self._rescale(ideal_exp, context.rounding)._fix(context)
+    end
+
+      self_coeff = self.coefficient
+      other_coeff = other.coefficient
+      de = self.exponent - other.exponent
+      if de >= 0
+        self_coeff = num_class.int_mult_radix_power(self_coeff, de)
+      else
+        other_coeff = num_class.int_mult_radix_power(other_coeff, -de)
+      end
+      q, r = self_coeff.divmod(other_coeff)
+      if 2*r + (q&1) > other_coeff
+        r -= other_coeff
+        q += 1
+      end
+
+      return context.exception(DivisionImpossible) if q >= num_class.int_radix_power(context.precision) && !context.exact?
+
+      sign = self.sign
+      if r < 0
+        sign = -sign
+        r = -r
+      end
+
+    return num(sign, r, ideal_exp)._fix(context)
+
+  end
+
+  # Reduces an operand to its simplest form
+  # by removing trailing 0s and incrementing the exponent.
+  # (formerly called normalize in GDAS)
+  def reduce(context=nil)
+    context = define_context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end
+    dup = _fix(context)
+    return dup if dup.infinite?
+
+    return num(dup.sign, 0, 0) if dup.zero?
+
+    exp_max = context.clamp? ? context.etop : context.emax
+    end_d = nd = dup.number_of_digits
+    exp = dup.exponent
+    coeff = dup.coefficient
+    dgs = dup.digits
+    while (dgs[end_d-1]==0) && (exp < exp_max)
+      exp += 1
+      end_d -= 1
+    end
+    return num([dup.sign, coeff/num_class.int_radix_power(nd-end_d), exp])
+  end
+
+  # normalizes so that the coefficient has precision digits
+  # (this is not the old GDA normalize function)
+  def normalize(context=nil)
+    context = define_context(context)
+    return num(self) if self.special? || self.zero?
+    return context.exception(InvalidOperation, "Normalize in exact context") if context.exact?
+    return context.exception(Subnormal, "Cannot normalize subnormal") if self.subnormal?
+    min_normal_coeff = num_class.int_radix_power(context.precision-1)
+    sign, coeff, exp = self._fix(context).split
+    while coeff < min_normal_coeff
+      coeff *= num_class.radix
+      exp -= 1
+    end
+    num(sign, coeff, exp)
+  end
+
+  # Returns the exponent of the magnitude of the most significant digit.
+  #
+  # The result is the integer which is the exponent of the magnitude
+  # of the most significant digit of the number (as though it were truncated
+  # to a single digit while maintaining the value of that digit and
+  # without limiting the resulting exponent).
+  def logb(context=nil)
+    context = define_context(context)
+    ans = _check_nans(context)
+    return ans if ans
+    return num_class.infinity if infinite?
+    return context.exception(DivisionByZero,'logb(0)',-1) if zero?
+    num(adjusted_exponent)
+  end
+
+  # Adds a value to the exponent.
+  def scaleb(other, context=nil)
+
+    context = define_context(context)
+    other = _convert(other)
+    ans = _check_nans(context, other)
+    return ans if ans
+    return context.exception(InvalidOperation) if other.infinite? || other.exponent != 0
+    unless context.exact?
+      liminf = -2 * (context.emax + context.precision)
+      limsup =  2 * (context.emax + context.precision)
+      i = other.to_i
+      return context.exception(InvalidOperation) if !((liminf <= i) && (i <= limsup))
+    end
+    return num(self) if infinite?
+    return num(@sign, @coeff, @exp+i)._fix(context)
+
+  end
+
+  # Convert to other numerical type.
+  def convert_to(type, context=nil)
+    context = define_context(context)
+    context.convert_to(type, self)
+  end
+
+  # Ruby-style to integer conversion.
+  def to_i
+    if special?
+      if nan?
+        #return context.exception(InvalidContext)
+        num_class.context.exception InvalidContext
+        return nil
+      end
+      raise Error, "Cannot convert infinity to Integer"
+    end
+    if @exp >= 0
+      return @sign*num_class.int_mult_radix_power(@coeff,@exp)
+    else
+      return @sign*num_class.int_div_radix_power(@coeff,-@exp)
+    end
+  end
+
+  # Conversion to Rational.
+  # Conversion of special values will raise an exception under Ruby 1.9
+  def to_r
+    if special?
+      num = (@exp == :inf) ? @sign : 0
+      Rational.respond_to?(:new!) ? Rational.new!(num,0) : Rational(num,0)
+    else
+      if @exp < 0
+        Rational(@sign*@coeff, num_class.int_radix_power(-@exp))
+      else
+        Rational(num_class.int_mult_radix_power(@sign*@coeff,@exp), 1)
+      end
+    end
+  end
+
+  # Conversion to Float
+  def to_f
+    if special?
+      if @exp==:inf
+        @sign/0.0
+      else
+        0.0/0.0
+      end
+    else
+      # to_rational.to_f
+      # to_s.to_f
+      @sign*@coeff*(10.0**@exp)
+    end
+  end
+
+  # ulp (unit in the last place) according to the definition proposed by J.M. Muller in
+  # "On the definition of ulp(x)" INRIA No. 5504
+  def ulp(context = nil)
+    context = define_context(context)
+
+    return context.exception(InvalidOperation, "ulp in exact context") if context.exact?
+
+    if self.nan?
+      return num(self)
+    elsif self.infinite?
+      # The ulp here is context.maximum_finite - context.maximum_finite.next_minus
+      return num(+1, 1, context.etop)
+    elsif self.zero? || self.adjusted_exponent <= context.emin
+      # This is the ulp value for self.abs <= context.minimum_normal*Decimal.context
+      # Here we use it for self.abs < context.minimum_normal*Decimal.context;
+      #  because of the simple exponent check; the remaining cases are handled below.
+      return context.minimum_nonzero
+    else
+      # The next can compute the ulp value for the values that
+      #   self.abs > context.minimum_normal && self.abs <= context.maximum_finite
+      # The cases self.abs < context.minimum_normal*Decimal.context have been handled above.
+
+      # assert self.normal? && self.abs>context.minimum_nonzero
+      norm = self.normalize
+      exp = norm.integral_exponent
+      sig = norm.integral_significand
+
+      # Powers of the radix, r**n, are between areas with different ulp values: r**(n-p-1) and r**(n-p)
+      # (p is context.precision).
+      # This method and the ulp definitions by Muller, Kahan and Harrison assign the smaller ulp value
+      # to r**n; the definition by Goldberg assigns it to the larger ulp.
+      # The next line selects the smaller ulp for powers of the radix:
+      exp -= 1 if sig == num_class.int_radix_power(context.precision-1)
+
+      return num(+1, 1, exp)
+    end
+  end
+
+  def inspect
+    if $DEBUG
+      "#{num_class}('#{self}') [coeff:#{@coeff.inspect} exp:#{@exp.inspect} s:#{@sign.inspect} radix:#{num_class.radix}]"
+    else
+      "#{num_class}('#{self}')"
+    end
+  end
+
+  # Internal comparison operator: returns -1 if the first number is less than the second,
+  # 0 if both are equal or +1 if the first is greater than the secong.
+  def <=>(other)
+    case other
+    when *num_class.context.coercible_types_or_decimal
+      other = num(other)
+      if self.special? || other.special?
+        if self.nan? || other.nan?
+          1
+        else
+          self_v = self.finite? ? 0 : self.sign
+          other_v = other.finite? ? 0 : other.sign
+          self_v <=> other_v
+        end
+      else
+        if self.zero?
+          if other.zero?
+            0
+          else
+            -other.sign
+          end
+        elsif other.zero?
+          self.sign
+        elsif other.sign < self.sign
+          +1
+        elsif self.sign < other.sign
+          -1
+        else
+          self_adjusted = self.adjusted_exponent
+          other_adjusted = other.adjusted_exponent
+          if self_adjusted == other_adjusted
+            self_padded,other_padded = self.coefficient,other.coefficient
+            d = self.exponent - other.exponent
+            if d>0
+              self_padded *= num_class.int_radix_power(d)
+            else
+              other_padded *= num_class.int_radix_power(-d)
+            end
+            (self_padded <=> other_padded)*self.sign
+          elsif self_adjusted > other_adjusted
+            self.sign
+          else
+            -self.sign
+          end
+        end
+      end
+    else
+      if defined? other.coerce
+        x, y = other.coerce(self)
+        x <=> y
+      else
+        nil
+      end
+    end
+  end
+  def ==(other)
+    (self<=>other) == 0
+  end
+  include Comparable
+
+  def hash
+    ([num_class]+reduce.split).hash # TODO: optimize
+  end
+
+  def eql?(other)
+    return false unless other.is_a?(num_class)
+    reduce.split == other.reduce.split
+  end
+
+  # Compares like <=> but returns a Decimal value.
+  def compare(other, context=nil)
+
+    other = _convert(other)
+
+    if self.special? || other.special?
+      ans = _check_nans(context, other)
+      return ans if ans
+    end
+
+    return num(self <=> other)
+
+  end
+
+  # Exponent of the magnitude of the most significant digit of the operand
+  def adjusted_exponent
+    if special?
+      0
+    else
+      @exp + number_of_digits - 1
+    end
+  end
+
+  # Synonym for Decimal#adjusted_exponent()
+  def scientific_exponent
+    adjusted_exponent
+  end
+
+  # Exponent as though the significand were a fraction (the decimal point before its first digit)
+  def fractional_exponent
+    scientific_exponent + 1
+  end
+
+  # Number of digits in the significand
+  def number_of_digits
+    # digits.size
+    @coeff.to_s(num_class.radix).size # TODO: optimize in derived classes
+  end
+
+  # Digits of the significand as an array of integers
+  def digits
+    @coeff.to_s(num_class.radix).split('').map{|d| d.to_i} # TODO: optimize in derivided classes
+  end
+
+  # Significand as an integer, unsigned. Synonym of coefficient
+  def integral_significand
+    @coeff
+  end
+
+  # Exponent of the significand as an integer. Synonym of exponent
+  def integral_exponent
+    # fractional_exponent - number_of_digits
+    @exp
+  end
+
+  # Sign of the number: +1 for plus / -1 for minus.
+  def sign
+    @sign
+  end
+
+  # Significand as an integer, unsigned
+  def coefficient
+    @coeff
+  end
+
+  # Exponent of the significand as an integer.
+  def exponent
+    @exp
+  end
+
+  # Return the value of the number as an signed integer and a scale.
+  def to_int_scale
+    if special?
+      nil
+    else
+      [@sign*integral_significand, integral_exponent]
+    end
+  end
+
+  # Returns a copy of with the sign set to +
+  def copy_abs
+    num(+1,@coeff,@exp)
+  end
+
+  # Returns a copy of with the sign inverted
+  def copy_negate
+    num(-@sign,@coeff,@exp)
+  end
+
+  # Returns a copy of with the sign of other
+  def copy_sign(other)
+    num(other.sign, @coeff, @exp)
+  end
+
+  # Returns true if the value is an integer
+  def integral?
+    if finite?
+      if @exp>=0 || @coeff==0
+        true
+      else
+        if @exp <= -number_of_digits
+          false
+        else
+          m = num_class.int_radix_power(-@exp)
+          (@coeff % m) == 0
+        end
+      end
+    else
+      false
+    end
+  end
+
+  # returns true if is an even integer
+  def even?
+    # integral? && ((to_i%2)==0)
+    if finite?
+      if @exp>0 || @coeff==0
+        true
+      else
+        if @exp <= -number_of_digits
+          false
+        else
+          m = num_class.int_radix_power(-@exp)
+          if (@coeff % m) == 0
+            # ((@coeff / m) % 2) == 0
+            ((@coeff / m) & 1) == 0
+          else
+            false
+          end
+        end
+      end
+    else
+      false
+    end
+  end
+
+  # returns true if is an odd integer
+  def odd?
+    # integral? && ((to_i%2)==1)
+    # integral? && !even?
+    if finite?
+      if @exp>0 || @coeff==0
+        false
+      else
+        if @exp <= -number_of_digits
+          false
+        else
+          m = num_class.int_radix_power(-@exp)
+          if (@coeff % m) == 0
+            # ((@coeff / m) % 2) == 1
+            ((@coeff / m) & 1) == 1
+          else
+            false
+          end
+        end
+      end
+    else
+      false
+    end
+  end
+
+  # Rescale so that the exponent is exp, either by padding with zeros
+  # or by truncating digits.
+  def rescale(exp, context=nil, watch_exp=true)
+    context = define_context(context)
+    exp = _convert(exp)
+    if self.special? || exp.special?
+      ans = _check_nans(context, exp)
+      return ans if ans
+      if exp.infinite? || self.infinite?
+        return num(self) if exp.infinite? && self.infinite?
+        return context.exception(InvalidOperation, 'rescale with one INF')
+      end
+    end
+    return context.exception(InvalidOperation,"exponent of rescale is not integral") unless exp.integral?
+    exp = exp.to_i
+    _watched_rescale(exp, context, watch_exp)
+  end
+
+  # Quantize so its exponent is the same as that of y.
+  def quantize(exp, context=nil, watch_exp=true)
+    exp = _convert(exp)
+    context = define_context(context)
+    if self.special? || exp.special?
+      ans = _check_nans(context, exp)
+      return ans if ans
+      if exp.infinite? || self.infinite?
+        return num(self) if exp.infinite? && self.infinite?
+        return context.exception(InvalidOperation, 'quantize with one INF')
+      end
+    end
+    exp = exp.exponent
+    _watched_rescale(exp, context, watch_exp)
+  end
+
+  # Return true if has the same exponent as other.
+  #
+  # If either operand is a special value, the following rules are used:
+  # * return true if both operands are infinities
+  # * return true if both operands are NaNs
+  # * otherwise, return false.
+  def same_quantum?(other)
+    other = _convert(other)
+    if self.special? || other.special?
+      return (self.nan? && other.nan?) || (self.infinite? && other.infinite?)
+    end
+    return self.exponent == other.exponent
+  end
+
+  # Rounds to a nearby integer. May raise Inexact or Rounded.
+  def to_integral_exact(context=nil)
+    context = define_context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      return num(self)
+    end
+    return num(self) if @exp >= 0
+    return num(@sign, 0, 0) if zero?
+    context.exception Rounded
+    ans = _rescale(0, context.rounding)
+    context.exception Inexact if ans != self
+    return ans
+  end
+
+  # Rounds to a nearby integer. Doesn't raise Inexact or Rounded.
+  def to_integral_value(context=nil)
+    context = define_context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      return num(self)
+    end
+    return num(self) if @exp >= 0
+    return _rescale(0, context.rounding)
+  end
+
+  # General rounding.
+  #
+  # With an integer argument this acts like Float#round: the parameter specifies the number
+  # of fractional digits (or digits to the left of the decimal point if negative).
+  #
+  # Options can be passed as a Hash instead; valid options are:
+  # * :rounding method for rounding (see Context#new())
+  # The precision can be specified as:
+  # * :places number of fractional digits as above.
+  # * :exponent specifies the exponent corresponding to the
+  #   digit to be rounded (exponent == -places)
+  # * :precision or :significan_digits is the number of digits
+  # * :power 10^exponent, value of the digit to be rounded,
+  #   should be passed as a type convertible to Decimal.
+  # * :index 0-based index of the digit to be rounded
+  # * :rindex right 0-based index of the digit to be rounded
+  #
+  # The default is :places=>0 (round to integer).
+  #
+  # Example: ways of specifiying the rounding position
+  #   number:     1   2   3   4  .  5    6    7    8
+  #   :places    -3  -2  -1   0     1    2    3    4
+  #   :exponent   3   2   1   0    -1   -2   -3   -4
+  #   :precision  1   2   3   4     5    6    7    8
+  #   :power    1E3 1E2  10   1   0.1 1E-2 1E-3 1E-4
+  #   :index      0   1   2   3     4    5    6    7
+  #   :index      7   6   5   4     3    2    1    0
+  def round(opt={})
+    opt = { :places=>opt } if opt.kind_of?(Integer)
+    r = opt[:rounding] || :half_up
+    as_int = false
+    if v=(opt[:precision] || opt[:significant_digits])
+      prec = v
+    elsif v=(opt[:places])
+      prec = adjusted_exponent + 1 + v
+    elsif v=(opt[:exponent])
+      prec = adjusted_exponent + 1 - v
+    elsif v=(opt[:power])
+      prec = adjusted_exponent + 1 - Decimal(v).adjusted_exponent
+    elsif v=(opt[:index])
+      prec = i+1
+    elsif v=(opt[:rindex])
+      prec = number_of_digits - v
+    else
+      prec = adjusted_exponent + 1
+      as_int = true
+    end
+    result = plus(:rounding=>r, :precision=>prec)
+    return as_int ? result.to_i : result
+  end
+
+  # General ceiling operation (as for Float) with same options for precision
+  # as Decimal#round()
+  def ceil(opt={})
+    opt[:rounding] = :ceiling
+    round opt
+  end
+
+  # General floor operation (as for Float) with same options for precision
+  # as Decimal#round()
+  def floor(opt={})
+    opt[:rounding] = :floor
+    round opt
+  end
+
+  # General truncate operation (as for Float) with same options for precision
+  # as Decimal#round()
+  def truncate(opt={})
+    opt[:rounding] = :down
+    round opt
+  end
+
+  # Fused multiply-add.
+  #
+  # Computes (self*other+third) with no rounding of the intermediate product self*other.
+  def fma(other, third, context=nil)
+    context =define_context(context)
+    other = _convert(other)
+    third = _convert(third)
+    if self.special? || other.special?
+      return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
+      return context.exception(InvalidOperation, 'sNaN', other) if other.snan?
+      if self.nan?
+        product = self
+      elsif other.nan?
+        product = other
+      elsif self.infinite?
+        return context.exception(InvalidOperation, 'INF * 0 in fma') if other.zero?
+        product = num_class.infinity(self.sign*other.sign)
+      elsif other.infinite?
+        return context.exception(InvalidOperation, '0 * INF  in fma') if self.zero?
+        product = num_class.infinity(self.sign*other.sign)
+      end
+    else
+      product = num([self.sign*other.sign,self.coefficient*other.coefficient, self.exponent+other.exponent])
+    end
+    return product.add(third, context)
+  end
+
+  # Check if the number or other is NaN, signal if sNaN or return NaN;
+  # return nil if none is NaN.
+  def _check_nans(context=nil, other=nil)
+    #self_is_nan = self.nan?
+    #other_is_nan = other.nil? ? false : other.nan?
+    if self.nan? || (other && other.nan?)
+      context = define_context(context)
+      return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
+      return context.exception(InvalidOperation, 'sNaN', other) if other && other.snan?
+      return self._fix_nan(context) if self.nan?
+      return other._fix_nan(context)
+    else
+      return nil
+    end
+  end
+
+  # Rescale so that the exponent is exp, either by padding with zeros
+  # or by truncating digits, using the given rounding mode.
+  #
+  # Specials are returned without change.  This operation is
+  # quiet: it raises no flags, and uses no information from the
+  # context.
+  #
+  # exp = exp to scale to (an integer)
+  # rounding = rounding mode
+  def _rescale(exp, rounding)
+
+    return num(self) if special?
+    return num(sign, 0, exp) if zero?
+    return num(sign, @coeff*num_class.int_radix_power(self.exponent - exp), exp) if self.exponent > exp
+    #nd = number_of_digits + self.exponent - exp
+    nd = exp - self.exponent
+    if number_of_digits < nd
+      slf = num(sign, 1, exp-1)
+      nd = number_of_digits
+    else
+      slf = Decimal.new(self)
+    end
+    changed = slf._round(rounding, nd)
+    coeff = num_class.int_div_radix_power(@coeff, nd)
+    coeff += 1 if changed==1
+    num(slf.sign, coeff, exp)
+
+  end
+
+  def _watched_rescale(exp, context, watch_exp)
+    if !watch_exp
+      ans = _rescale(exp, context.rounding)
+      context.exception(Rounded) if ans.exponent > self.exponent
+      context.exception(Inexact) if ans != self
+      return ans
+    end
+
+    if exp < context.etiny || exp > context.emax
+      return context.exception(InvalidOperation, "target operation out of bounds in quantize/rescale")
+    end
+
+    return num(@sign, 0, exp)._fix(context) if zero?
+
+    self_adjusted = adjusted_exponent
+    return context.exception(InvalidOperation,"exponent of quantize/rescale result too large for current context") if self_adjusted > context.emax
+    return context.exception(InvalidOperation,"quantize/rescale has too many digits for current context") if (self_adjusted - exp + 1 > context.precision) && !context.exact?
+
+    ans = _rescale(exp, context.rounding)
+    return context.exception(InvalidOperation,"exponent of rescale result too large for current context") if ans.adjusted_exponent > context.emax
+    return context.exception(InvalidOperation,"rescale result has too many digits for current context") if (ans.number_of_digits > context.precision) && !context.exact?
+    if ans.exponent > self.exponent
+      context.exception(Rounded)
+      context.exception(Inexact) if ans!=self
+    end
+    context.exception(Subnormal) if !ans.zero? && (ans.adjusted_exponent < context.emin)
+    return ans._fix(context)
+  end
+
+  # Returns copy with sign inverted
+  def _neg(context=nil)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end
+    if zero?
+      ans = copy_abs
+    else
+      ans = copy_negate
+    end
+    context = define_context(context)
+    ans._fix(context)
+  end
+
+  # Returns a copy with precision adjusted
+  def _pos(context=nil)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end
+    if zero?
+      ans = copy_abs
+    else
+      ans = num(self)
+    end
+    context = define_context(context)
+    ans._fix(context)
+  end
+
+  # Returns a copy with positive sign
+  def _abs(round=true, context=nil)
+    return copy_abs if not round
+
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end
+    if sign>0
+      ans = _neg(context)
+    else
+      ans = _pos(context)
+    end
+    ans
+  end
+
+  # Round if it is necessary to keep within precision.
+  def _fix(context)
+    return self if context.exact?
+
+    if special?
+      if nan?
+        return _fix_nan(context)
+      else
+        return num(self)
+      end
+    end
+
+    etiny = context.etiny
+    etop  = context.etop
+    if zero?
+      exp_max = context.clamp? ? etop : context.emax
+      new_exp = [[@exp, etiny].max, exp_max].min
+      if new_exp!=@exp
+        context.exception Clamped
+        return num(sign,0,new_exp)
+      else
+        return num(self)
+      end
+    end
+
+    nd = number_of_digits
+    exp_min = nd + @exp - context.precision
+    if exp_min > etop
+      context.exception Inexact
+      context.exception Rounded
+      return context.exception(Overflow, 'above Emax', sign)
+    end
+
+    self_is_subnormal = exp_min < etiny
+
+    if self_is_subnormal
+      context.exception Subnormal
+      exp_min = etiny
+    end
+
+    if @exp < exp_min
+      context.exception Rounded
+      # dig is the digits number from 0 (MS) to number_of_digits-1 (LS)
+      # dg = numberof_digits-dig is from 1 (LS) to number_of_digits (MS)
+      dg = exp_min - @exp # dig = number_of_digits + exp - exp_min
+      if dg > number_of_digits # dig<0
+        d = num(sign,1,exp_min-1)
+        dg = number_of_digits # dig = 0
+      else
+        d = num(self)
+      end
+      changed = d._round(context.rounding, dg)
+      coeff = num_class.int_div_radix_power(d.coefficient, dg)
+      coeff += 1 if changed==1
+      ans = num(sign, coeff, exp_min)
+      if changed!=0
+        context.exception Inexact
+        if self_is_subnormal
+          context.exception Underflow
+          if ans.zero?
+            context.exception Clamped
+          end
+        elsif ans.number_of_digits == context.precision+1
+          if ans.exponent< etop
+            ans = num(ans.sign, num_class.int_div_radix_power(ans.coefficient,1), ans.exponent+1)
+          else
+            ans = context.exception(Overflow, 'above Emax', d.sign)
+          end
+        end
+      end
+      return ans
+    end
+
+    if context.clamp? &&  @exp>etop
+      context.exception Clamped
+      self_padded = num_class.int_mult_radix_power(@coeff, @exp-etop)
+      return num(sign,self_padded,etop)
+    end
+
+    return num(self)
+
+  end
+
+  # adjust payload of a NaN to the context
+  def _fix_nan(context)
+    if  !context.exact?
+      payload = @coeff
+      payload = nil if payload==0
+
+      max_payload_len = context.maximum_nan_diagnostic_digits
+
+      if number_of_digits > max_payload_len
+          payload = payload.to_s[-max_payload_len..-1].to_i
+          return Decimal([@sign, payload, @exp])
+      end
+    end
+    num(self)
+  end
+
+  protected
+
+  def _divide_truncate(other, context)
+    context = define_context(context)
+    sign = self.sign * other.sign
+    if other.infinite?
+      ideal_exp = self.exponent
+    else
+      ideal_exp = [self.exponent, other.exponent].min
+    end
+
+    expdiff = self.adjusted_exponent - other.adjusted_exponent
+    if self.zero? || other.infinite? || (expdiff <= -2)
+      return [num(sign, 0, 0), _rescale(ideal_exp, context.rounding)]
+    end
+    if (expdiff <= context.precision) || context.exact?
+      self_coeff = self.coefficient
+      other_coeff = other.coefficient
+      de = self.exponent - other.exponent
+      if de >= 0
+        self_coeff = num_class.int_mult_radix_power(self_coeff, de)
+      else
+        other_coeff = num_class.int_mult_radix_power(other_coeff, -de)
+      end
+      q, r = self_coeff.divmod(other_coeff)
+      if (q < num_class.int_radix_power(context.precision)) || context.exact?
+        return [num(sign, q, 0),num(self.sign, r, ideal_exp)]
+      end
+    end
+    # Here the quotient is too large to be representable
+    ans = context.exception(DivisionImpossible, 'quotient too large in //, % or divmod')
+    return [ans, ans]
+
+  end
+
+  def _divide_floor(other, context)
+    context = define_context(context)
+    sign = self.sign * other.sign
+    if other.infinite?
+      ideal_exp = self.exponent
+    else
+      ideal_exp = [self.exponent, other.exponent].min
+    end
+
+    expdiff = self.adjusted_exponent - other.adjusted_exponent
+    if self.zero? || other.infinite? || (expdiff <= -2)
+      return [num(sign, 0, 0), _rescale(ideal_exp, context.rounding)]
+    end
+    if (expdiff <= context.precision) || context.exact?
+      self_coeff = self.coefficient*self.sign
+      other_coeff = other.coefficient*other.sign
+      de = self.exponent - other.exponent
+      if de >= 0
+        self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
+      else
+        other_coeff = Decimal.int_mult_radix_power(other_coeff, -de)
+      end
+      q, r = self_coeff.divmod(other_coeff)
+      if r<0
+        r = -r
+        rs = -1
+      else
+        rs = +1
+      end
+      if q<0
+        q = -q
+        qs = -1
+      else
+        qs = +1
+      end
+      if (q < num_class.int_radix_power(context.precision)) || context.exact?
+        return [num(qs, q, 0),num(rs, r, ideal_exp)]
+      end
+    end
+    # Here the quotient is too large to be representable
+    ans = context.exception(DivisionImpossible, 'quotient too large in //, % or divmod')
+    return [ans, ans]
+
+  end
+
+  # Auxiliar Methods
+
+  # Round to i digits using the specified method
+  def _round(rounding, i)
+    send("_round_#{rounding}", i)
+  end
+
+  # Round down (toward 0, truncate) to i digits
+  def _round_down(i)
+    (@coeff % num_class.int_radix_power(i))==0 ? 0 : -1
+  end
+
+  # Round up (away from 0) to i digits
+  def _round_up(i)
+    -_round_down(i)
+  end
+
+  # Round to closest i-digit number with ties down (rounds 5 toward 0)
+  def _round_half_down(i)
+    m = num_class.int_radix_power(i)
+    if (m>1) && ((@coeff%m) == m/2)
+      -1
+    else
+      _round_half_up(i)
+    end
+  end
+
+  # Round to closest i-digit number with ties up (rounds 5 away from 0)
+  def _round_half_up(i)
+    m = num_class.int_radix_power(i)
+    if (m>1) && ((@coeff % m) >= m/2)
+      1
+    else
+      (@coeff % m)==0 ? 0 : -1
+    end
+  end
+
+  # Round to closest i-digit number with ties (5) to an even digit
+  def _round_half_even(i)
+    m = num_class.int_radix_power(i)
+    if (m>1) && ((@coeff%m) == m/2 && ((@coeff/m)%2)==0)
+      -1
+    else
+      _round_half_up(i)
+    end
+  end
+
+  # Round up (not away from 0 if negative) to i digits
+  def _round_ceiling(i)
+    sign<0 ? _round_down(i) : -_round_down(i)
+  end
+
+  # Round down (not toward 0 if negative) to i digits
+  def _round_floor(i)
+    sign>0 ? _round_down(i) : -_round_down(i)
+  end
+
+  # Round down unless digit i-1 is 0 or 5
+  def _round_up05(i)
+    dg = (@coeff%num_class.int_radix_power(i+1))/num_class.int_radix_power(i)
+    if [0,num_class.radix/2].include?(dg)
+      -_round_down(i)
+    else
+      _round_down(i)
+    end
+  end
+
+  module AuxiliarFunctions
+
+    module_function
+
+    # Convert a numeric value to decimal (internal use)
+    def _convert(x, error=true)
+      case x
+      when num_class
+        x
+      when *num_class.context.coercible_types
+        num_class.new(x)
+      else
+        raise TypeError, "Unable to convert #{x.class} to #{num_class}" if error
+        nil
+      end
+    end
+
+    # Parse numeric text literals (internal use)
+    def _parser(txt)
+      md = /^\s*([-+])?(?:(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE]([-+]?\d+))?|Inf(?:inity)?|(s)?NaN(\d*))\s*$/i.match(txt)
+      if md
+        OpenStruct.new :sign=>md[1], :int=>md[2], :frac=>md[3], :onlyfrac=>md[4], :exp=>md[5],
+                       :signal=>md[6], :diag=>md[7]
+      end
+    end
+
+    # Normalizes op1, op2 to have the same exp and length of coefficient. Used for addition.
+    def _normalize(op1, op2, prec=0)
+      if op1.exponent < op2.exponent
+        swap = true
+        tmp,other = op2,op1
+      else
+        swap = false
+        tmp,other = op1,op2
+      end
+      tmp_len = tmp.number_of_digits
+      other_len = other.number_of_digits
+      exp = tmp.exponent + [-1, tmp_len - prec - 2].min
+      if (other_len+other.exponent-1 < exp) && prec>0
+        other = Decimal.new([other.sign, 1, exp])
+      end
+      tmp = num(tmp.sign,
+                        num_class.int_mult_radix_power(tmp.coefficient, tmp.exponent-other.exponent),
+                        other.exponent)
+      return swap ? [other, tmp] : [tmp, other]
+    end
+
+  end
+
+  include AuxiliarFunctions
+  extend AuxiliarFunctions
 
 end
 
@@ -1630,7 +2873,7 @@ class Decimal < FltPntBase
     #
     # See also the context constructor method Decimal.Context().
     def initialize(*options)
-      super *options
+      super(Decimal, *options)
     end
 
     # Power. See Decimal#power()
@@ -1830,337 +3073,10 @@ class Decimal < FltPntBase
     return ans
   end
 
-  # General Decimal Arithmetic Specification integer division and remainder:
-  #  (x/y).truncate, x - y*(x/y).truncate
-  def divrem(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-
-    ans = _check_nans(context,other)
-    return [ans,ans] if ans
-
-    sign = self.sign * other.sign
-
-    if self.infinite?
-      if other.infinite?
-        ans = context.exception(InvalidOperation, 'divmod(INF,INF)')
-        return [ans,ans]
-      else
-        return [Decimal.infinity(sign), context.exception(InvalidOperation, 'INF % x')]
-      end
-    end
-
-    if other.zero?
-      if self.zero?
-        ans = context.exception(DivisionUndefined, 'divmod(0,0)')
-        return [ans,ans]
-      else
-        return [context.exception(DivisionByZero, 'x // 0', sign),
-                 context.exception(InvalidOperation, 'x % 0')]
-      end
-    end
-
-    quotient, remainder = self._divide_truncate(other, context)
-    return [quotient, remainder._fix(context)]
-  end
-
-  # Ruby-style integer division and modulo: (x/y).floor, x - y*(x/y).floor
-  def divmod(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-
-    ans = _check_nans(context,other)
-    return [ans,ans] if ans
-
-    sign = self.sign * other.sign
-
-    if self.infinite?
-      if other.infinite?
-        ans = context.exception(InvalidOperation, 'divmod(INF,INF)')
-        return [ans,ans]
-      else
-        return [Decimal.infinity(sign), context.exception(InvalidOperation, 'INF % x')]
-      end
-    end
-
-    if other.zero?
-      if self.zero?
-        ans = context.exception(DivisionUndefined, 'divmod(0,0)')
-        return [ans,ans]
-      else
-        return [context.exception(DivisionByZero, 'x // 0', sign),
-                 context.exception(InvalidOperation, 'x % 0')]
-      end
-    end
-
-    quotient, remainder = self._divide_floor(other, context)
-    return [quotient, remainder._fix(context)]
-  end
-
-
-  # General Decimal Arithmetic Specification integer division: (x/y).truncate
-  def divide_int(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-
-    ans = _check_nans(context,other)
-    return ans if ans
-
-    sign = self.sign * other.sign
-
-    if self.infinite?
-      return context.exception(InvalidOperation, 'INF // INF') if other.infinite?
-      return Decimal.infinity(sign)
-    end
-
-    if other.zero?
-      if self.zero?
-        return context.exception(DivisionUndefined, '0 // 0')
-      else
-        return context.exception(DivisionByZero, 'x // 0', sign)
-      end
-    end
-    return self._divide_truncate(other, context).first
-  end
-
-  # Ruby-style integer division: (x/y).floor
-  def div(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-
-    ans = _check_nans(context,other)
-    return [ans,ans] if ans
-
-    sign = self.sign * other.sign
-
-    if self.infinite?
-      return context.exception(InvalidOperation, 'INF // INF') if other.infinite?
-      return Decimal.infinity(sign)
-    end
-
-    if other.zero?
-      if self.zero?
-        return context.exception(DivisionUndefined, '0 // 0')
-      else
-        return context.exception(DivisionByZero, 'x // 0', sign)
-      end
-    end
-    return self._divide_floor(other, context).first
-  end
-
-
-  # Ruby-style modulo: x - y*div(x,y)
-  def modulo(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-
-    ans = _check_nans(context,other)
-    return ans if ans
-
-    #sign = self.sign * other.sign
-
-    if self.infinite?
-      return context.exception(InvalidOperation, 'INF % x')
-    elsif other.zero?
-      if self.zero?
-        return context.exception(DivisionUndefined, '0 % 0')
-      else
-        return context.exception(InvalidOperation, 'x % 0')
-      end
-    end
-
-    return self._divide_floor(other, context).last._fix(context)
-  end
-
-  # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
-  def remainder(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-
-    ans = _check_nans(context,other)
-    return ans if ans
-
-    #sign = self.sign * other.sign
-
-    if self.infinite?
-      return context.exception(InvalidOperation, 'INF % x')
-    elsif other.zero?
-      if self.zero?
-        return context.exception(DivisionUndefined, '0 % 0')
-      else
-        return context.exception(InvalidOperation, 'x % 0')
-      end
-    end
-
-    return self._divide_truncate(other, context).last._fix(context)
-  end
-
-  # General Decimal Arithmetic Specification remainder-near:
-  #  x - y*round_half_even(x/y)
-  def remainder_near(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-
-    ans = _check_nans(context,other)
-    return ans if ans
-
-    sign = self.sign * other.sign
-
-    if self.infinite?
-      return context.exception(InvalidOperation, 'remainder_near(INF,x)')
-    elsif other.zero?
-      if self.zero?
-        return context.exception(DivisionUndefined, 'remainder_near(0,0)')
-      else
-        return context.exception(InvalidOperation, 'remainder_near(x,0)')
-      end
-    end
-
-    if other.infinite?
-      return Decimal.new(self)._fix(context)
-    end
-
-    ideal_exp = [self.exponent, other.exponent].min
-    if self.zero?
-      return Decimal([self.sign, 0, ideal_exp])._fix(context)
-    end
-
-    expdiff = self.adjusted_exponent - other.adjusted_exponent
-    if (expdiff >= context.precision+1) && !context.exact?
-      return context.exception(DivisionImpossible)
-    elsif expdiff <= -2
-      return self._rescale(ideal_exp, context.rounding)._fix(context)
-    end
-
-      self_coeff = self.coefficient
-      other_coeff = other.coefficient
-      de = self.exponent - other.exponent
-      if de >= 0
-        self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
-      else
-        other_coeff = Decimal.int_mult_radix_power(other_coeff, -de)
-      end
-      q, r = self_coeff.divmod(other_coeff)
-      if 2*r + (q&1) > other_coeff
-        r -= other_coeff
-        q += 1
-      end
-
-      return context.exception(DivisionImpossible) if q >= Decimal.int_radix_power(context.precision) && !context.exact?
-
-      sign = self.sign
-      if r < 0
-        sign = -sign
-        r = -r
-      end
-
-    return Decimal.new([sign, r, ideal_exp])._fix(context)
-
-  end
-
-  # Reduces an operand to its simplest form
-  # by removing trailing 0s and incrementing the exponent.
-  # (formerly called normalize in GDAS)
-  def reduce(context=nil)
-    context = Decimal.define_context(context)
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-    end
-    dup = _fix(context)
-    return dup if dup.infinite?
-
-    return Decimal.new([dup.sign, 0, 0]) if dup.zero?
-
-    exp_max = context.clamp? ? context.etop : context.emax
-    end_d = nd = dup.number_of_digits
-    exp = dup.exponent
-    coeff = dup.coefficient
-    dgs = dup.digits
-    while (dgs[end_d-1]==0) && (exp < exp_max)
-      exp += 1
-      end_d -= 1
-    end
-    return Decimal.new([dup.sign, coeff/Decimal.int_radix_power(nd-end_d), exp])
-  end
-
-  # normalizes so that the coefficient has precision digits
-  # (this is not the old GDA normalize function)
-  def normalize(context=nil)
-    context = Decimal.define_context(context)
-    return Decimal(self) if self.special? || self.zero?
-    return context.exception(InvalidOperation, "Normalize in exact context") if context.exact?
-    return context.exception(Subnormal, "Cannot normalize subnormal") if self.subnormal?
-    min_normal_coeff = Decimal.int_radix_power(context.precision-1)
-    sign, coeff, exp = self._fix(context).split
-    while coeff < min_normal_coeff
-      coeff *= Decimal.radix
-      exp -= 1
-    end
-    Decimal(sign, coeff, exp)
-  end
-
-  # Returns the exponent of the magnitude of the most significant digit.
-  #
-  # The result is the integer which is the exponent of the magnitude
-  # of the most significant digit of the number (as though it were truncated
-  # to a single digit while maintaining the value of that digit and
-  # without limiting the resulting exponent).
-  def logb(context=nil)
-    context = Decimal.define_context(context)
-    ans = _check_nans(context)
-    return ans if ans
-    return Decimal.infinity if infinite?
-    return context.exception(DivisionByZero,'logb(0)',-1) if zero?
-    Decimal.new(adjusted_exponent)
-  end
-
-  # Adds a value to the exponent.
-  def scaleb(other, context=nil)
-
-    context = Decimal.define_context(context)
-    other = _convert(other)
-    ans = _check_nans(context, other)
-    return ans if ans
-    return context.exception(InvalidOperation) if other.infinite? || other.exponent != 0
-    unless context.exact?
-      liminf = -2 * (context.emax + context.precision)
-      limsup =  2 * (context.emax + context.precision)
-      i = other.to_i
-      return context.exception(InvalidOperation) if !((liminf <= i) && (i <= limsup))
-    end
-    return Decimal.new(self) if infinite?
-    return Decimal.new(@sign, @coeff, @exp+i)._fix(context)
-
-  end
-
-  # Convert to other numerical type.
-  def convert_to(type, context=nil)
-    context = Decimal.define_context(context)
-    context.convert_to(type, self)
-  end
-
-  # Ruby-style to integer conversion.
-  def to_i
-    if special?
-      if nan?
-        #return Decimal.context.exception(InvalidContext)
-        Decimal.context.exception InvalidContext
-        return nil
-      end
-      raise Error, "Cannot convert infinity to Integer"
-    end
-    if @exp >= 0
-      return @sign*Decimal.int_mult_radix_power(@coeff,@exp)
-    else
-      return @sign*Decimal.int_div_radix_power(@coeff,-@exp)
-    end
-  end
-
   # Ruby-style to string conversion.
   def to_s(eng=false,context=nil)
-    # (context || Decimal.context).to_string(self)
-    context = Decimal.define_context(context)
+    # (context || num_class.context).to_string(self)
+    context = define_context(context)
     sgn = sign<0 ? '-' : ''
     if special?
       if @exp==:inf
@@ -2205,487 +3121,6 @@ class Decimal < FltPntBase
       sgn + intpart + fracpart + e
 
     end
-  end
-
-  # Conversion to Rational.
-  # Conversion of special values will raise an exception under Ruby 1.9
-  def to_r
-    if special?
-      num = (@exp == :inf) ? @sign : 0
-      Rational.respond_to?(:new!) ? Rational.new!(num,0) : Rational(num,0)
-    else
-      if @exp < 0
-        Rational(@sign*@coeff, Decimal.int_radix_power(-@exp))
-      else
-        Rational(Decimal.int_mult_radix_power(@sign*@coeff,@exp), 1)
-      end
-    end
-  end
-
-  # Conversion to Float
-  def to_f
-    if special?
-      if @exp==:inf
-        @sign/0.0
-      else
-        0.0/0.0
-      end
-    else
-      # to_rational.to_f
-      # to_s.to_f
-      @sign*@coeff*(10.0**@exp)
-    end
-  end
-
-  # ulp (unit in the last place) according to the definition proposed by J.M. Muller in
-  # "On the definition of ulp(x)" INRIA No. 5504
-  def ulp(context = nil)
-    context = Decimal.define_context(context)
-
-    return context.exception(InvalidOperation, "ulp in exact context") if context.exact?
-
-    if self.nan?
-      return Decimal(self)
-    elsif self.infinite?
-      # The ulp here is context.maximum_finite - context.maximum_finite.next_minus
-      return Decimal(+1, 1, context.etop)
-    elsif self.zero? || self.adjusted_exponent <= context.emin
-      # This is the ulp value for self.abs <= context.minimum_normal*Decimal.context
-      # Here we use it for self.abs < context.minimum_normal*Decimal.context;
-      #  because of the simple exponent check; the remaining cases are handled below.
-      return context.minimum_nonzero
-    else
-      # The next can compute the ulp value for the values that
-      #   self.abs > context.minimum_normal && self.abs <= context.maximum_finite
-      # The cases self.abs < context.minimum_normal*Decimal.context have been handled above.
-
-      # assert self.normal? && self.abs>context.minimum_nonzero
-      norm = self.normalize
-      exp = norm.integral_exponent
-      sig = norm.integral_significand
-
-      # Powers of the radix, r**n, are between areas with different ulp values: r**(n-p-1) and r**(n-p)
-      # (p is context.precision).
-      # This method and the ulp definitions by Muller, Kahan and Harrison assign the smaller ulp value
-      # to r**n; the definition by Goldberg assigns it to the larger ulp.
-      # The next line selects the smaller ulp for powers of the radix:
-      exp -= 1 if sig == Decimal.int_radix_power(context.precision-1)
-
-      return Decimal(+1, 1, exp)
-    end
-  end
-
-  def inspect
-    if $DEBUG
-      "Decimal('#{self}') [coeff:#{@coeff.inspect} exp:#{@exp.inspect} s:#{@sign.inspect}]"
-    else
-      "Decimal('#{self}')"
-    end
-  end
-
-  # Internal comparison operator: returns -1 if the first number is less than the second,
-  # 0 if both are equal or +1 if the first is greater than the secong.
-  def <=>(other)
-    case other
-    when *Decimal.context.coercible_types_or_decimal
-      other = Decimal(other)
-      if self.special? || other.special?
-        if self.nan? || other.nan?
-          1
-        else
-          self_v = self.finite? ? 0 : self.sign
-          other_v = other.finite? ? 0 : other.sign
-          self_v <=> other_v
-        end
-      else
-        if self.zero?
-          if other.zero?
-            0
-          else
-            -other.sign
-          end
-        elsif other.zero?
-          self.sign
-        elsif other.sign < self.sign
-          +1
-        elsif self.sign < other.sign
-          -1
-        else
-          self_adjusted = self.adjusted_exponent
-          other_adjusted = other.adjusted_exponent
-          if self_adjusted == other_adjusted
-            self_padded,other_padded = self.coefficient,other.coefficient
-            d = self.exponent - other.exponent
-            if d>0
-              self_padded *= Decimal.int_radix_power(d)
-            else
-              other_padded *= Decimal.int_radix_power(-d)
-            end
-            (self_padded <=> other_padded)*self.sign
-          elsif self_adjusted > other_adjusted
-            self.sign
-          else
-            -self.sign
-          end
-        end
-      end
-    else
-      if defined? other.coerce
-        x, y = other.coerce(self)
-        x <=> y
-      else
-        nil
-      end
-    end
-  end
-  def ==(other)
-    (self<=>other) == 0
-  end
-  include Comparable
-
-  def hash
-    ([Decimal]+reduce.split).hash # TODO: optimize
-  end
-
-  def eql?(other)
-    return false unless other.is_a?(Decimal)
-    reduce.split == other.reduce.split
-  end
-
-  # Compares like <=> but returns a Decimal value.
-  def compare(other, context=nil)
-
-    other = _convert(other)
-
-    if self.special? || other.special?
-      ans = _check_nans(context, other)
-      return ans if ans
-    end
-
-    return Decimal(self <=> other)
-
-  end
-
-  # Digits of the significand as an array of integers
-  def digits
-    @coeff.to_s.split('').map{|d| d.to_i}
-  end
-
-  # Exponent of the magnitude of the most significant digit of the operand
-  def adjusted_exponent
-    if special?
-      0
-    else
-      @exp + number_of_digits - 1
-    end
-  end
-
-  # Synonym for Decimal#adjusted_exponent()
-  def scientific_exponent
-    adjusted_exponent
-  end
-
-  # Exponent as though the significand were a fraction (the decimal point before its first digit)
-  def fractional_exponent
-    scientific_exponent + 1
-  end
-
-  # Number of digits in the significand
-  def number_of_digits
-    # digits.size
-    @coeff.to_s.size
-  end
-
-  # Significand as an integer, unsigned. Synonym of coefficient
-  def integral_significand
-    @coeff
-  end
-
-  # Exponent of the significand as an integer. Synonym of exponent
-  def integral_exponent
-    # fractional_exponent - number_of_digits
-    @exp
-  end
-
-  # Sign of the number: +1 for plus / -1 for minus.
-  def sign
-    @sign
-  end
-
-  # Significand as an integer, unsigned
-  def coefficient
-    @coeff
-  end
-
-  # Exponent of the significand as an integer.
-  def exponent
-    @exp
-  end
-
-  # Return the value of the number as an signed integer and a scale.
-  def to_int_scale
-    if special?
-      nil
-    else
-      [@sign*integral_significand, integral_exponent]
-    end
-  end
-
-  # Returns a copy of with the sign set to +
-  def copy_abs
-    Decimal.new([+1,@coeff,@exp])
-  end
-
-  # Returns a copy of with the sign inverted
-  def copy_negate
-    Decimal.new([-@sign,@coeff,@exp])
-  end
-
-  # Returns a copy of with the sign of other
-  def copy_sign(other)
-    Decimal.new([other.sign, @coeff, @exp])
-  end
-
-  # Returns true if the value is an integer
-  def integral?
-    if finite?
-      if @exp>=0 || @coeff==0
-        true
-      else
-        if @exp <= -number_of_digits
-          false
-        else
-          m = Decimal.int_radix_power(-@exp)
-          (@coeff % m) == 0
-        end
-      end
-    else
-      false
-    end
-  end
-
-  # returns true if is an even integer
-  def even?
-    # integral? && ((to_i%2)==0)
-    if finite?
-      if @exp>0 || @coeff==0
-        true
-      else
-        if @exp <= -number_of_digits
-          false
-        else
-          m = Decimal.int_radix_power(-@exp)
-          if (@coeff % m) == 0
-            # ((@coeff / m) % 2) == 0
-            ((@coeff / m) & 1) == 0
-          else
-            false
-          end
-        end
-      end
-    else
-      false
-    end
-  end
-
-  # returns true if is an odd integer
-  def odd?
-    # integral? && ((to_i%2)==1)
-    # integral? && !even?
-    if finite?
-      if @exp>0 || @coeff==0
-        false
-      else
-        if @exp <= -number_of_digits
-          false
-        else
-          m = Decimal.int_radix_power(-@exp)
-          if (@coeff % m) == 0
-            # ((@coeff / m) % 2) == 1
-            ((@coeff / m) & 1) == 1
-          else
-            false
-          end
-        end
-      end
-    else
-      false
-    end
-  end
-
-  # Rescale so that the exponent is exp, either by padding with zeros
-  # or by truncating digits.
-  def rescale(exp, context=nil, watch_exp=true)
-    context = Decimal.define_context(context)
-    exp = _convert(exp)
-    if self.special? || exp.special?
-      ans = _check_nans(context, exp)
-      return ans if ans
-      if exp.infinite? || self.infinite?
-        return Decimal.new(self) if exp.infinite? && self.infinite?
-        return context.exception(InvalidOperation, 'rescale with one INF')
-      end
-    end
-    return context.exception(InvalidOperation,"exponent of rescale is not integral") unless exp.integral?
-    exp = exp.to_i
-    _watched_rescale(exp, context, watch_exp)
-  end
-
-  # Quantize so its exponent is the same as that of y.
-  def quantize(exp, context=nil, watch_exp=true)
-    exp = _convert(exp)
-    context = Decimal.define_context(context)
-    if self.special? || exp.special?
-      ans = _check_nans(context, exp)
-      return ans if ans
-      if exp.infinite? || self.infinite?
-        return Decimal.new(self) if exp.infinite? && self.infinite?
-        return context.exception(InvalidOperation, 'quantize with one INF')
-      end
-    end
-    exp = exp.exponent
-    _watched_rescale(exp, context, watch_exp)
-  end
-
-  # Return true if has the same exponent as other.
-  #
-  # If either operand is a special value, the following rules are used:
-  # * return true if both operands are infinities
-  # * return true if both operands are NaNs
-  # * otherwise, return false.
-  def same_quantum?(other)
-    other = _convert(other)
-    if self.special? || other.special?
-      return (self.nan? && other.nan?) || (self.infinite? && other.infinite?)
-    end
-    return self.exponent == other.exponent
-  end
-
-  # Rounds to a nearby integer. May raise Inexact or Rounded.
-  def to_integral_exact(context=nil)
-    context = Decimal.define_context(context)
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-      return Decimal.new(self)
-    end
-    return Decimal.new(self) if @exp >= 0
-    return Decimal.new([@sign, 0, 0]) if zero?
-    context.exception Rounded
-    ans = _rescale(0, context.rounding)
-    context.exception Inexact if ans != self
-    return ans
-  end
-
-  # Rounds to a nearby integer. Doesn't raise Inexact or Rounded.
-  def to_integral_value(context=nil)
-    context = Decimal.define_context(context)
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-      return Decimal.new(self)
-    end
-    return Decimal.new(self) if @exp >= 0
-    return _rescale(0, context.rounding)
-  end
-
-  # General rounding.
-  #
-  # With an integer argument this acts like Float#round: the parameter specifies the number
-  # of fractional digits (or digits to the left of the decimal point if negative).
-  #
-  # Options can be passed as a Hash instead; valid options are:
-  # * :rounding method for rounding (see Context#new())
-  # The precision can be specified as:
-  # * :places number of fractional digits as above.
-  # * :exponent specifies the exponent corresponding to the
-  #   digit to be rounded (exponent == -places)
-  # * :precision or :significan_digits is the number of digits
-  # * :power 10^exponent, value of the digit to be rounded,
-  #   should be passed as a type convertible to Decimal.
-  # * :index 0-based index of the digit to be rounded
-  # * :rindex right 0-based index of the digit to be rounded
-  #
-  # The default is :places=>0 (round to integer).
-  #
-  # Example: ways of specifiying the rounding position
-  #   number:     1   2   3   4  .  5    6    7    8
-  #   :places    -3  -2  -1   0     1    2    3    4
-  #   :exponent   3   2   1   0    -1   -2   -3   -4
-  #   :precision  1   2   3   4     5    6    7    8
-  #   :power    1E3 1E2  10   1   0.1 1E-2 1E-3 1E-4
-  #   :index      0   1   2   3     4    5    6    7
-  #   :index      7   6   5   4     3    2    1    0
-  def round(opt={})
-    opt = { :places=>opt } if opt.kind_of?(Integer)
-    r = opt[:rounding] || :half_up
-    as_int = false
-    if v=(opt[:precision] || opt[:significant_digits])
-      prec = v
-    elsif v=(opt[:places])
-      prec = adjusted_exponent + 1 + v
-    elsif v=(opt[:exponent])
-      prec = adjusted_exponent + 1 - v
-    elsif v=(opt[:power])
-      prec = adjusted_exponent + 1 - Decimal(v).adjusted_exponent
-    elsif v=(opt[:index])
-      prec = i+1
-    elsif v=(opt[:rindex])
-      prec = number_of_digits - v
-    else
-      prec = adjusted_exponent + 1
-      as_int = true
-    end
-    result = plus(:rounding=>r, :precision=>prec)
-    return as_int ? result.to_i : result
-  end
-
-  # General ceiling operation (as for Float) with same options for precision
-  # as Decimal#round()
-  def ceil(opt={})
-    opt[:rounding] = :ceiling
-    round opt
-  end
-
-  # General floor operation (as for Float) with same options for precision
-  # as Decimal#round()
-  def floor(opt={})
-    opt[:rounding] = :floor
-    round opt
-  end
-
-  # General truncate operation (as for Float) with same options for precision
-  # as Decimal#round()
-  def truncate(opt={})
-    opt[:rounding] = :down
-    round opt
-  end
-
-  # Fused multiply-add.
-  #
-  # Computes (self*other+third) with no rounding of the intermediate product self*other.
-  def fma(other, third, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-    third = _convert(third)
-    if self.special? || other.special?
-      return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
-      return context.exception(InvalidOperation, 'sNaN', other) if other.snan?
-      if self.nan?
-        product = self
-      elsif other.nan?
-        product = other
-      elsif self.infinite?
-        return context.exception(InvalidOperation, 'INF * 0 in fma') if other.zero?
-        product = Decimal.infinity(self.sign*other.sign)
-      elsif other.infinite?
-        return context.exception(InvalidOperation, '0 * INF  in fma') if self.zero?
-        product = Decimal.infinity(self.sign*other.sign)
-      end
-    else
-      product = Decimal.new([self.sign*other.sign,self.coefficient*other.coefficient, self.exponent+other.exponent])
-    end
-    return product.add(third, context)
   end
 
   # Raises to the power of x, to modulo if given.
@@ -3060,304 +3495,7 @@ class Decimal < FltPntBase
 
   # Auxiliar Methods
 
-  # Check if the number or other is NaN, signal if sNaN or return NaN;
-  # return nil if none is NaN.
-  def _check_nans(context=nil, other=nil)
-    #self_is_nan = self.nan?
-    #other_is_nan = other.nil? ? false : other.nan?
-    if self.nan? || (other && other.nan?)
-      context = Decimal.define_context(context)
-      return context.exception(InvalidOperation, 'sNaN', self) if self.snan?
-      return context.exception(InvalidOperation, 'sNaN', other) if other && other.snan?
-      return self._fix_nan(context) if self.nan?
-      return other._fix_nan(context)
-    else
-      return nil
-    end
-  end
 
-  # Rescale so that the exponent is exp, either by padding with zeros
-  # or by truncating digits, using the given rounding mode.
-  #
-  # Specials are returned without change.  This operation is
-  # quiet: it raises no flags, and uses no information from the
-  # context.
-  #
-  # exp = exp to scale to (an integer)
-  # rounding = rounding mode
-  def _rescale(exp, rounding)
-
-    return Decimal.new(self) if special?
-    return Decimal.new([sign, 0, exp]) if zero?
-    return Decimal.new([sign, @coeff*Decimal.int_radix_power(self.exponent - exp), exp]) if self.exponent > exp
-    #nd = number_of_digits + self.exponent - exp
-    nd = exp - self.exponent
-    if number_of_digits < nd
-      slf = Decimal.new([sign, 1, exp-1])
-      nd = number_of_digits
-    else
-      slf = Decimal.new(self)
-    end
-    changed = slf._round(rounding, nd)
-    coeff = Decimal.int_div_radix_power(@coeff, nd)
-    coeff += 1 if changed==1
-    Decimal.new([slf.sign, coeff, exp])
-
-  end
-
-  def _watched_rescale(exp, context, watch_exp)
-    if !watch_exp
-      ans = _rescale(exp, context.rounding)
-      context.exception(Rounded) if ans.exponent > self.exponent
-      context.exception(Inexact) if ans != self
-      return ans
-    end
-
-    if exp < context.etiny || exp > context.emax
-      return context.exception(InvalidOperation, "target operation out of bounds in quantize/rescale")
-    end
-
-    return Decimal.new([@sign, 0, exp])._fix(context) if zero?
-
-    self_adjusted = adjusted_exponent
-    return context.exception(InvalidOperation,"exponent of quantize/rescale result too large for current context") if self_adjusted > context.emax
-    return context.exception(InvalidOperation,"quantize/rescale has too many digits for current context") if (self_adjusted - exp + 1 > context.precision) && !context.exact?
-
-    ans = _rescale(exp, context.rounding)
-    return context.exception(InvalidOperation,"exponent of rescale result too large for current context") if ans.adjusted_exponent > context.emax
-    return context.exception(InvalidOperation,"rescale result has too many digits for current context") if (ans.number_of_digits > context.precision) && !context.exact?
-    if ans.exponent > self.exponent
-      context.exception(Rounded)
-      context.exception(Inexact) if ans!=self
-    end
-    context.exception(Subnormal) if !ans.zero? && (ans.adjusted_exponent < context.emin)
-    return ans._fix(context)
-  end
-
-  # Returns copy with sign inverted
-  def _neg(context=nil)
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-    end
-    if zero?
-      ans = copy_abs
-    else
-      ans = copy_negate
-    end
-    context = Decimal.define_context(context)
-    ans._fix(context)
-  end
-
-  # Returns a copy with precision adjusted
-  def _pos(context=nil)
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-    end
-    if zero?
-      ans = copy_abs
-    else
-      ans = Decimal.new(self)
-    end
-    context = Decimal.define_context(context)
-    ans._fix(context)
-  end
-
-  # Returns a copy with positive sign
-  def _abs(round=true, context=nil)
-    return copy_abs if not round
-
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-    end
-    if sign>0
-      ans = _neg(context)
-    else
-      ans = _pos(context)
-    end
-    ans
-  end
-
-  # Round if it is necessary to keep within precision.
-  def _fix(context)
-    return self if context.exact?
-
-    if special?
-      if nan?
-        return _fix_nan(context)
-      else
-        return Decimal.new(self)
-      end
-    end
-
-    etiny = context.etiny
-    etop  = context.etop
-    if zero?
-      exp_max = context.clamp? ? etop : context.emax
-      new_exp = [[@exp, etiny].max, exp_max].min
-      if new_exp!=@exp
-        context.exception Clamped
-        return Decimal.new([sign,0,new_exp])
-      else
-        return Decimal.new(self)
-      end
-    end
-
-    nd = number_of_digits
-    exp_min = nd + @exp - context.precision
-    if exp_min > etop
-      context.exception Inexact
-      context.exception Rounded
-      return context.exception(Overflow, 'above Emax', sign)
-    end
-
-    self_is_subnormal = exp_min < etiny
-
-    if self_is_subnormal
-      context.exception Subnormal
-      exp_min = etiny
-    end
-
-    if @exp < exp_min
-      context.exception Rounded
-      # dig is the digits number from 0 (MS) to number_of_digits-1 (LS)
-      # dg = numberof_digits-dig is from 1 (LS) to number_of_digits (MS)
-      dg = exp_min - @exp # dig = number_of_digits + exp - exp_min
-      if dg > number_of_digits # dig<0
-        d = Decimal.new([sign,1,exp_min-1])
-        dg = number_of_digits # dig = 0
-      else
-        d = Decimal.new(self)
-      end
-      changed = d._round(context.rounding, dg)
-      coeff = Decimal.int_div_radix_power(d.coefficient, dg)
-      coeff += 1 if changed==1
-      ans = Decimal.new([sign, coeff, exp_min])
-      if changed!=0
-        context.exception Inexact
-        if self_is_subnormal
-          context.exception Underflow
-          if ans.zero?
-            context.exception Clamped
-          end
-        elsif ans.number_of_digits == context.precision+1
-          if ans.exponent< etop
-            ans = Decimal.new([ans.sign, Decimal.int_div_radix_power(ans.coefficient,1), ans.exponent+1])
-          else
-            ans = context.exception(Overflow, 'above Emax', d.sign)
-          end
-        end
-      end
-      return ans
-    end
-
-    if context.clamp? &&  @exp>etop
-      context.exception Clamped
-      self_padded = Decimal.int_mult_radix_power(@coeff, @exp-etop)
-      return Decimal.new([sign,self_padded,etop])
-    end
-
-    return Decimal.new(self)
-
-  end
-
-  # adjust payload of a NaN to the context
-  def _fix_nan(context)
-    if  !context.exact?
-      payload = @coeff
-      payload = nil if payload==0
-
-      max_payload_len = context.maximum_nan_diagnostic_digits
-
-      if number_of_digits > max_payload_len
-          payload = payload.to_s[-max_payload_len..-1].to_i
-          return Decimal([@sign, payload, @exp])
-      end
-    end
-    Decimal(self)
-  end
-
-  protected
-
-  def _divide_truncate(other, context)
-    context = Decimal.define_context(context)
-    sign = self.sign * other.sign
-    if other.infinite?
-      ideal_exp = self.exponent
-    else
-      ideal_exp = [self.exponent, other.exponent].min
-    end
-
-    expdiff = self.adjusted_exponent - other.adjusted_exponent
-    if self.zero? || other.infinite? || (expdiff <= -2)
-      return [Decimal.new([sign, 0, 0]), _rescale(ideal_exp, context.rounding)]
-    end
-    if (expdiff <= context.precision) || context.exact?
-      self_coeff = self.coefficient
-      other_coeff = other.coefficient
-      de = self.exponent - other.exponent
-      if de >= 0
-        self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
-      else
-        other_coeff = Decimal.int_mult_radix_power(other_coeff, -de)
-      end
-      q, r = self_coeff.divmod(other_coeff)
-      if (q < Decimal.int_radix_power(context.precision)) || context.exact?
-        return [Decimal([sign, q, 0]),Decimal([self.sign, r, ideal_exp])]
-      end
-    end
-    # Here the quotient is too large to be representable
-    ans = context.exception(DivisionImpossible, 'quotient too large in //, % or divmod')
-    return [ans, ans]
-
-  end
-
-  def _divide_floor(other, context)
-    context = Decimal.define_context(context)
-    sign = self.sign * other.sign
-    if other.infinite?
-      ideal_exp = self.exponent
-    else
-      ideal_exp = [self.exponent, other.exponent].min
-    end
-
-    expdiff = self.adjusted_exponent - other.adjusted_exponent
-    if self.zero? || other.infinite? || (expdiff <= -2)
-      return [Decimal.new([sign, 0, 0]), _rescale(ideal_exp, context.rounding)]
-    end
-    if (expdiff <= context.precision) || context.exact?
-      self_coeff = self.coefficient*self.sign
-      other_coeff = other.coefficient*other.sign
-      de = self.exponent - other.exponent
-      if de >= 0
-        self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
-      else
-        other_coeff = Decimal.int_mult_radix_power(other_coeff, -de)
-      end
-      q, r = self_coeff.divmod(other_coeff)
-      if r<0
-        r = -r
-        rs = -1
-      else
-        rs = +1
-      end
-      if q<0
-        q = -q
-        qs = -1
-      else
-        qs = +1
-      end
-      if (q < Decimal.int_radix_power(context.precision)) || context.exact?
-        return [Decimal([qs, q, 0]),Decimal([rs, r, ideal_exp])]
-      end
-    end
-    # Here the quotient is too large to be representable
-    ans = context.exception(DivisionImpossible, 'quotient too large in //, % or divmod')
-    return [ans, ans]
-
-  end
 
   # Power-modulo: self._power_modulo(other, modulo) == (self**other) % modulo
   # This is equivalent to Python's 3-argument version of pow()
@@ -3619,108 +3757,50 @@ class Decimal < FltPntBase
     return Decimal(+1, Decimal.int_mult_radix_power(xc, zeros), xe-zeros)
   end
 
-  ROUND_ARITHMETIC = true
-
-  # Round to i digits using the specified method
-  def _round(rounding, i)
-    send("_round_#{rounding}", i)
-  end
+  # Decimal-specific rounding functions
 
   # Round down (toward 0, truncate) to i digits
   def _round_down(i)
-    if ROUND_ARITHMETIC
-      (@coeff % Decimal.int_radix_power(i))==0 ? 0 : -1
-    else
-      d = @coeff.to_s
-      p = d.size - i
-      d[p..-1].match(/\A0+\Z/) ? 0 : -1
-    end
-  end
-
-  # Round up (away from 0) to i digits
-  def _round_up(i)
-    -_round_down(i)
+    d = @coeff.to_s
+    p = d.size - i
+    d[p..-1].match(/\A0+\Z/) ? 0 : -1
   end
 
   # Round to closest i-digit number with ties down (rounds 5 toward 0)
   def _round_half_down(i)
-    if ROUND_ARITHMETIC
-      m = Decimal.int_radix_power(i)
-      if (m>1) && ((@coeff%m) == m/2)
-        -1
-      else
-        _round_half_up(i)
-      end
-    else
-      d = @coeff.to_s
-      p = d.size - i
-      d[p..-1].match(/^5d*$/) ? -1 : _round_half_up(i)
-    end
-
+    d = @coeff.to_s
+    p = d.size - i
+    d[p..-1].match(/^5d*$/) ? -1 : _round_half_up(i)
   end
 
   # Round to closest i-digit number with ties up (rounds 5 away from 0)
   def _round_half_up(i)
-    if ROUND_ARITHMETIC
-      m = Decimal.int_radix_power(i)
-      if (m>1) && ((@coeff % m) >= m/2)
-        1
-      else
-        (@coeff % m)==0 ? 0 : -1
-      end
+    d = @coeff.to_s
+    p = d.size - i
+    if '56789'.include?(d[p,1])
+      1
     else
-      d = @coeff.to_s
-      p = d.size - i
-      if '56789'.include?(d[p,1])
-        1
-      else
-        d[p..-1].match(/^0+$/) ? 0 : -1
-      end
+      d[p..-1].match(/^0+$/) ? 0 : -1
     end
-
   end
 
   # Round to closest i-digit number with ties (5) to an even digit
   def _round_half_even(i)
-    if ROUND_ARITHMETIC
-      m = Decimal.int_radix_power(i)
-      if (m>1) && ((@coeff%m) == m/2 && ((@coeff/m)%2)==0)
-        -1
-      else
-        _round_half_up(i)
-      end
+    d = @coeff.to_s
+    p = d.size - i
+
+    if d[p..-1].match(/\A#{Decimal.radix/2}0*\Z/) && (p==0 || ((d[p-1,1].to_i%2)==0))
+      -1
     else
-      d = @coeff.to_s
-      p = d.size - i
-
-      if d[p..-1].match(/\A#{Decimal.radix/2}0*\Z/) && (p==0 || ((d[p-1,1].to_i%2)==0))
-        -1
-      else
-        _round_half_up(i)
-      end
-
+      _round_half_up(i)
     end
-  end
-
-  # Round up (not away from 0 if negative) to i digits
-  def _round_ceiling(i)
-    sign<0 ? _round_down(i) : -_round_down(i)
-  end
-
-  # Round down (not toward 0 if negative) to i digits
-  def _round_floor(i)
-    sign>0 ? _round_down(i) : -_round_down(i)
   end
 
   # Round down unless digit i-1 is 0 or 5
   def _round_up05(i)
-    if ROUND_ARITHMETIC
-      dg = (@coeff%Decimal.int_radix_power(i+1))/Decimal.int_radix_power(i)
-    else
-      d = @coeff.to_s
-      p = d.size - i
-      dg = (p>0) ? d[p-1,1].to_i : 0
-    end
+    d = @coeff.to_s
+    p = d.size - i
+    dg = (p>0) ? d[p-1,1].to_i : 0
     if [0,Decimal.radix/2].include?(dg)
       -_round_down(i)
     else
@@ -3785,49 +3865,6 @@ class Decimal < FltPntBase
   module AuxiliarFunctions #:nodoc:
 
     module_function
-
-    # Convert a numeric value to decimal (internal use)
-    def _convert(x, error=true)
-      case x
-      when Decimal
-        x
-      when *Decimal.context.coercible_types
-        Decimal.new(x)
-      else
-        raise TypeError, "Unable to convert #{x.class} to Decimal" if error
-        nil
-      end
-    end
-
-    # Parse numeric text literals (internal use)
-    def _parser(txt)
-      md = /^\s*([-+])?(?:(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE]([-+]?\d+))?|Inf(?:inity)?|(s)?NaN(\d*))\s*$/i.match(txt)
-      if md
-        OpenStruct.new :sign=>md[1], :int=>md[2], :frac=>md[3], :onlyfrac=>md[4], :exp=>md[5],
-                       :signal=>md[6], :diag=>md[7]
-      end
-    end
-
-    # Normalizes op1, op2 to have the same exp and length of coefficient. Used for addition.
-    def _normalize(op1, op2, prec=0)
-      if op1.exponent < op2.exponent
-        swap = true
-        tmp,other = op2,op1
-      else
-        swap = false
-        tmp,other = op1,op2
-      end
-      tmp_len = tmp.number_of_digits
-      other_len = other.number_of_digits
-      exp = tmp.exponent + [-1, tmp_len - prec - 2].min
-      if (other_len+other.exponent-1 < exp) && prec>0
-        other = Decimal.new([other.sign, 1, exp])
-      end
-      tmp = Decimal.new(tmp.sign,
-                        Decimal.int_mult_radix_power(tmp.coefficient, tmp.exponent-other.exponent),
-                        other.exponent)
-      return swap ? [other, tmp] : [tmp, other]
-    end
 
     # Number of bits in binary representation of the positive integer n, or 0 if n == 0.
     #--
@@ -4229,3 +4266,81 @@ end
 def Decimal(*args)
   Decimal.num(*args)
 end
+
+# ===================================================================================
+
+class BinFloat < FltPntBase
+
+  class << self
+    # Numerical base of Decimal.
+    def radix
+      2
+    end
+
+    # Integral power of the base: radix**n for integer n; returns an integer.
+    def int_radix_power(n)
+      2 << n
+    end
+
+    # Multiply by an integral power of the base: x*(radix**n) for x,n integer;
+    # returns an integer.
+    def int_mult_radix_power(x,n)
+      x * (2 << n)
+    end
+
+    # Divide by an integral power of the base: x/(radix**n) for x,n integer;
+    # returns an integer.
+    def int_div_radix_power(x,n)
+      x / (2 << n)
+    end
+  end
+
+  # The context defines the arithmetic context: rounding mode, precision,...
+  # Decimal.context is the current (thread-local) context.
+  class Context < FltPntBase::ContextBase
+
+    def initialize(*options)
+      super(BinFloat, *options)
+    end
+
+  end
+
+  # the DefaultContext is the base for new contexts; it can be changed.
+  DefaultContext = BinFloat::Context.new(
+                             :exact=>false, :precision=>53, :rounding=>:half_even,
+                             :emin=> -1024, :emax=>+1024,
+                             :flags=>[],
+                             :traps=>[DivisionByZero, Overflow, InvalidOperation],
+                             :ignored_flags=>[],
+                             :capitals=>true,
+                             :clamp=>true)
+
+
+  def initialize(*args)
+    super(*args)
+  end
+
+  # Ruby-style to string conversion.
+  def to_s(eng=false,context=nil)
+    # (context || num_class.context).to_string(self)
+    context = define_context(context)
+    sgn = sign<0 ? '-' : ''
+    if special?
+      if @exp==:inf
+        "#{sgn}Infinity"
+      elsif @exp==:nan
+        "#{sgn}NaN#{@coeff}"
+      else # exp==:snan
+        "#{sgn}sNaN#{@coeff}"
+      end
+    else
+      # TODO: this is just provisional for testing
+      self.to_f.to_s
+    end
+  end
+end
+
+def BinFloat(*args)
+  BinFloat.num(*args)
+end
+
