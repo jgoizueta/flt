@@ -1301,7 +1301,7 @@ class Decimal
 
   # Returns whether the number is normal
   def normal?(context=nil)
-    return true if special? || zero?
+    return false if special? || zero?
     context = Decimal.define_context(context)
     (context.emin <= self.adjusted_exponent) &&  (self.adjusted_exponent <= context.emax)
   end
