@@ -4,10 +4,7 @@ require 'rational'
 require 'monitor'
 require 'ostruct'
 
-# Decimal arbitrary precision floating point number.
-# This implementation of Decimal is based on the Decimal module of Python,
-# written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
-class Decimal
+class FltPntBase
 
   extend DecimalSupport # allows use of unqualified FlagValues(), Flags()
 
@@ -46,28 +43,6 @@ class Decimal
   # But note that some code (e.g. powers & logarithms, auxiliar funtions) use algorithms
   # that assume radix=10.
   #++
-
-  # Numerical base of Decimal.
-  def self.radix
-    10
-  end
-
-  # Integral power of the base: radix**n for integer n; returns an integer.
-  def self.int_radix_power(n)
-    10**n
-  end
-
-  # Multiply by an integral power of the base: x*(radix**n) for x,n integer;
-  # returns an integer.
-  def self.int_mult_radix_power(x,n)
-    x * (10**n)
-  end
-
-  # Divide by an integral power of the base: x/(radix**n) for x,n integer;
-  # returns an integer.
-  def self.int_div_radix_power(x,n)
-    x / (10**n)
-  end
 
 
   # Base class for errors.
@@ -283,10 +258,7 @@ class Decimal
     DecimalSupport::Flags(EXCEPTIONS,*values)
   end
 
-  # The context defines the arithmetic context: rounding mode, precision,...
-  # Decimal.context is the current (thread-local) context.
-  class Context
-
+  class ContextBase
     # If an options hash is passed, the options are
     # applied to the default context; if a Context is passed as the first
     # argument, it is used as the base instead of the default context.
@@ -308,24 +280,47 @@ class Decimal
     # * :clamp : (true or false) enables clamping
     #
     # See also the context constructor method Decimal.Context().
-    def initialize(*options)
+    def initialize(fpclass, *options)
+      @fpclass = fpclass
 
-      if options.first.instance_of?(Context)
+      if options.first.kind_of?(ContextBase)
         base = options.shift
         copy_from base
       else
         @rounding = @emin = @emax = nil
         @capitals = false
         @clamp = false
-        @ignored_flags = Decimal::Flags()
-        @traps = Decimal::Flags()
-        @flags = Decimal::Flags()
-        @coercible_type_handlers = Decimal.base_coercible_types.dup
-        @conversions = Decimal.base_conversions.dup
+        @ignored_flags = FltPntBase::Flags()
+        @traps = FltPntBase::Flags()
+        @flags = FltPntBase::Flags()
+        @coercible_type_handlers = FltPntBase.base_coercible_types.dup
+        @conversions = FltPntBase.base_conversions.dup
       end
       assign options.first
 
     end
+
+    def radix
+      @fpclass.radix
+    end
+
+    # Integral power of the base: radix**n for integer n; returns an integer.
+    def int_radix_power(n)
+      @fpclass.int_radix_power(n)
+    end
+
+    # Multiply by an integral power of the base: x*(radix**n) for x,n integer;
+    # returns an integer.
+    def int_mult_radix_power(x,n)
+      @fpclass.int_mult_radix_power(x,n)
+    end
+
+    # Divide by an integral power of the base: x/(radix**n) for x,n integer;
+    # returns an integer.
+    def int_div_radix_power(x,n)
+      @fpclass.int_div_radix_power(x,n)
+    end
+
 
     attr_accessor :rounding, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp
 
@@ -468,7 +463,7 @@ class Decimal
     end
 
     def dup
-      Context.new(self)
+      self.class.new(self)
     end
 
     CONDITION_MAP = {
@@ -561,26 +556,6 @@ class Decimal
     # y must be an integer
     def scaleb(x, y)
       _convert(x).scaleb(y,self)
-    end
-
-    # Power. See Decimal#power()
-    def power(x,y,modulo=nil)
-      _convert(x).power(y,modulo,self)
-    end
-
-    # Returns the base 10 logarithm
-    def log10(x)
-      _convert(x).log10(self)
-    end
-
-    # Exponential function: e**x
-    def exp(x)
-      _convert(x).exp(self)
-    end
-
-    # Returns the natural (base e) logarithm
-    def ln(x)
-      _convert(x).ln(self)
     end
 
     # Exponent in relation to the significand as an integer
@@ -928,6 +903,425 @@ class Decimal
 
   end
 
+  class << self
+    # A decimal number with value zero and the specified sign
+    def zero(sign=+1)
+      self.class.new([sign, 0, 0])
+    end
+
+    # A decimal infinite number with the specified sign
+    def infinity(sign=+1)
+      self.class.new([sign, 0, :inf])
+    end
+
+    # A decimal NaN (not a number)
+    def nan()
+      self.class.new([+1, nil, :nan])
+    end
+  end
+
+  def initialize(*args)
+    context = nil
+    if args.size>0 && args.last.kind_of?(ContextBase)
+      context ||= args.pop
+    elsif args.size>1 && args.last.instance_of?(Hash)
+      context ||= args.pop
+    elsif args.size==1 && args.last.instance_of?(Hash)
+      arg = args.last
+      args = [arg[:sign], args[:coefficient], args[:exponent]]
+      arg.delete :sign
+      arg.delete :coefficient
+      arg.delete :exponent
+      context ||= arg
+    end
+    args = args.first if args.size==1 && args.first.is_a?(Array)
+
+    context = self.class.define_context(context) # ... use instance method?
+
+    case args.size
+    when 3
+      # internal representation
+      @sign, @coeff, @exp = args
+      # TO DO: validate
+
+    when 2
+      # signed integer and scale
+      @coeff, @exp = args
+      if @coeff < 0
+        @sign = -1
+        @coeff = -@coeff
+      else
+        @sign = +1
+      end
+
+    when 1
+      arg = args.first
+      case arg
+
+      when Decimal
+        @sign, @coeff, @exp = arg.split
+
+      when *context.coercible_types
+        v = context._coerce(arg)
+        @sign, @coeff, @exp = v.is_a?(Decimal) ? v.split : v
+
+      when String
+        if arg.strip != arg
+          @sign,@coeff,@exp = context.exception(ConversionSyntax, "no trailing or leading whitespace is permitted").split
+          return
+        end
+        m = _parser(arg)
+        if m.nil?
+          @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for Decimal: #{arg.inspect}").split
+          return
+        end
+        @sign =  (m.sign == '-') ? -1 : +1
+        if m.int || m.onlyfrac
+          if m.int
+            intpart = m.int
+            fracpart = m.frac
+          else
+            intpart = ''
+            fracpart = m.onlyfrac
+          end
+          @exp = m.exp.to_i
+          if fracpart
+            @coeff = (intpart+fracpart).to_i
+            @exp -= fracpart.size
+          else
+            @coeff = intpart.to_i
+          end
+        else
+          if m.diag
+            # NaN
+            @coeff = (m.diag.nil? || m.diag.empty?) ? nil : m.diag.to_i
+            @coeff = nil if @coeff==0
+             if @coeff
+               max_diag_len = context.maximum_nan_diagnostic_digits
+               if max_diag_len && @coeff >= context.int_radix_power(max_diag_len)
+                  @sign,@coeff,@exp = context.exception(ConversionSyntax, "diagnostic info too long in NaN").split
+                 return
+               end
+             end
+            @exp = m.signal ? :snan : :nan
+          else
+            # Infinity
+            @coeff = 0
+            @exp = :inf
+          end
+        end
+      else
+        raise TypeError, "invalid argument #{arg.inspect}"
+      end
+    else
+      raise ArgumentError, "wrong number of arguments (#{args.size} for 1, 2 or 3)"
+    end
+  end
+
+  # Returns the internal representation of the number, composed of:
+  # * a sign which is +1 for plus and -1 for minus
+  # * a coefficient (significand) which is a nonnegative integer
+  # * an exponent (an integer) or :inf, :nan or :snan for special values
+  # The value of non-special numbers is sign*coefficient*10^exponent
+  def split
+    [@sign, @coeff, @exp]
+  end
+
+  # Returns whether the number is a special value (NaN or Infinity).
+  def special?
+    @exp.instance_of?(Symbol)
+  end
+
+  # Returns whether the number is not actualy one (NaN, not a number).
+  def nan?
+    @exp==:nan || @exp==:snan
+  end
+
+  # Returns whether the number is a quite NaN (non-signaling)
+  def qnan?
+    @exp == :nan
+  end
+
+  # Returns whether the number is a signaling NaN
+  def snan?
+    @exp == :snan
+  end
+
+  # Returns whether the number is infinite
+  def infinite?
+    @exp == :inf
+  end
+
+  # Returns whether the number is finite
+  def finite?
+    !special?
+  end
+
+  # Returns whether the number is zero
+  def zero?
+    @coeff==0 && !special?
+  end
+
+  # Returns whether the number not zero
+  def nonzero?
+    special? || @coeff>0
+  end
+
+  # Returns whether the number is subnormal
+  def subnormal?(context=nil)
+    return false if special? || zero?
+    context = self.class.define_context(context)
+    self.adjusted_exponent < context.emin
+  end
+
+  # Returns whether the number is normal
+  def normal?(context=nil)
+    return false if special? || zero?
+    context = self.class.define_context(context)
+    (context.emin <= self.adjusted_exponent) &&  (self.adjusted_exponent <= context.emax)
+  end
+
+  # Classifies a number as one of
+  # 'sNaN', 'NaN', '-Infinity', '-Normal', '-Subnormal', '-Zero',
+  #  '+Zero', '+Subnormal', '+Normal', '+Infinity'
+  def number_class(context=nil)
+    return "sNaN" if snan?
+    return "NaN" if nan?
+    if infinite?
+      return '+Infinity' if @sign==+1
+      return '-Infinity' # if @sign==-1
+    end
+    if zero?
+      return '+Zero' if @sign==+1
+      return '-Zero' # if @sign==-1
+    end
+    context = self.class.define_context(context)
+    if subnormal?(context)
+      return '+Subnormal' if @sign==+1
+      return '-Subnormal' # if @sign==-1
+    end
+    return '+Normal' if @sign==+1
+    return '-Normal' if @sign==-1
+  end
+
+  # Used internally to convert numbers to be used in an operation to a suitable numeric type
+  def coerce(other)
+    case other
+      when *self.class.context.coercible_types_or_decimal
+        [self.class.new(other),self]
+      else
+        super
+    end
+  end
+
+  # Used internally to define binary operators
+  def _bin_op(op, meth, other, context=nil)
+    context = self.class.define_context(context)
+    case other
+      when *context.coercible_types_or_decimal
+        self.send meth, self.class.new(other, context), context
+      else
+        x, y = other.coerce(self)
+        x.send op, y
+    end
+  end
+  private :_bin_op
+
+  # Unary minus operator
+  def -@(context=nil)
+    #(context || self.class.context).minus(self)
+    _neg(context)
+  end
+
+  # Unary plus operator
+  def +@(context=nil)
+    #(context || Decimal.context).plus(self)
+    _pos(context)
+  end
+
+  # Addition of two decimal numbers
+  def +(other, context=nil)
+    _bin_op :+, :add, other, context
+  end
+
+  # Subtraction of two decimal numbers
+  def -(other, context=nil)
+    _bin_op :-, :subtract, other, context
+  end
+
+  # Multiplication of two decimal numbers
+  def *(other, context=nil)
+    _bin_op :*, :multiply, other, context
+  end
+
+  # Division of two decimal numbers
+  def /(other, context=nil)
+    _bin_op :/, :divide, other, context
+  end
+
+  # Modulo of two decimal numbers
+  def %(other, context=nil)
+    _bin_op :%, :modulo, other, context
+  end
+
+  # Power
+  def **(other, context=nil)
+    _bin_op :**, :power, other, context
+  end
+
+  # Addition
+  def add(other, context=nil)
+
+    context = self.class.define_context(context)
+    other = _convert(other)
+
+    if self.special? || other.special?
+      ans = _check_nans(context,other)
+      return ans if ans
+
+      if self.infinite?
+        if self.sign != other.sign && other.infinite?
+          return context.exception(InvalidOperation, '-INF + INF')
+        end
+        return self.class.new(self)
+      end
+
+      return self.class.new(other) if other.infinite?
+    end
+
+    exp = [self.exponent, other.exponent].min
+    negativezero = (context.rounding == ROUND_FLOOR && self.sign != other.sign)
+
+    if self.zero? && other.zero?
+      sign = [self.sign, other.sign].max
+      sign = -1 if negativezero
+      ans = self.class.new([sign, 0, exp])._fix(context)
+      return ans
+    end
+
+    if self.zero?
+      exp = [exp, other.exponent - context.precision - 1].max unless context.exact?
+      return other._rescale(exp, context.rounding)._fix(context)
+    end
+
+    if other.zero?
+      exp = [exp, self.exponent - context.precision - 1].max unless context.exact?
+      return self._rescale(exp, context.rounding)._fix(context)
+    end
+
+    op1, op2 = _normalize(self, other, context.precision)
+
+    result_sign = result_coeff = result_exp = nil
+    if op1.sign != op2.sign
+      return ans = self.class.new([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.coefficient == op2.coefficient
+      op1,op2 = op2,op1 if op1.coefficient < op2.coefficient
+      result_sign = op1.sign
+      op1,op2 = op1.copy_negate, op2.copy_negate if result_sign < 0
+    elsif op1.sign < 0
+      result_sign = -1
+      op1,op2 = op1.copy_negate, op2.copy_negate
+    else
+      result_sign = +1
+    end
+
+    if op2.sign == +1
+      result_coeff = op1.coefficient + op2.coefficient
+    else
+      result_coeff = op1.coefficient - op2.coefficient
+    end
+
+    result_exp = op1.exponent
+
+    return self.class.new([result_sign, result_coeff, result_exp])._fix(context)
+
+  end
+
+end
+
+
+
+# Decimal arbitrary precision floating point number.
+# This implementation of Decimal is based on the Decimal module of Python,
+# written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
+class Decimal < FltPntBase
+
+  class << self
+    # Numerical base of Decimal.
+    def radix
+      10
+    end
+
+    # Integral power of the base: radix**n for integer n; returns an integer.
+    def int_radix_power(n)
+      10**n
+    end
+
+    # Multiply by an integral power of the base: x*(radix**n) for x,n integer;
+    # returns an integer.
+    def int_mult_radix_power(x,n)
+      x * (10**n)
+    end
+
+    # Divide by an integral power of the base: x/(radix**n) for x,n integer;
+    # returns an integer.
+    def int_div_radix_power(x,n)
+      x / (10**n)
+    end
+  end
+
+
+  # The context defines the arithmetic context: rounding mode, precision,...
+  # Decimal.context is the current (thread-local) context.
+  class Context < FltPntBase::ContextBase
+
+    # If an options hash is passed, the options are
+    # applied to the default context; if a Context is passed as the first
+    # argument, it is used as the base instead of the default context.
+    #
+    # The valid options are:
+    # * :rounding : one of :half_even, :half_down, :half_up, :floor,
+    #   :ceiling, :down, :up, :up05
+    # * :precision : number of digits (or 0 for exact precision)
+    # * :exact : if true precision is ignored and Inexact conditions are trapped,
+    #            if :quiet it set exact precision but no trapping;
+    # * :traps : a Flags object with the exceptions to be trapped
+    # * :flags : a Flags object with the raised flags
+    # * :ignored_flags : a Flags object with the exceptions to be ignored
+    # * :emin, :emax : minimum and maximum adjusted exponents
+    # * :elimit : the exponent limits can also be defined by a single value;
+    #   if positive it is taken as emax and emin=1-emax; otherwiae it is
+    #   taken as emin and emax=1-emin. Such limits comply with IEEE 754-2008
+    # * :capitals : (true or false) to use capitals in text representations
+    # * :clamp : (true or false) enables clamping
+    #
+    # See also the context constructor method Decimal.Context().
+    def initialize(*options)
+      super Decimal, *options
+    end
+
+    # Power. See Decimal#power()
+    def power(x,y,modulo=nil)
+      _convert(x).power(y,modulo,self)
+    end
+
+    # Returns the base 10 logarithm
+    def log10(x)
+      _convert(x).log10(self)
+    end
+
+    # Exponential function: e**x
+    def exp(x)
+      _convert(x).exp(self)
+    end
+
+    # Returns the natural (base e) logarithm
+    def ln(x)
+      _convert(x).ln(self)
+    end
+
+
+  end
+
   # the DefaultContext is the base for new contexts; it can be changed.
   DefaultContext = Decimal::Context.new(
                              :exact=>false, :precision=>28, :rounding=>:half_even,
@@ -1039,17 +1433,17 @@ class Decimal
 
   # A decimal number with value zero and the specified sign
   def Decimal.zero(sign=+1)
-    Decimal.new([sign, 0, 0])
+    super sign
   end
 
   # A decimal infinite number with the specified sign
   def Decimal.infinity(sign=+1)
-    Decimal.new([sign, 0, :inf])
+    super sign
   end
 
   # A decimal NaN (not a number)
   def Decimal.nan()
-    Decimal.new([+1, nil, :nan])
+    super nan
   end
 
   #--
@@ -1148,321 +1542,10 @@ class Decimal
   # to override specific context parameters.
   # The Decimal() admits the same parameters and can be used as a shortcut for Decimal creation.
   def initialize(*args)
-    context = nil
-    if args.size>0 && args.last.instance_of?(Context)
-      context ||= args.pop
-    elsif args.size>1 && args.last.instance_of?(Hash)
-      context ||= args.pop
-    elsif args.size==1 && args.last.instance_of?(Hash)
-      arg = args.last
-      args = [arg[:sign], args[:coefficient], args[:exponent]]
-      arg.delete :sign
-      arg.delete :coefficient
-      arg.delete :exponent
-      context ||= arg
-    end
-    args = args.first if args.size==1 && args.first.is_a?(Array)
-
-    context = Decimal.define_context(context)
-
-    case args.size
-    when 3
-      # internal representation
-      @sign, @coeff, @exp = args
-      # TO DO: validate
-
-    when 2
-      # signed integer and scale
-      @coeff, @exp = args
-      if @coeff < 0
-        @sign = -1
-        @coeff = -@coeff
-      else
-        @sign = +1
-      end
-
-    when 1
-      arg = args.first
-      case arg
-
-      when Decimal
-        @sign, @coeff, @exp = arg.split
-
-      when *context.coercible_types
-        v = context._coerce(arg)
-        @sign, @coeff, @exp = v.is_a?(Decimal) ? v.split : v
-
-      when String
-        if arg.strip != arg
-          @sign,@coeff,@exp = context.exception(ConversionSyntax, "no trailing or leading whitespace is permitted").split
-          return
-        end
-        m = _parser(arg)
-        if m.nil?
-          @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for Decimal: #{arg.inspect}").split
-          return
-        end
-        @sign =  (m.sign == '-') ? -1 : +1
-        if m.int || m.onlyfrac
-          if m.int
-            intpart = m.int
-            fracpart = m.frac
-          else
-            intpart = ''
-            fracpart = m.onlyfrac
-          end
-          @exp = m.exp.to_i
-          if fracpart
-            @coeff = (intpart+fracpart).to_i
-            @exp -= fracpart.size
-          else
-            @coeff = intpart.to_i
-          end
-        else
-          if m.diag
-            # NaN
-            @coeff = (m.diag.nil? || m.diag.empty?) ? nil : m.diag.to_i
-            @coeff = nil if @coeff==0
-             if @coeff
-               max_diag_len = context.maximum_nan_diagnostic_digits
-               if max_diag_len && @coeff >= Decimal.int_radix_power(max_diag_len)
-                  @sign,@coeff,@exp = context.exception(ConversionSyntax, "diagnostic info too long in NaN").split
-                 return
-               end
-             end
-            @exp = m.signal ? :snan : :nan
-          else
-            # Infinity
-            @coeff = 0
-            @exp = :inf
-          end
-        end
-      else
-        raise TypeError, "invalid argument #{arg.inspect}"
-      end
-    else
-      raise ArgumentError, "wrong number of arguments (#{args.size} for 1, 2 or 3)"
-    end
+    super(*args)
   end
 
-  # Returns the internal representation of the number, composed of:
-  # * a sign which is +1 for plus and -1 for minus
-  # * a coefficient (significand) which is a nonnegative integer
-  # * an exponent (an integer) or :inf, :nan or :snan for special values
-  # The value of non-special numbers is sign*coefficient*10^exponent
-  def split
-    [@sign, @coeff, @exp]
-  end
-
-  # Returns whether the number is a special value (NaN or Infinity).
-  def special?
-    @exp.instance_of?(Symbol)
-  end
-
-  # Returns whether the number is not actualy one (NaN, not a number).
-  def nan?
-    @exp==:nan || @exp==:snan
-  end
-
-  # Returns whether the number is a quite NaN (non-signaling)
-  def qnan?
-    @exp == :nan
-  end
-
-  # Returns whether the number is a signaling NaN
-  def snan?
-    @exp == :snan
-  end
-
-  # Returns whether the number is infinite
-  def infinite?
-    @exp == :inf
-  end
-
-  # Returns whether the number is finite
-  def finite?
-    !special?
-  end
-
-  # Returns whether the number is zero
-  def zero?
-    @coeff==0 && !special?
-  end
-
-  # Returns whether the number not zero
-  def nonzero?
-    special? || @coeff>0
-  end
-
-  # Returns whether the number is subnormal
-  def subnormal?(context=nil)
-    return false if special? || zero?
-    context = Decimal.define_context(context)
-    self.adjusted_exponent < context.emin
-  end
-
-  # Returns whether the number is normal
-  def normal?(context=nil)
-    return false if special? || zero?
-    context = Decimal.define_context(context)
-    (context.emin <= self.adjusted_exponent) &&  (self.adjusted_exponent <= context.emax)
-  end
-
-  # Classifies a number as one of
-  # 'sNaN', 'NaN', '-Infinity', '-Normal', '-Subnormal', '-Zero',
-  #  '+Zero', '+Subnormal', '+Normal', '+Infinity'
-  def number_class(context=nil)
-    return "sNaN" if snan?
-    return "NaN" if nan?
-    if infinite?
-      return '+Infinity' if @sign==+1
-      return '-Infinity' # if @sign==-1
-    end
-    if zero?
-      return '+Zero' if @sign==+1
-      return '-Zero' # if @sign==-1
-    end
-    context = Decimal.define_context(context)
-    if subnormal?(context)
-      return '+Subnormal' if @sign==+1
-      return '-Subnormal' # if @sign==-1
-    end
-    return '+Normal' if @sign==+1
-    return '-Normal' if @sign==-1
-  end
-
-  # Used internally to convert numbers to be used in an operation to a suitable numeric type
-  def coerce(other)
-    case other
-      when *Decimal.context.coercible_types_or_decimal
-        [Decimal(other),self]
-      else
-        super
-    end
-  end
-
-  # Used internally to define binary operators
-  def _bin_op(op, meth, other, context=nil)
-    context = Decimal.define_context(context)
-    case other
-      when *context.coercible_types_or_decimal
-        self.send meth, Decimal(other, context), context
-      else
-        x, y = other.coerce(self)
-        x.send op, y
-    end
-  end
-  private :_bin_op
-
-  # Unary minus operator
-  def -@(context=nil)
-    #(context || Decimal.context).minus(self)
-    _neg(context)
-  end
-
-  # Unary plus operator
-  def +@(context=nil)
-    #(context || Decimal.context).plus(self)
-    _pos(context)
-  end
-
-  # Addition of two decimal numbers
-  def +(other, context=nil)
-    _bin_op :+, :add, other, context
-  end
-
-  # Subtraction of two decimal numbers
-  def -(other, context=nil)
-    _bin_op :-, :subtract, other, context
-  end
-
-  # Multiplication of two decimal numbers
-  def *(other, context=nil)
-    _bin_op :*, :multiply, other, context
-  end
-
-  # Division of two decimal numbers
-  def /(other, context=nil)
-    _bin_op :/, :divide, other, context
-  end
-
-  # Modulo of two decimal numbers
-  def %(other, context=nil)
-    _bin_op :%, :modulo, other, context
-  end
-
-  # Power
-  def **(other, context=nil)
-    _bin_op :**, :power, other, context
-  end
-
-  # Addition
-  def add(other, context=nil)
-
-    context = Decimal.define_context(context)
-    other = _convert(other)
-
-    if self.special? || other.special?
-      ans = _check_nans(context,other)
-      return ans if ans
-
-      if self.infinite?
-        if self.sign != other.sign && other.infinite?
-          return context.exception(InvalidOperation, '-INF + INF')
-        end
-        return Decimal(self)
-      end
-
-      return Decimal(other) if other.infinite?
-    end
-
-    exp = [self.exponent, other.exponent].min
-    negativezero = (context.rounding == ROUND_FLOOR && self.sign != other.sign)
-
-    if self.zero? && other.zero?
-      sign = [self.sign, other.sign].max
-      sign = -1 if negativezero
-      ans = Decimal.new([sign, 0, exp])._fix(context)
-      return ans
-    end
-
-    if self.zero?
-      exp = [exp, other.exponent - context.precision - 1].max unless context.exact?
-      return other._rescale(exp, context.rounding)._fix(context)
-    end
-
-    if other.zero?
-      exp = [exp, self.exponent - context.precision - 1].max unless context.exact?
-      return self._rescale(exp, context.rounding)._fix(context)
-    end
-
-    op1, op2 = _normalize(self, other, context.precision)
-
-    result_sign = result_coeff = result_exp = nil
-    if op1.sign != op2.sign
-      return ans = Decimal.new([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.coefficient == op2.coefficient
-      op1,op2 = op2,op1 if op1.coefficient < op2.coefficient
-      result_sign = op1.sign
-      op1,op2 = op1.copy_negate, op2.copy_negate if result_sign < 0
-    elsif op1.sign < 0
-      result_sign = -1
-      op1,op2 = op1.copy_negate, op2.copy_negate
-    else
-      result_sign = +1
-    end
-
-    if op2.sign == +1
-      result_coeff = op1.coefficient + op2.coefficient
-    else
-      result_coeff = op1.coefficient - op2.coefficient
-    end
-
-    result_exp = op1.exponent
-
-    return Decimal([result_sign, result_coeff, result_exp])._fix(context)
-
-  end
-
+  # ...
 
   # Subtraction
   def subtract(other, context=nil)
