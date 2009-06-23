@@ -293,6 +293,17 @@ Note that the conversion we've defined depends on the context precision:
 
   Decimal.local_context(:exact=>true) { puts Decimal(0.1) }   -> 0.1000000000000000055511151231257827021181583404541015625
 
+== Abbreviation
+
+The use of Decimal can be made less verbose by requiring:
+
+  require 'decimal/shortcut
+
+This file defines D as a synonym for Decimal:
+
+  D.context.precision = 3
+  puts (+D('1.234')).inspect
+
 == More Information
 
 Consult the documentation for the classes Decimal and Decimal::Context.
