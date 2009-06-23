@@ -22,3 +22,9 @@
   - setting context exponent limits with elimit
   - require decimal/shortcut to use D for Decimal
 
+== 0.3.0 2009-
+
+* Bug fixes:
+  - Decimal#normal? was incorrect for special values and zero
+
+* New functionality:
