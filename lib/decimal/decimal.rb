@@ -280,8 +280,8 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     # * :clamp : (true or false) enables clamping
     #
     # See also the context constructor method Decimal.Context().
-    def initialize(fpclass, *options)
-      @fpclass = fpclass
+    def initialize(*options)
+      @fpclass = self.class
 
       if options.first.kind_of?(ContextBase)
         base = options.shift
@@ -1383,7 +1383,6 @@ class Decimal < FltPntBase
     end
   end
 
-
   # The context defines the arithmetic context: rounding mode, precision,...
   # Decimal.context is the current (thread-local) context.
   class Context < FltPntBase::ContextBase
@@ -1410,7 +1409,7 @@ class Decimal < FltPntBase
     #
     # See also the context constructor method Decimal.Context().
     def initialize(*options)
-      super Decimal, *options
+      super *options
     end
 
     # Power. See Decimal#power()
