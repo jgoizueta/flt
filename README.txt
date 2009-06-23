@@ -79,8 +79,8 @@ And individual parameters can be assigned like this:
   puts Decimal.context.precision                     -> 9
   puts Decimal.context.rounding                      -> half_even
   Decimal.context(:rounding=>:down) do |context|
-    puts context.precision
-    puts context.rounding
+    puts context.precision                           -> 9
+    puts context.rounding                            -> down
   end
 
 Contexts created with the Decimal::Context() constructor
@@ -297,12 +297,39 @@ Note that the conversion we've defined depends on the context precision:
 
 The use of Decimal can be made less verbose by requiring:
 
-  require 'decimal/shortcut
+  require 'decimal/shortcut'
 
-This file defines D as a synonym for Decimal:
+This file defines +D+ as a synonym for +Decimal+:
 
   D.context.precision = 3
-  puts (+D('1.234')).inspect
+  puts +D('1.234')                                   -> 1.23
+
+== Error analysis
+
+The Decimal#ulp() method returns the value of a "unit in the last place" for a given number
+
+  D.context.precision = 4
+  puts D('1.5').ulp                                  -> 0.001
+  puts D('1.5E10').ulp                               -> 1E+7
+
+Whe can compute the error in ulps of an approximation +aprx+ to correclty rounded value +exct+ with:
+
+  def ulps(exct, aprx)
+    (aprx-exct).abs/exct.ulp
+  end
+
+  puts ulps(Decimal('0.5000'), Decimal('0.5003'))    -> 3
+  puts ulps(Decimal('0.5000'), Decimal('0.4997'))    -> 3
+
+  puts ulps(Decimal('0.1000'), Decimal('0.1003'))    -> 3E+1
+  puts ulps(Decimal('0.1000'), Decimal('0.0997'))    -> 3E+1
+
+  puts ulps(Decimal(1), Decimal(10).next_minus)      -> 8.999E+4
+  puts ulps(Decimal(1), Decimal(10).next_plus)       -> 9.01E+4
+
+Note that in the definition of ulps we use exct.ulp. If we had use aprx.ulp Decimal(10).next_plus
+would seem to be a better approximation to Decimal(1) than Decimal(10).next_minus. (Admittedly,
+such bad approximations should not be common.)
 
 == More Information
 
