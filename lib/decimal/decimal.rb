@@ -2146,15 +2146,30 @@ class Decimal
     if self.nan?
       return Decimal(self)
     elsif self.infinite?
+      # The ulp here is context.maximum_finite - context.maximum_finite.next_minus
       return Decimal(+1, 1, context.etop)
     elsif self.zero? || self.adjusted_exponent <= context.emin
+      # This is the ulp value for self.abs <= context.minimum_normal*Decimal.context
+      # Here we use it for self.abs < context.minimum_normal*Decimal.context;
+      #  because of the simple exponent check; the remaining cases are handled below.
       return context.minimum_nonzero
     else
-      # assert self.normal?
+      # The next can compute the ulp value for the values that
+      #   self.abs > context.minimum_normal && self.abs <= context.maximum_finite
+      # The cases self.abs < context.minimum_normal*Decimal.context have been handled above.
+
+      # assert self.normal? && self.abs>context.minimum_nonzero
       norm = self.normalize
       exp = norm.integral_exponent
       sig = norm.integral_significand
+
+      # Powers of the radix, r**n, are between areas with different ulp values: r**(n-p-1) and r**(n-p)
+      # (p is context.precision).
+      # This method and the ulp definitions by Muller, Kahan and Harrison assign the smaller ulp value
+      # to r**n; the definition by Goldberg assigns it to the larger ulp.
+      # The next line selects the smaller ulp for powers of the radix:
       exp -= 1 if sig == Decimal.int_radix_power(context.precision-1)
+
       return Decimal(+1, 1, exp)
     end
   end
