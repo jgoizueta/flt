@@ -120,6 +120,14 @@ Decimal::ExtendedContext in the following examples:
 
   Decimal.context = Decimal::ExtendedContext
 
+Most decimal operations can be executed by using either Context or Decimal methods:
+
+  puts Decimal.context.exp(1)                        -> 2.71828183
+  puts Decimal(1).exp                                -> 2.71828183
+
+If using Context methods, values are automatically converted as if the Decimal() constructor
+was used.
+
 ==Rounding
 
 Results are normally rounded using the precision (number of significant digits)
