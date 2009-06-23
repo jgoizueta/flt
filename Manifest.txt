@@ -7,6 +7,7 @@ lib/decimal.rb
 lib/decimal/version.rb
 lib/decimal/decimal.rb
 lib/decimal/support.rb
+lib/decimal/shortcut.rb
 setup.rb
 test/all_tests.rb
 test/helper.rb
@@ -21,4 +22,7 @@ test/test_round.rb
 test/test_exact.rb
 test/test_to_int.rb
 test/test_to_rf.rb
+test/test_epsilon.rb
+test/test_ulp.rb
+test/test_odd_even.rb
 

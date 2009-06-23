@@ -7,7 +7,7 @@
 * New functions implemented:
   exp(), ln(), log10(), power().
 
-== 0.2.1 2009-06-23
+
 
 * Bug fixes:
   - Decimal#inspect was always producing debug information; now it uses $DEBUG
