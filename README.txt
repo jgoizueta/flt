@@ -20,10 +20,10 @@ and the revised IEEE 754 standard (IEEE 754-2008).
 
 = Examples of use
 
-To install the library use gem from the command line: (you may not need sudo)
+To install the library use gem from the command line: (you may not need +sudo+)
   sudo gem install ruby-decimal
 
-Then require the library in your code:
+Then require the library in your code (if it fails you may need to <tt>require 'rubygems'</tt> first)
   require 'decimal'
 
 Now we can use the Decimal class simply like this:
@@ -394,4 +394,7 @@ EXPAND+
 
 = Roadmap
 
-* Version 0.3.0: Implement the remaining GDA functions
+* Version 0.3.0: Implement the missing GDA functions:
+  rotate, shift, trim, and, or, xor, invert,
+  max, min, maxmag, minmag, comparetotal, comparetotmag
+
