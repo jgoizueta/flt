@@ -799,8 +799,6 @@ class Decimal
     # of the particular rounding rules used.
     def strict_epsilon(sign=+1)
       return exception(InvalidOperation, "Exact context strict epsilon") if exact?
-      coeff = 1
-      exp   = 1-precision
       # assume radix is even (Decimal.radix%2 == 0)
       case rounding
       when :down, :floor
