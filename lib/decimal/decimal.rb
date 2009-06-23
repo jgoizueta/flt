@@ -802,15 +802,19 @@ class Decimal
       # assume radix is even (Decimal.radix%2 == 0)
       case rounding
       when :down, :floor
+        # largest epsilon: 0.0...10 (precision digits shown to the right of the decimal point)
         exp = 1-precision
         coeff = 1
       when :half_even, :half_down #, :up #  :up #     :down,    :half_down, :up05, :floor
+        # next largest:    0.0...050...1 (+precision-1 additional digits here)
         exp = 1-2*precision
         coeff = 1 + Decimal.int_radix_power(precision)/2
       when :half_up
+        # next largest:    0.0...05 (precision digits shown to the right of the decimal point)
         exp = 1-2*precision
         coeff = Decimal.int_radix_power(precision)/2
       when :up, :ceiling, :up05
+        # smallest epsilon
         return minimum_nonzero(sign)
       end
       return Decimal(sign, coeff, exp)
