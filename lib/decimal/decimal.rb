@@ -4,7 +4,7 @@ require 'rational'
 require 'monitor'
 require 'ostruct'
 
-class FltPntBase
+class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
   extend DecimalSupport # allows use of unqualified FlagValues(), Flags()
 
@@ -903,20 +903,118 @@ class FltPntBase
 
   end
 
+
+  # Context constructor; if an options hash is passed, the options are
+  # applied to the default context; if a Context is passed as the first
+  # argument, it is used as the base instead of the default context.
+  #
+  # See Context#new() for the valid options
+  def self.Context(*args)
+    case args.size
+      when 0
+        base = self::DefaultContext
+      when 1
+        arg = args.first
+        if arg.instance_of?(self::Context)
+          base = arg
+          options = nil
+        elsif arg.instance_of?(Hash)
+          base = self::DefaultContext
+          options = arg
+        else
+          raise TypeError,"invalid argument for Decimal.Context"
+        end
+      when 2
+        base = args.first
+        options = args.last
+      else
+        raise ArgumentError,"wrong number of arguments (#{args.size} for 0, 1 or 2)"
+    end
+
+    if options.nil? || options.empty?
+      base
+    else
+      self::Context.new(base, options)
+    end
+
+  end
+
+  # Define a context by passing either of:
+  # * A Context object
+  # * A hash of options (or nothing) to alter a copy of the current context.
+  # * A Context object and a hash of options to alter a copy of it
+  def self.define_context(*options)
+    context = options.shift if options.first.instance_of?(self::Context)
+    if context && options.empty?
+      context
+    else
+      context ||= self.context
+      self.Context(context, *options)
+    end
+  end
+
+  # This makes the class define context accesible to instance methods
+  def define_context(*options)
+    self.class.define_context(*options)
+  end
+  private :define_context
+
+  # The current context (thread-local).
+  # If arguments are passed they are interpreted as in Decimal.define_context() to change
+  # the current context.
+  # If a block is given, this method is a synonym for Decimal.local_context().
+  def self.context(*args, &blk)
+    if blk
+      # setup a local context
+      local_context(*args, &blk)
+    elsif args.empty?
+      # return the current context
+      Thread.current["FP::#{self}.context"] ||= self::DefaultContext.dup
+    else
+      # change the current context
+      self.context = define_context(*args)
+    end
+  end
+
+  # Change the current context (thread-local).
+  def self.context=(c)
+    Thread.current["FP::#{self}.context"] = c.dup
+  end
+
+  # Defines a scope with a local context. A context can be passed which will be
+  # set a the current context for the scope; also a hash can be passed with
+  # options to apply to the local scope.
+  # Changes done to the current context are reversed when the scope is exited.
+  def self.local_context(*args)
+    keep = context.dup
+    self.context = define_context(*args)
+    result = yield self.context
+    # TODO: consider the convenience of copying the flags from Decimal.context to keep
+    # This way a local context does not affect the settings of the previous context,
+    # but flags are transferred.
+    # (this could be done always or be controlled by some option)
+    #   keep.flags = Decimal.context.flags
+    # Another alternative to consider: logically or the flags:
+    #   keep.flags ||= Decimal.context.flags # (this requires implementing || in Flags)
+    self.context = keep
+    result
+  end
+
+
   class << self
     # A decimal number with value zero and the specified sign
     def zero(sign=+1)
-      self.class.new([sign, 0, 0])
+      new([sign, 0, 0])
     end
 
     # A decimal infinite number with the specified sign
     def infinity(sign=+1)
-      self.class.new([sign, 0, :inf])
+      new([sign, 0, :inf])
     end
 
     # A decimal NaN (not a number)
     def nan()
-      self.class.new([+1, nil, :nan])
+      new([+1, nil, :nan])
     end
   end
 
@@ -936,7 +1034,7 @@ class FltPntBase
     end
     args = args.first if args.size==1 && args.first.is_a?(Array)
 
-    context = self.class.define_context(context) # ... use instance method?
+    context = define_context(context)
 
     case args.size
     when 3
@@ -1018,6 +1116,22 @@ class FltPntBase
     end
   end
 
+  # shortcut constructor:
+  def num(*args)
+    self.class.num(*args)
+  end
+  private :num
+
+  class <<self
+    def num(*args)
+      if args.size==1 && args.first.instance_of?(self)
+        args.first
+      else
+        new(*args)
+      end
+    end
+  end
+
   # Returns the internal representation of the number, composed of:
   # * a sign which is +1 for plus and -1 for minus
   # * a coefficient (significand) which is a nonnegative integer
@@ -1070,14 +1184,14 @@ class FltPntBase
   # Returns whether the number is subnormal
   def subnormal?(context=nil)
     return false if special? || zero?
-    context = self.class.define_context(context)
+    context = define_context(context)
     self.adjusted_exponent < context.emin
   end
 
   # Returns whether the number is normal
   def normal?(context=nil)
     return false if special? || zero?
-    context = self.class.define_context(context)
+    context = define_context(context)
     (context.emin <= self.adjusted_exponent) &&  (self.adjusted_exponent <= context.emax)
   end
 
@@ -1095,7 +1209,7 @@ class FltPntBase
       return '+Zero' if @sign==+1
       return '-Zero' # if @sign==-1
     end
-    context = self.class.define_context(context)
+    define_context(context)
     if subnormal?(context)
       return '+Subnormal' if @sign==+1
       return '-Subnormal' # if @sign==-1
@@ -1108,7 +1222,7 @@ class FltPntBase
   def coerce(other)
     case other
       when *self.class.context.coercible_types_or_decimal
-        [self.class.new(other),self]
+        [num(other),self]
       else
         super
     end
@@ -1116,10 +1230,10 @@ class FltPntBase
 
   # Used internally to define binary operators
   def _bin_op(op, meth, other, context=nil)
-    context = self.class.define_context(context)
+    context = define_context(context)
     case other
       when *context.coercible_types_or_decimal
-        self.send meth, self.class.new(other, context), context
+        self.send meth, num(other, context), context
       else
         x, y = other.coerce(self)
         x.send op, y
@@ -1135,7 +1249,7 @@ class FltPntBase
 
   # Unary plus operator
   def +@(context=nil)
-    #(context || Decimal.context).plus(self)
+    #(context || self.class.context).plus(self)
     _pos(context)
   end
 
@@ -1172,7 +1286,7 @@ class FltPntBase
   # Addition
   def add(other, context=nil)
 
-    context = self.class.define_context(context)
+    context = define_context(context)
     other = _convert(other)
 
     if self.special? || other.special?
@@ -1183,10 +1297,10 @@ class FltPntBase
         if self.sign != other.sign && other.infinite?
           return context.exception(InvalidOperation, '-INF + INF')
         end
-        return self.class.new(self)
+        return num(self)
       end
 
-      return self.class.new(other) if other.infinite?
+      return num(other) if other.infinite?
     end
 
     exp = [self.exponent, other.exponent].min
@@ -1195,7 +1309,7 @@ class FltPntBase
     if self.zero? && other.zero?
       sign = [self.sign, other.sign].max
       sign = -1 if negativezero
-      ans = self.class.new([sign, 0, exp])._fix(context)
+      ans = num([sign, 0, exp])._fix(context)
       return ans
     end
 
@@ -1213,7 +1327,7 @@ class FltPntBase
 
     result_sign = result_coeff = result_exp = nil
     if op1.sign != op2.sign
-      return ans = self.class.new([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.coefficient == op2.coefficient
+      return ans = num([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.coefficient == op2.coefficient
       op1,op2 = op2,op1 if op1.coefficient < op2.coefficient
       result_sign = op1.sign
       op1,op2 = op1.copy_negate, op2.copy_negate if result_sign < 0
@@ -1232,7 +1346,7 @@ class FltPntBase
 
     result_exp = op1.exponent
 
-    return self.class.new([result_sign, result_coeff, result_exp])._fix(context)
+    return num([result_sign, result_coeff, result_exp])._fix(context)
 
   end
 
@@ -1341,110 +1455,10 @@ class Decimal < FltPntBase
                              :precision=>9, :rounding=>:half_even,
                              :traps=>[], :flags=>[], :clamp=>false)
 
-  # Context constructor; if an options hash is passed, the options are
-  # applied to the default context; if a Context is passed as the first
-  # argument, it is used as the base instead of the default context.
-  #
-  # See Context#new() for the valid options
-  def Decimal.Context(*args)
-    case args.size
-      when 0
-        base = DefaultContext
-      when 1
-        arg = args.first
-        if arg.instance_of?(Context)
-          base = arg
-          options = nil
-        elsif arg.instance_of?(Hash)
-          base = DefaultContext
-          options = arg
-        else
-          raise TypeError,"invalid argument for Decimal.Context"
-        end
-      when 2
-        base = args.first
-        options = args.last
-      else
-        raise ArgumentError,"wrong number of arguments (#{args.size} for 0, 1 or 2)"
-    end
 
-    if options.nil? || options.empty?
-      base
-    else
-      Context.new(base, options)
-    end
-
-  end
-
-  # Define a context by passing either of:
-  # * A Context object
-  # * A hash of options (or nothing) to alter a copy of the current context.
-  # * A Context object and a hash of options to alter a copy of it
-  def Decimal.define_context(*options)
-    context = options.shift if options.first.instance_of?(Context)
-    if context && options.empty?
-      context
-    else
-      context ||= Decimal.context
-      Context(context, *options)
-    end
-  end
-
-  # The current context (thread-local).
-  # If arguments are passed they are interpreted as in Decimal.define_context() to change
-  # the current context.
-  # If a block is given, this method is a synonym for Decimal.local_context().
-  def Decimal.context(*args, &blk)
-    if blk
-      # setup a local context
-      local_context(*args, &blk)
-    elsif args.empty?
-      # return the current context
-      Thread.current['Decimal.context'] ||= DefaultContext.dup
-    else
-      # change the current context
-      Decimal.context = define_context(*args)
-    end
-  end
-
-  # Change the current context (thread-local).
-  def Decimal.context=(c)
-    Thread.current['Decimal.context'] = c.dup
-  end
-
-  # Defines a scope with a local context. A context can be passed which will be
-  # set a the current context for the scope; also a hash can be passed with
-  # options to apply to the local scope.
-  # Changes done to the current context are reversed when the scope is exited.
-  def Decimal.local_context(*args)
-    keep = context.dup
-    Decimal.context = define_context(*args)
-    result = yield Decimal.context
-    # TODO: consider the convenience of copying the flags from Decimal.context to keep
-    # This way a local context does not affect the settings of the previous context,
-    # but flags are transferred.
-    # (this could be done always or be controlled by some option)
-    #   keep.flags = Decimal.context.flags
-    # Another alternative to consider: logically or the flags:
-    #   keep.flags ||= Decimal.context.flags # (this requires implementing || in Flags)
-    Decimal.context = keep
-    result
-  end
-
-  # A decimal number with value zero and the specified sign
-  def Decimal.zero(sign=+1)
-    super sign
-  end
-
-  # A decimal infinite number with the specified sign
-  def Decimal.infinity(sign=+1)
-    super sign
-  end
-
-  # A decimal NaN (not a number)
-  def Decimal.nan()
-    super nan
-  end
+# Decimal(...) -> num(...) consider renaming to FPNumber Num, ...
+# Context(...) -> Decimal::Context(..) etc.
+# Decimal.define_context -> define_context
 
   #--
   # =Notes on the representation of Decimal numbers.
@@ -4211,9 +4225,5 @@ end
 # Decimal constructor. See Decimal#new for the parameters.
 # If a Decimal is passed a reference to it is returned (no new object is created).
 def Decimal(*args)
-  if args.size==1 && args.first.instance_of?(Decimal)
-    args.first
-  else
-    Decimal.new(*args)
-  end
+  Decimal.num(*args)
 end
