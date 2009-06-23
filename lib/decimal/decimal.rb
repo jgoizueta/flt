@@ -4,6 +4,15 @@ require 'rational'
 require 'monitor'
 require 'ostruct'
 
+# TODO: review uses of self.class (look for alternative, add instance method to return it?)
+# Consider renaming num(...) to FltPntBase or Num or ...
+# Consider renaming FltPntBase (FPNum, ...)
+
+# ongoing adaptation:
+# Decimal(...) -> num(...) consider renaming to FPNumber Num, ...
+# Decimal.define_context -> define_context
+# Decimal. -> self.class.
+
 class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
   extend DecimalSupport # allows use of unqualified FlagValues(), Flags()
@@ -1350,6 +1359,218 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
   end
 
+  # Subtraction
+  def subtract(other, context=nil)
+
+    context = define_context(context)
+    other = _convert(other)
+
+    if self.special? || other.special?
+      ans = _check_nans(context,other)
+      return ans if ans
+    end
+    return add(other.copy_negate, context)
+  end
+
+  # Multiplication
+  def multiply(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+    resultsign = self.sign * other.sign
+    if self.special? || other.special?
+      ans = _check_nans(context,other)
+      return ans if ans
+
+      if self.infinite?
+        return context.exception(InvalidOperation,"(+-)INF * 0") if other.zero?
+        return self.class.infinity(resultsign) # TODO: use just FltPntBase.infinity(resultsign) ?
+      end
+      if other.infinite?
+        return context.exception(InvalidOperation,"0 * (+-)INF") if self.zero?
+        return self.class.infinity(resultsign) # TODO: revisit
+      end
+    end
+
+    resultexp = self.exponent + other.exponent
+
+    return num([resultsign, 0, resultexp])._fix(context) if self.zero? || other.zero?
+    #return num([resultsign, other.coefficient, resultexp])._fix(context) if self.coefficient==1
+    #return num([resultsign, self.coefficient, resultexp])._fix(context) if other.coefficient==1
+
+    return num([resultsign, other.coefficient*self.coefficient, resultexp])._fix(context)
+
+  end
+
+  # Division
+  def divide(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+    resultsign = self.sign * other.sign
+    if self.special? || other.special?
+      ans = _check_nans(context,other)
+      return ans if ans
+      if self.infinite?
+        return context.exception(InvalidOperation,"(+-)INF/(+-)INF") if other.infinite?
+        return self.class.infinity(resultsign)
+      end
+      if other.infinite?
+        context.exception(Clamped,"Division by infinity")
+        return self.class.new([resultsign, 0, context.etiny])
+      end
+    end
+
+    if other.zero?
+      return context.exception(DivisionUndefined, '0 / 0') if self.zero?
+      return context.exception(DivisionByZero, 'x / 0', resultsign)
+    end
+
+    if self.zero?
+      exp = self.exponent - other.exponent
+      coeff = 0
+    else
+      prec = context.exact? ? self.number_of_digits + 4*other.number_of_digits : context.precision # this assumes radix==10
+      shift = other.number_of_digits - self.number_of_digits + prec + 1
+      exp = self.exponent - other.exponent - shift
+      if shift >= 0
+        coeff, remainder = (self.coefficient*self.class.int_radix_power(shift)).divmod(other.coefficient)
+      else
+        coeff, remainder = self.coefficient.divmod(other.coefficient*self.class.int_radix_power(-shift))
+      end
+      if remainder != 0
+        return context.exception(Inexact) if context.exact?
+        coeff += 1 if (coeff%(self.class.radix/2)) == 0
+      else
+        ideal_exp = self.exponent - other.exponent
+        while (exp < ideal_exp) && ((coeff % Decimal.radix)==0)
+          coeff /= self.class.radix
+          exp += 1
+        end
+      end
+
+    end
+    return num([resultsign, coeff, exp])._fix(context)
+
+  end
+
+  # Absolute value
+  def abs(context=nil)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+    end
+    sign<0 ? _neg(context) : _pos(context)
+  end
+
+  # Unary prefix plus operator
+  def plus(context=nil)
+    _pos(context)
+  end
+
+  # Unary prefix minus operator
+  def minus(context=nil)
+    _neg(context)
+  end
+
+  # Largest representable number smaller than itself
+  def next_minus(context=nil)
+    context = define_context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      if infinite?
+        return num(self) if @sign == -1
+        # @sign == +1
+        if context.exact?
+           return context.exception(InvalidOperation, 'Exact +INF next minus')
+        else
+          return num(+1, context.maximum_significand, context.etop)
+        end
+      end
+    end
+
+    return context.exception(InvalidOperation, 'Exact next minus') if context.exact?
+
+    result = nil
+    self.class.local_context(context) do |local|
+      local.rounding = :floor
+      local.ignore_all_flags
+      result = self._fix(local)
+      if result == self
+        result = self - num(+1, 1, local.etiny-1)
+      end
+    end
+    result
+  end
+
+  # Smallest representable number larger than itself
+  def next_plus(context=nil)
+    context = define_context(context)
+
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      if infinite?
+        return num(self) if @sign == +1
+        # @sign == -1
+        if context.exact?
+           return context.exception(InvalidOperation, 'Exact -INF next plus')
+        else
+          return num(-1, context.maximum_significand, context.etop)
+        end
+      end
+    end
+
+    return context.exception(InvalidOperation, 'Exact next plus') if context.exact?
+
+    result = nil
+    self.class.local_context(context) do |local|
+      local.rounding = :ceiling
+      local.ignore_all_flags
+      result = self._fix(local)
+      if result == self
+        result = self + Decimal(+1, 1, local.etiny-1)
+      end
+    end
+    result
+
+  end
+
+  # Returns the number closest to self, in the direction towards other.
+  def next_toward(other, context=nil)
+    context = define_context(context)
+    other = _convert(other)
+    ans = _check_nans(context,other)
+    return ans if ans
+
+    return context.exception(InvalidOperation, 'Exact next_toward') if context.exact?
+
+    comparison = self <=> other
+    return self.copy_sign(other) if comparison == 0
+
+    if comparison == -1
+      result = self.next_plus(context)
+    else # comparison == 1
+      result = self.next_minus(context)
+    end
+
+    # decide which flags to raise using value of ans
+    if result.infinite?
+      context.exception Overflow, 'Infinite result from next_toward', result.sign
+      context.exception Rounded
+      context.exception Inexact
+    elsif result.adjusted_exponent < context.emin
+      context.exception Underflow
+      context.exception Subnormal
+      context.exception Rounded
+      context.exception Inexact
+      # if precision == 1 then we don't raise Clamped for a
+      # result 0E-etiny.
+      context.exception Clamped if result.zero?
+    end
+
+    result
+  end
+
 end
 
 
@@ -1432,7 +1653,6 @@ class Decimal < FltPntBase
       _convert(x).ln(self)
     end
 
-
   end
 
   # the DefaultContext is the base for new contexts; it can be changed.
@@ -1453,11 +1673,6 @@ class Decimal < FltPntBase
   ExtendedContext = Decimal::Context.new(DefaultContext,
                              :precision=>9, :rounding=>:half_even,
                              :traps=>[], :flags=>[], :clamp=>false)
-
-
-# Decimal(...) -> num(...) consider renaming to FPNumber Num, ...
-# Context(...) -> Decimal::Context(..) etc.
-# Decimal.define_context -> define_context
 
   #--
   # =Notes on the representation of Decimal numbers.
@@ -1559,218 +1774,6 @@ class Decimal < FltPntBase
   end
 
   # ...
-
-  # Subtraction
-  def subtract(other, context=nil)
-
-    context = Decimal.define_context(context)
-    other = _convert(other)
-
-    if self.special? || other.special?
-      ans = _check_nans(context,other)
-      return ans if ans
-    end
-    return add(other.copy_negate, context)
-  end
-
-  # Multiplication
-  def multiply(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-    resultsign = self.sign * other.sign
-    if self.special? || other.special?
-      ans = _check_nans(context,other)
-      return ans if ans
-
-      if self.infinite?
-        return context.exception(InvalidOperation,"(+-)INF * 0") if other.zero?
-        return Decimal.infinity(resultsign)
-      end
-      if other.infinite?
-        return context.exception(InvalidOperation,"0 * (+-)INF") if self.zero?
-        return Decimal.infinity(resultsign)
-      end
-    end
-
-    resultexp = self.exponent + other.exponent
-
-    return Decimal([resultsign, 0, resultexp])._fix(context) if self.zero? || other.zero?
-    #return Decimal([resultsign, other.coefficient, resultexp])._fix(context) if self.coefficient==1
-    #return Decimal([resultsign, self.coefficient, resultexp])._fix(context) if other.coefficient==1
-
-    return Decimal([resultsign, other.coefficient*self.coefficient, resultexp])._fix(context)
-
-  end
-
-  # Division
-  def divide(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-    resultsign = self.sign * other.sign
-    if self.special? || other.special?
-      ans = _check_nans(context,other)
-      return ans if ans
-      if self.infinite?
-        return context.exception(InvalidOperation,"(+-)INF/(+-)INF") if other.infinite?
-        return Decimal.infinity(resultsign)
-      end
-      if other.infinite?
-        context.exception(Clamped,"Division by infinity")
-        return Decimal.new([resultsign, 0, context.etiny])
-      end
-    end
-
-    if other.zero?
-      return context.exception(DivisionUndefined, '0 / 0') if self.zero?
-      return context.exception(DivisionByZero, 'x / 0', resultsign)
-    end
-
-    if self.zero?
-      exp = self.exponent - other.exponent
-      coeff = 0
-    else
-      prec = context.exact? ? self.number_of_digits + 4*other.number_of_digits : context.precision # this assumes radix==10
-      shift = other.number_of_digits - self.number_of_digits + prec + 1
-      exp = self.exponent - other.exponent - shift
-      if shift >= 0
-        coeff, remainder = (self.coefficient*Decimal.int_radix_power(shift)).divmod(other.coefficient)
-      else
-        coeff, remainder = self.coefficient.divmod(other.coefficient*Decimal.int_radix_power(-shift))
-      end
-      if remainder != 0
-        return context.exception(Inexact) if context.exact?
-        coeff += 1 if (coeff%(Decimal.radix/2)) == 0
-      else
-        ideal_exp = self.exponent - other.exponent
-        while (exp < ideal_exp) && ((coeff % Decimal.radix)==0)
-          coeff /= Decimal.radix
-          exp += 1
-        end
-      end
-
-    end
-    return Decimal([resultsign, coeff, exp])._fix(context)
-
-  end
-
-  # Absolute value
-  def abs(context=nil)
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-    end
-    sign<0 ? _neg(context) : _pos(context)
-  end
-
-  # Unary prefix plus operator
-  def plus(context=nil)
-    _pos(context)
-  end
-
-  # Unary prefix minus operator
-  def minus(context=nil)
-    _neg(context)
-  end
-
-  # Largest representable number smaller than itself
-  def next_minus(context=nil)
-    context = Decimal.define_context(context)
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-      if infinite?
-        return Decimal.new(self) if @sign == -1
-        # @sign == +1
-        if context.exact?
-           return context.exception(InvalidOperation, 'Exact +INF next minus')
-        else
-          return Decimal.new(+1, context.maximum_significand, context.etop)
-        end
-      end
-    end
-
-    return context.exception(InvalidOperation, 'Exact next minus') if context.exact?
-
-    result = nil
-    Decimal.local_context(context) do |local|
-      local.rounding = :floor
-      local.ignore_all_flags
-      result = self._fix(local)
-      if result == self
-        result = self - Decimal(+1, 1, local.etiny-1)
-      end
-    end
-    result
-  end
-
-  # Smallest representable number larger than itself
-  def next_plus(context=nil)
-    context = Decimal.define_context(context)
-
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-      if infinite?
-        return Decimal.new(self) if @sign == +1
-        # @sign == -1
-        if context.exact?
-           return context.exception(InvalidOperation, 'Exact -INF next plus')
-        else
-          return Decimal.new(-1, context.maximum_significand, context.etop)
-        end
-      end
-    end
-
-    return context.exception(InvalidOperation, 'Exact next plus') if context.exact?
-
-    result = nil
-    Decimal.local_context(context) do |local|
-      local.rounding = :ceiling
-      local.ignore_all_flags
-      result = self._fix(local)
-      if result == self
-        result = self + Decimal(+1, 1, local.etiny-1)
-      end
-    end
-    result
-
-  end
-
-  # Returns the number closest to self, in the direction towards other.
-  def next_toward(other, context=nil)
-    context = Decimal.define_context(context)
-    other = _convert(other)
-    ans = _check_nans(context,other)
-    return ans if ans
-
-    return context.exception(InvalidOperation, 'Exact next_toward') if context.exact?
-
-    comparison = self <=> other
-    return self.copy_sign(other) if comparison == 0
-
-    if comparison == -1
-      result = self.next_plus(context)
-    else # comparison == 1
-      result = self.next_minus(context)
-    end
-
-    # decide which flags to raise using value of ans
-    if result.infinite?
-      context.exception Overflow, 'Infinite result from next_toward', result.sign
-      context.exception Rounded
-      context.exception Inexact
-    elsif result.adjusted_exponent < context.emin
-      context.exception Underflow
-      context.exception Subnormal
-      context.exception Rounded
-      context.exception Inexact
-      # if precision == 1 then we don't raise Clamped for a
-      # result 0E-etiny.
-      context.exception Clamped if result.zero?
-    end
-
-    result
-  end
 
   # Square root
   def sqrt(context=nil)
