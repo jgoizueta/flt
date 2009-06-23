@@ -1,18 +1,19 @@
 == 0.1.0 2009-06-19
 
-* Initial release 0.1.0
+* Initial release
 
 == 0.2.0 2009-06-21
 
 * New functions implemented:
   exp(), ln(), log10(), power().
 
-== 0.2.1 2009-06-23
+== 0.2.1 2009-06-24
 
 * Bug fixes:
   - Decimal#inspect was always producing debug information; now it uses $DEBUG
   - Raising some exceptions caused error, because too many parameters were being
     passed to the exception's base class initializer.
+
 * New functionality:
   - ulp (unit in the last place)
   - normalize (in the classic sense, not in the original GDA sense)
