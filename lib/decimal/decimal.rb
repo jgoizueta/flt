@@ -2143,11 +2143,6 @@ class Decimal
 
     return context.exception(InvalidOperation, "ulp in exact context") if context.exact?
 
-    sign = self.sign
-    sig = self.integral_significand
-    exp = self.integral_exponent
-    aexp = self.adjusted_exponent
-
     if self.nan?
       return Decimal(self)
     elsif self.infinite?
