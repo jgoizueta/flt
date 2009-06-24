@@ -1094,6 +1094,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
           @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for Decimal: #{arg.inspect}").split
           return
         end
+        puts "Parse #{arg} -> \n#{m.inspect}"
         @sign =  (m.sign == '-') ? -1 : +1
         if m.int || m.onlyfrac
           if m.int
@@ -1116,10 +1117,29 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
             # Use Nio::Clinger::algM if 10%num_exp.radix == 0 unless context.exact?
             # for context.exact? ... check for exact conversion or raise Inexact
             # just for testing:
-            if exp >= 0
-              num_class.new(coeff*10**exp)
+            if (10%num_class.radix) == 0
+              rounding = context.rounding
+              if @sign == -1
+                if rounding == :ceiling
+                  rounding = :floor
+                elsif rounding == :floor
+                  rounding = :ceiling
+                end
+              end
+              ans, exact = Clinger.algM(context, coeff, exp, rounding, 10)
+              context.exception(Inexact,"Inexact decimal to radix #{num_class.radix} conversion") if !exact
+              if !exact && context.exact?
+                @sign, coeff, exp =  num_class.nan.split
+              else
+                discard, coeff, exp = ans.split
+              end
             else
-              sign,coeff,exp = (num_class.new(coeff)/num_class.new(10**-exp)).split
+              # hard case, but probably won't be needed; here's a Q&D solution for testing
+              if exp >= 0
+                sign,coeff,exp = num_class.new(coeff*10**exp)
+              else
+                sign,coeff,exp = (num_class.new(coeff)/num_class.new(10**-exp)).split
+              end
             end
           end
           @coeff, @exp = coeff, exp
@@ -1257,6 +1277,8 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     case other
       when *num_class.context.coercible_types_or_num
         [Num(other),self]
+      when Float
+        [other, self.to_f]
       else
         super
     end
@@ -4371,5 +4393,82 @@ def BinFloat(*args)
   BinFloat.Num(*args)
 end
 
+  # these are functions from Nio::Clinger, generalized for arbitrary floating point formats
+  module Clinger #:nodoc:
 
-end # BgFloat
+    module_function
+
+    def ratio_float(context, u,v,k,round_mode)
+      # This assumes a round to neareast mode (half_up, half_down or half_even)
+      # round up (infinite, away from zero), down (zero, truncate), ceiling (+inf.) and floor (-fin)
+      # are not treated correctly; also since this handles only positive numbers and ceiling and floor
+      # are not symmetrical, they should have been swapped before calling this.
+
+      q = u.div v
+      r = u-q*v
+      v_r = v-r
+      z = context.num_class.new(+1,q,k)
+      exact = (r==0)
+      if r<v_r
+        # down
+        # TODO: this may need correction for round_mode :up or :ceiling
+        [z, exact]
+      elsif r>v_r
+        # up
+        # TODO: this may need correction for round_mode :down or :floor
+        [z.next_plus(context), exact]
+      else
+        # tie
+        if (round_mode == :half_down) || (round_mode == :half_even && q.even?) ||
+           (round_mode == :down) || (round_mode == :floor)
+          # rown down
+          [z, exact]
+        else
+          # round up
+          [z.next_plus(context), exact]
+        end
+      end
+    end
+
+    def algM(context, f, e, round_mode, eb=10) # ceiling & floor must be swapped for negative numbers
+      puts "algM #{f} #{e} #{eb} -> #{context.num_class.radix}"
+      if e<0
+       u,v,k = f,eb**(-e),0
+      else
+        u,v,k = f*(eb**e),1,0
+      end
+
+      if exact_mode = context.exact?
+        exact_mode = :quiet if !context.traps[Num::Inexact]
+        n = [(Math.log(u)/Math.log(2)).ceil,1].max # TODO: check if correct and optimize
+        puts "u=#{u} n=#{n}"
+        context.precision = n
+      else
+        n = context.precision
+      end
+      min_e = context.etiny
+      max_e = context.etop
+
+      rp_n = context.num_class.int_radix_power(n)
+      rp_n_1 = context.num_class.int_radix_power(n-1)
+      r = context.num_class.radix
+      loop do
+         x = u.div(v) # bottleneck
+         # overflow if k>=max_e
+         if (x>=rp_n_1 && x<rp_n) || k==min_e || k==max_e
+            result = ratio_float(context,u,v,k,round_mode)
+            context.exact = exact_mode if exact_mode
+            return result
+         elsif x<rp_n_1
+           u *= r
+           k -= 1
+         elsif x>=rp_n
+           v *= r
+           k += 1
+         end
+      end
+
+    end
+  end
+
+end # BigFloat
