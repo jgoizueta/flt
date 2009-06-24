@@ -4,16 +4,15 @@ require 'rational'
 require 'monitor'
 require 'ostruct'
 
-# Consider renaming num(...) to FltPntBase or Num or ...
-# Consider renaming FltPntBase (FPNum, ...)
-# Move part of AuxiliarFunctions to FltPntBase
+module BigFloat
 
 # ongoing adaptation:
-# Decimal(...) -> num(...) consider renaming to FPNumber Num, ...
+# Decimal(...) -> Num(...)
 # Decimal.define_context -> define_context
 # Decimal. -> num_class.
+# TODO: num_class.nan etc. or Num.nan ?
 
-class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
+class Num # APFloat (arbitrary precision float) MPFloat ...
 
   extend DecimalSupport # allows use of unqualified FlagValues(), Flags()
 
@@ -299,11 +298,11 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
         @rounding = @emin = @emax = nil
         @capitals = false
         @clamp = false
-        @ignored_flags = FltPntBase::Flags()
-        @traps = FltPntBase::Flags()
-        @flags = FltPntBase::Flags()
-        @coercible_type_handlers = FltPntBase.base_coercible_types.dup
-        @conversions = FltPntBase.base_conversions.dup
+        @ignored_flags = Num::Flags()
+        @traps = Num::Flags()
+        @flags = Num::Flags()
+        @coercible_type_handlers = Num.base_coercible_types.dup
+        @conversions = Num.base_conversions.dup
       end
       assign options.first
 
@@ -1143,13 +1142,13 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
   end
 
   # shortcut constructor:
-  def num(*args)
-    self.class.num(*args)
+  def Num(*args)
+    self.class.Num(*args)
   end
-  private :num
+  private :Num
 
   class <<self
-    def num(*args)
+    def Num(*args)
       if args.size==1 && args.first.instance_of?(self)
         args.first
       else
@@ -1248,7 +1247,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
   def coerce(other)
     case other
       when *num_class.context.coercible_types_or_decimal
-        [num(other),self]
+        [Num(other),self]
       else
         super
     end
@@ -1259,7 +1258,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     context = define_context(context)
     case other
       when *context.coercible_types_or_decimal
-        self.send meth, num(other, context), context
+        self.send meth, Num(other, context), context
       else
         x, y = other.coerce(self)
         x.send op, y
@@ -1323,10 +1322,10 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
         if self.sign != other.sign && other.infinite?
           return context.exception(InvalidOperation, '-INF + INF')
         end
-        return num(self)
+        return Num(self)
       end
 
-      return num(other) if other.infinite?
+      return Num(other) if other.infinite?
     end
 
     exp = [self.exponent, other.exponent].min
@@ -1335,7 +1334,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     if self.zero? && other.zero?
       sign = [self.sign, other.sign].max
       sign = -1 if negativezero
-      ans = num([sign, 0, exp])._fix(context)
+      ans = Num([sign, 0, exp])._fix(context)
       return ans
     end
 
@@ -1353,7 +1352,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
     result_sign = result_coeff = result_exp = nil
     if op1.sign != op2.sign
-      return ans = num([negativezero ? -1 : +1, 0, exp])._fix(context) if op1.coefficient == op2.coefficient
+      return ans = Num(negativezero ? -1 : +1, 0, exp)._fix(context) if op1.coefficient == op2.coefficient
       op1,op2 = op2,op1 if op1.coefficient < op2.coefficient
       result_sign = op1.sign
       op1,op2 = op1.copy_negate, op2.copy_negate if result_sign < 0
@@ -1372,7 +1371,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
     result_exp = op1.exponent
 
-    return num([result_sign, result_coeff, result_exp])._fix(context)
+    return Num(result_sign, result_coeff, result_exp)._fix(context)
 
   end
 
@@ -1400,21 +1399,21 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
       if self.infinite?
         return context.exception(InvalidOperation,"(+-)INF * 0") if other.zero?
-        return num_class.infinity(resultsign) # TODO: use just FltPntBase.infinity(resultsign) ?
+        return num_class.infinity(resultsign) # TODO: use just Num.infinity(resultsign) ?
       end
       if other.infinite?
         return context.exception(InvalidOperation,"0 * (+-)INF") if self.zero?
-        return num_class.infinity(resultsign) # TODO: revisit
+        return num_class.infinity(resultsign)
       end
     end
 
     resultexp = self.exponent + other.exponent
 
-    return num([resultsign, 0, resultexp])._fix(context) if self.zero? || other.zero?
-    #return num([resultsign, other.coefficient, resultexp])._fix(context) if self.coefficient==1
-    #return num([resultsign, self.coefficient, resultexp])._fix(context) if other.coefficient==1
+    return Num(resultsign, 0, resultexp)._fix(context) if self.zero? || other.zero?
+    #return Num(resultsign, other.coefficient, resultexp)._fix(context) if self.coefficient==1
+    #return Num(resultsign, self.coefficient, resultexp)._fix(context) if other.coefficient==1
 
-    return num([resultsign, other.coefficient*self.coefficient, resultexp])._fix(context)
+    return Num(resultsign, other.coefficient*self.coefficient, resultexp)._fix(context)
 
   end
 
@@ -1465,7 +1464,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       end
 
     end
-    return num([resultsign, coeff, exp])._fix(context)
+    return Num(resultsign, coeff, exp)._fix(context)
 
   end
 
@@ -1495,12 +1494,12 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       ans = _check_nans(context)
       return ans if ans
       if infinite?
-        return num(self) if @sign == -1
+        return Num(self) if @sign == -1
         # @sign == +1
         if context.exact?
            return context.exception(InvalidOperation, 'Exact +INF next minus')
         else
-          return num(+1, context.maximum_significand, context.etop)
+          return Num(+1, context.maximum_significand, context.etop)
         end
       end
     end
@@ -1513,7 +1512,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       local.ignore_all_flags
       result = self._fix(local)
       if result == self
-        result = self - num(+1, 1, local.etiny-1)
+        result = self - Num(+1, 1, local.etiny-1)
       end
     end
     result
@@ -1527,12 +1526,12 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       ans = _check_nans(context)
       return ans if ans
       if infinite?
-        return num(self) if @sign == +1
+        return Num(self) if @sign == +1
         # @sign == -1
         if context.exact?
            return context.exception(InvalidOperation, 'Exact -INF next plus')
         else
-          return num(-1, context.maximum_significand, context.etop)
+          return Num(-1, context.maximum_significand, context.etop)
         end
       end
     end
@@ -1775,12 +1774,12 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     end
 
     if other.infinite?
-      return num(self)._fix(context)
+      return Num(self)._fix(context)
     end
 
     ideal_exp = [self.exponent, other.exponent].min
     if self.zero?
-      return num([self.sign, 0, ideal_exp])._fix(context)
+      return Num(self.sign, 0, ideal_exp)._fix(context)
     end
 
     expdiff = self.adjusted_exponent - other.adjusted_exponent
@@ -1812,7 +1811,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
         r = -r
       end
 
-    return num(sign, r, ideal_exp)._fix(context)
+    return Num(sign, r, ideal_exp)._fix(context)
 
   end
 
@@ -1828,7 +1827,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     dup = _fix(context)
     return dup if dup.infinite?
 
-    return num(dup.sign, 0, 0) if dup.zero?
+    return Num(dup.sign, 0, 0) if dup.zero?
 
     exp_max = context.clamp? ? context.etop : context.emax
     end_d = nd = dup.number_of_digits
@@ -1839,14 +1838,14 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       exp += 1
       end_d -= 1
     end
-    return num([dup.sign, coeff/num_class.int_radix_power(nd-end_d), exp])
+    return Num(dup.sign, coeff/num_class.int_radix_power(nd-end_d), exp)
   end
 
   # normalizes so that the coefficient has precision digits
   # (this is not the old GDA normalize function)
   def normalize(context=nil)
     context = define_context(context)
-    return num(self) if self.special? || self.zero?
+    return Num(self) if self.special? || self.zero?
     return context.exception(InvalidOperation, "Normalize in exact context") if context.exact?
     return context.exception(Subnormal, "Cannot normalize subnormal") if self.subnormal?
     min_normal_coeff = num_class.int_radix_power(context.precision-1)
@@ -1855,7 +1854,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       coeff *= num_class.radix
       exp -= 1
     end
-    num(sign, coeff, exp)
+    Num(sign, coeff, exp)
   end
 
   # Returns the exponent of the magnitude of the most significant digit.
@@ -1870,7 +1869,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     return ans if ans
     return num_class.infinity if infinite?
     return context.exception(DivisionByZero,'logb(0)',-1) if zero?
-    num(adjusted_exponent)
+    Num(adjusted_exponent)
   end
 
   # Adds a value to the exponent.
@@ -1887,8 +1886,8 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       i = other.to_i
       return context.exception(InvalidOperation) if !((liminf <= i) && (i <= limsup))
     end
-    return num(self) if infinite?
-    return num(@sign, @coeff, @exp+i)._fix(context)
+    return Num(self) if infinite?
+    return Num(@sign, @coeff, @exp+i)._fix(context)
 
   end
 
@@ -1953,10 +1952,10 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     return context.exception(InvalidOperation, "ulp in exact context") if context.exact?
 
     if self.nan?
-      return num(self)
+      return Num(self)
     elsif self.infinite?
       # The ulp here is context.maximum_finite - context.maximum_finite.next_minus
-      return num(+1, 1, context.etop)
+      return Num(+1, 1, context.etop)
     elsif self.zero? || self.adjusted_exponent <= context.emin
       # This is the ulp value for self.abs <= context.minimum_normal*Decimal.context
       # Here we use it for self.abs < context.minimum_normal*Decimal.context;
@@ -1979,7 +1978,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       # The next line selects the smaller ulp for powers of the radix:
       exp -= 1 if sig == num_class.int_radix_power(context.precision-1)
 
-      return num(+1, 1, exp)
+      return Num(+1, 1, exp)
     end
   end
 
@@ -1996,7 +1995,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
   def <=>(other)
     case other
     when *num_class.context.coercible_types_or_decimal
-      other = num(other)
+      other = Num(other)
       if self.special? || other.special?
         if self.nan? || other.nan?
           1
@@ -2070,7 +2069,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       return ans if ans
     end
 
-    return num(self <=> other)
+    return Num(self <=> other)
 
   end
 
@@ -2141,17 +2140,17 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
   # Returns a copy of with the sign set to +
   def copy_abs
-    num(+1,@coeff,@exp)
+    Num(+1,@coeff,@exp)
   end
 
   # Returns a copy of with the sign inverted
   def copy_negate
-    num(-@sign,@coeff,@exp)
+    Num(-@sign,@coeff,@exp)
   end
 
   # Returns a copy of with the sign of other
   def copy_sign(other)
-    num(other.sign, @coeff, @exp)
+    Num(other.sign, @coeff, @exp)
   end
 
   # Returns true if the value is an integer
@@ -2230,7 +2229,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       ans = _check_nans(context, exp)
       return ans if ans
       if exp.infinite? || self.infinite?
-        return num(self) if exp.infinite? && self.infinite?
+        return Num(self) if exp.infinite? && self.infinite?
         return context.exception(InvalidOperation, 'rescale with one INF')
       end
     end
@@ -2247,7 +2246,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       ans = _check_nans(context, exp)
       return ans if ans
       if exp.infinite? || self.infinite?
-        return num(self) if exp.infinite? && self.infinite?
+        return Num(self) if exp.infinite? && self.infinite?
         return context.exception(InvalidOperation, 'quantize with one INF')
       end
     end
@@ -2275,10 +2274,10 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     if special?
       ans = _check_nans(context)
       return ans if ans
-      return num(self)
+      return Num(self)
     end
-    return num(self) if @exp >= 0
-    return num(@sign, 0, 0) if zero?
+    return Num(self) if @exp >= 0
+    return Num(@sign, 0, 0) if zero?
     context.exception Rounded
     ans = _rescale(0, context.rounding)
     context.exception Inexact if ans != self
@@ -2291,9 +2290,9 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     if special?
       ans = _check_nans(context)
       return ans if ans
-      return num(self)
+      return Num(self)
     end
-    return num(self) if @exp >= 0
+    return Num(self) if @exp >= 0
     return _rescale(0, context.rounding)
   end
 
@@ -2391,7 +2390,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
         product = num_class.infinity(self.sign*other.sign)
       end
     else
-      product = num([self.sign*other.sign,self.coefficient*other.coefficient, self.exponent+other.exponent])
+      product = Num(self.sign*other.sign,self.coefficient*other.coefficient, self.exponent+other.exponent)
     end
     return product.add(third, context)
   end
@@ -2423,13 +2422,13 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
   # rounding = rounding mode
   def _rescale(exp, rounding)
 
-    return num(self) if special?
-    return num(sign, 0, exp) if zero?
-    return num(sign, @coeff*num_class.int_radix_power(self.exponent - exp), exp) if self.exponent > exp
+    return Num(self) if special?
+    return Num(sign, 0, exp) if zero?
+    return Num(sign, @coeff*num_class.int_radix_power(self.exponent - exp), exp) if self.exponent > exp
     #nd = number_of_digits + self.exponent - exp
     nd = exp - self.exponent
     if number_of_digits < nd
-      slf = num(sign, 1, exp-1)
+      slf = Num(sign, 1, exp-1)
       nd = number_of_digits
     else
       slf = Decimal.new(self)
@@ -2437,7 +2436,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     changed = slf._round(rounding, nd)
     coeff = num_class.int_div_radix_power(@coeff, nd)
     coeff += 1 if changed==1
-    num(slf.sign, coeff, exp)
+    Num(slf.sign, coeff, exp)
 
   end
 
@@ -2453,7 +2452,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       return context.exception(InvalidOperation, "target operation out of bounds in quantize/rescale")
     end
 
-    return num(@sign, 0, exp)._fix(context) if zero?
+    return Num(@sign, 0, exp)._fix(context) if zero?
 
     self_adjusted = adjusted_exponent
     return context.exception(InvalidOperation,"exponent of quantize/rescale result too large for current context") if self_adjusted > context.emax
@@ -2494,7 +2493,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     if zero?
       ans = copy_abs
     else
-      ans = num(self)
+      ans = Num(self)
     end
     context = define_context(context)
     ans._fix(context)
@@ -2524,7 +2523,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       if nan?
         return _fix_nan(context)
       else
-        return num(self)
+        return Num(self)
       end
     end
 
@@ -2535,9 +2534,9 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       new_exp = [[@exp, etiny].max, exp_max].min
       if new_exp!=@exp
         context.exception Clamped
-        return num(sign,0,new_exp)
+        return Num(sign,0,new_exp)
       else
-        return num(self)
+        return Num(self)
       end
     end
 
@@ -2562,15 +2561,15 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       # dg = numberof_digits-dig is from 1 (LS) to number_of_digits (MS)
       dg = exp_min - @exp # dig = number_of_digits + exp - exp_min
       if dg > number_of_digits # dig<0
-        d = num(sign,1,exp_min-1)
+        d = Num(sign,1,exp_min-1)
         dg = number_of_digits # dig = 0
       else
-        d = num(self)
+        d = Num(self)
       end
       changed = d._round(context.rounding, dg)
       coeff = num_class.int_div_radix_power(d.coefficient, dg)
       coeff += 1 if changed==1
-      ans = num(sign, coeff, exp_min)
+      ans = Num(sign, coeff, exp_min)
       if changed!=0
         context.exception Inexact
         if self_is_subnormal
@@ -2580,7 +2579,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
           end
         elsif ans.number_of_digits == context.precision+1
           if ans.exponent< etop
-            ans = num(ans.sign, num_class.int_div_radix_power(ans.coefficient,1), ans.exponent+1)
+            ans = Num(ans.sign, num_class.int_div_radix_power(ans.coefficient,1), ans.exponent+1)
           else
             ans = context.exception(Overflow, 'above Emax', d.sign)
           end
@@ -2592,10 +2591,10 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
     if context.clamp? &&  @exp>etop
       context.exception Clamped
       self_padded = num_class.int_mult_radix_power(@coeff, @exp-etop)
-      return num(sign,self_padded,etop)
+      return Num(sign,self_padded,etop)
     end
 
-    return num(self)
+    return Num(self)
 
   end
 
@@ -2612,7 +2611,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
           return Decimal([@sign, payload, @exp])
       end
     end
-    num(self)
+    Num(self)
   end
 
   protected
@@ -2628,7 +2627,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
     expdiff = self.adjusted_exponent - other.adjusted_exponent
     if self.zero? || other.infinite? || (expdiff <= -2)
-      return [num(sign, 0, 0), _rescale(ideal_exp, context.rounding)]
+      return [Num(sign, 0, 0), _rescale(ideal_exp, context.rounding)]
     end
     if (expdiff <= context.precision) || context.exact?
       self_coeff = self.coefficient
@@ -2641,7 +2640,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       end
       q, r = self_coeff.divmod(other_coeff)
       if (q < num_class.int_radix_power(context.precision)) || context.exact?
-        return [num(sign, q, 0),num(self.sign, r, ideal_exp)]
+        return [Num(sign, q, 0),Num(self.sign, r, ideal_exp)]
       end
     end
     # Here the quotient is too large to be representable
@@ -2661,7 +2660,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
 
     expdiff = self.adjusted_exponent - other.adjusted_exponent
     if self.zero? || other.infinite? || (expdiff <= -2)
-      return [num(sign, 0, 0), _rescale(ideal_exp, context.rounding)]
+      return [Num(sign, 0, 0), _rescale(ideal_exp, context.rounding)]
     end
     if (expdiff <= context.precision) || context.exact?
       self_coeff = self.coefficient*self.sign
@@ -2686,7 +2685,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
         qs = +1
       end
       if (q < num_class.int_radix_power(context.precision)) || context.exact?
-        return [num(qs, q, 0),num(rs, r, ideal_exp)]
+        return [Num(qs, q, 0),Num(rs, r, ideal_exp)]
       end
     end
     # Here the quotient is too large to be representable
@@ -2803,7 +2802,7 @@ class FltPntBase # APFloat (arbitrary precision float) MPFloat ...
       if (other_len+other.exponent-1 < exp) && prec>0
         other = Decimal.new([other.sign, 1, exp])
       end
-      tmp = num(tmp.sign,
+      tmp = Num(tmp.sign,
                         num_class.int_mult_radix_power(tmp.coefficient, tmp.exponent-other.exponent),
                         other.exponent)
       return swap ? [other, tmp] : [tmp, other]
@@ -2821,7 +2820,7 @@ end
 # Decimal arbitrary precision floating point number.
 # This implementation of Decimal is based on the Decimal module of Python,
 # written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
-class Decimal < FltPntBase
+class Decimal < Num # TODO: rename to Dec or DecNum ?
 
   class << self
     # Numerical base of Decimal.
@@ -2849,7 +2848,7 @@ class Decimal < FltPntBase
 
   # The context defines the arithmetic context: rounding mode, precision,...
   # Decimal.context is the current (thread-local) context.
-  class Context < FltPntBase::ContextBase
+  class Context < Num::ContextBase
 
     # If an options hash is passed, the options are
     # applied to the default context; if a Context is passed as the first
@@ -4264,12 +4263,12 @@ end
 # Decimal constructor. See Decimal#new for the parameters.
 # If a Decimal is passed a reference to it is returned (no new object is created).
 def Decimal(*args)
-  Decimal.num(*args)
+  Decimal.Num(*args)
 end
 
 # ===================================================================================
 
-class BinFloat < FltPntBase
+class BinFloat < Num
 
   class << self
     # Numerical base of Decimal.
@@ -4297,7 +4296,7 @@ class BinFloat < FltPntBase
 
   # The context defines the arithmetic context: rounding mode, precision,...
   # Decimal.context is the current (thread-local) context.
-  class Context < FltPntBase::ContextBase
+  class Context < Num::ContextBase
 
     def initialize(*options)
       super(BinFloat, *options)
@@ -4341,6 +4340,8 @@ class BinFloat < FltPntBase
 end
 
 def BinFloat(*args)
-  BinFloat.num(*args)
+  BinFloat.Num(*args)
 end
 
+
+end # BgFloat
