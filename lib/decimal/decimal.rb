@@ -1953,7 +1953,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     else
       # to_rational.to_f
       # to_s.to_f
-      (@sign*@coeff*(num_class.radix**@exp)).to_f
+      (@sign*@coeff*(num_class.radix.to_f**@exp)).to_f
     end
   end
 
