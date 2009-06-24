@@ -12,6 +12,7 @@ module BigFloat
 # Decimal. -> num_class.
 # TODO: arithmetic rounding in arbitrary radix must be reviewed; in general the number of extra
 #       digits used before rounding should be adjusted for each radix. This has already been done for division only.
+# TODO: put Num, Decimal, BinFloat in separate files
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
 
