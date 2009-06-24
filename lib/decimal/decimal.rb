@@ -42,17 +42,6 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     attr_reader :base_conversions
   end
 
-  #--
-  # Some functions use the next methods instead of 10, 10**x, etc.
-  # This has been done for two reasons:
-  # * Much of the code of Decimal is generic enough to work for non-decimal floating-point numbers.
-  #   In the future a binary (or arbitrary radix) class could be derived from Decimal.
-  # * The radix power operations could be optimized (specinally for binary)
-  # But note that some code (e.g. powers & logarithms, auxiliar funtions) use algorithms
-  # that assume radix=10.
-  #++
-
-
   # Base class for errors.
   class Error < StandardError
   end
@@ -1457,7 +1446,8 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       exp = self.exponent - other.exponent
       coeff = 0
     else
-      prec = context.exact? ? self.number_of_digits + 4*other.number_of_digits : context.precision # this assumes radix==10
+      # TODO: how many digits to use for binary radix?
+      prec = context.exact? ? self.number_of_digits + 4*other.number_of_digits : context.precision
       shift = other.number_of_digits - self.number_of_digits + prec + 1
       exp = self.exponent - other.exponent - shift
       if shift >= 0
@@ -1479,6 +1469,63 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     end
     return Num(resultsign, coeff, exp)._fix(context)
 
+  end
+
+  # Square root
+  def sqrt(context=nil)
+    context = define_context(context)
+    if special?
+      ans = _check_nans(context)
+      return ans if ans
+      return Num(self) if infinite? && @sign==+1
+    end
+    return Num(@sign, 0, @exp/2)._fix(context) if zero?
+    return context.exception(InvalidOperation, 'sqrt(-x), x>0') if @sign<0
+    prec = context.precision + 1
+
+    # express the number in radix**2 base
+    e = (@exp >> 1)
+    if (@exp & 1)!=0
+      c = @coeff*Num.radix
+      l = (number_of_digits >> 1) + 1
+    else
+      c = @coeff
+      l = (number_of_digits+1) >> 1
+    end
+    shift = prec - l
+    if shift >= 0
+      c = num_class.int_mult_radix_power(c, (shift<<1))
+      exact = true
+    else
+      c, remainder = c.divmod(num_class.int_radix_power((-shift)<<1))
+      exact = (remainder==0)
+    end
+    e -= shift
+
+    n = num_class.int_radix_power(prec)
+    while true
+      q = c / n
+      break if n <= q
+      n = ((n + q) >> 1)
+    end
+    exact = exact && (n*n == c)
+
+    if exact
+      if shift >= 0
+        n = num_class.int_div_radix_power(n, shift)
+      else
+        n = num_class.int_mult_radix_power(n, -shift)
+      end
+      e += shift
+    else
+      return context.exception(Inexact) if context.exact?
+      n += 1 if (n%5)==0 # TODO: generalize to radix!=10
+    end
+    ans = Num(+1,n,e)
+    num_class.local_context(:rounding=>:half_even) do
+      ans = ans._fix(context)
+    end
+    return ans
   end
 
   # Absolute value
@@ -3030,61 +3077,6 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
   # ...
 
-  # Square root
-  def sqrt(context=nil)
-    context = Decimal.define_context(context)
-    if special?
-      ans = _check_nans(context)
-      return ans if ans
-      return Decimal.new(self) if infinite? && @sign==+1
-    end
-    return Decimal.new([@sign, 0, @exp/2])._fix(context) if zero?
-    return context.exception(InvalidOperation, 'sqrt(-x), x>0') if @sign<0
-    prec = context.precision + 1
-    e = (@exp >> 1)
-    if (@exp & 1)!=0
-      c = @coeff*Decimal.radix
-      l = (number_of_digits >> 1) + 1
-    else
-      c = @coeff
-      l = (number_of_digits+1) >> 1
-    end
-    shift = prec - l
-    if shift >= 0
-      c = Decimal.int_mult_radix_power(c, (shift<<1))
-      exact = true
-    else
-      c, remainder = c.divmod(Decimal.int_radix_power((-shift)<<1))
-      exact = (remainder==0)
-    end
-    e -= shift
-
-    n = Decimal.int_radix_power(prec)
-    while true
-      q = c / n
-      break if n <= q
-      n = ((n + q) >> 1)
-    end
-    exact = exact && (n*n == c)
-
-    if exact
-      if shift >= 0
-        n = Decimal.int_div_radix_power(n, shift)
-      else
-        n = Decimal.int_mult_radix_power(n, -shift)
-      end
-      e += shift
-    else
-      return context.exception(Inexact) if context.exact?
-      n += 1 if (n%5)==0
-    end
-    ans = Decimal.new([+1,n,e])
-    Decimal.local_context(:rounding=>:half_even) do
-      ans = ans._fix(context)
-    end
-    return ans
-  end
-
   # Ruby-style to string conversion.
   def to_s(eng=false,context=nil)
     # (context || num_class.context).to_string(self)
@@ -4291,19 +4283,19 @@ class BinFloat < Num
 
     # Integral power of the base: radix**n for integer n; returns an integer.
     def int_radix_power(n)
-      2 << n
+      (n < 0) ? (2**n) : (1<<n)
     end
 
     # Multiply by an integral power of the base: x*(radix**n) for x,n integer;
     # returns an integer.
     def int_mult_radix_power(x,n)
-      x * (2 << n)
+      x * ((n < 0) ? (2**n) : (1<<n))
     end
 
     # Divide by an integral power of the base: x/(radix**n) for x,n integer;
     # returns an integer.
     def int_div_radix_power(x,n)
-      x / (2 << n)
+      x / ((n < 0) ? (2**n) : (1<<n))
     end
   end
 
@@ -4351,7 +4343,6 @@ class BinFloat < Num
       self.to_f.to_s
     end
   end
-
 
   # Specific to_f conversion TODO: check if it representes an optimization
   if Float::RADIX==2
