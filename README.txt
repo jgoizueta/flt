@@ -1,3 +1,17 @@
+= Notes on this branch:
+
+This is an experiment to define an arbitrary-precision, arbitrary-radix floating point
+number class and derive Decimal from it. Thus, we can define an arbitrary-precision
+binary floating point class and keep things DRY (share code with Decimal.)
+
+An binary floating point class would have different applications from Decimal (its
+error propoerties would be different). It could also be used to add precise arithmetic
+to float-formats.
+
+With this experiment the intention is to determine if the complications that will
+arise in the definition of Decimal (will the code be less clear? wil rdoc documentation
+be more confusing?) are worth to have a binary floating point type.
+
 = Introduction
 
 Decimal is a standards-compliant arbitrary precision decimal floating-point type for Ruby.
