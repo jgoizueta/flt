@@ -1107,13 +1107,26 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
             intpart = ''
             fracpart = m.onlyfrac
           end
-          @exp = m.exp.to_i
+          exp = m.exp.to_i
           if fracpart
-            @coeff = (intpart+fracpart).to_i
-            @exp -= fracpart.size
+            coeff = (intpart+fracpart).to_i
+            exp -= fracpart.size
           else
-            @coeff = intpart.to_i
+            coeff = intpart.to_i
           end
+          if num_class.radix != 10
+            # convert coeff*10**exp to coeff'*radix**exp'
+            # coeff, exp = num_class.decimal_to_radix(coeff, exp, context)
+            # Use Nio::Clinger::algM if 10%num_exp.radix == 0 unless context.exact?
+            # for context.exact? ... check for exact conversion or raise Inexact
+            # just for testing:
+            if exp >= 0
+              num_class.new(coeff*10**exp)
+            else
+              num_class.new(coeff)/num_class.new(10**-exp)
+            end
+          end
+          @coeff, @exp = coeff, exp
         else
           if m.diag
             # NaN
@@ -1940,7 +1953,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     else
       # to_rational.to_f
       # to_s.to_f
-      @sign*@coeff*(10.0**@exp)
+      (@sign*@coeff*(num_class.radix**@exp)).to_f
     end
   end
 
@@ -4334,6 +4347,7 @@ class BinFloat < Num
       end
     else
       # TODO: this is just provisional for testing
+      # use Nio::BurgerDybvig::float_to_digits or Nio::BurgerDybvig::float_to_digits_max
       self.to_f.to_s
     end
   end
