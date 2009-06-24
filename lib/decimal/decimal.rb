@@ -2233,7 +2233,7 @@ class Decimal
         end
       end
     else
-      if defined? other.coerce
+      if !self.nan? && defined? other.coerce
         x, y = other.coerce(self)
         x <=> y
       else
@@ -3683,7 +3683,7 @@ class Decimal
     end
     # adj == -1, 0.1 <= self < 1
     return e + (10**-e - c).to_s.length - 1
- end
+  end
 
   module AuxiliarFunctions #:nodoc:
 
