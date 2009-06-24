@@ -4351,6 +4351,19 @@ class BinFloat < Num
       self.to_f.to_s
     end
   end
+
+
+  # Specific to_f conversion TODO: check if it representes an optimization
+  if Float::RADIX==2
+    def to_f
+      if special?
+        super
+      else
+        Math.ldexp(@sign*@coeff, @exp)
+      end
+    end
+  end
+
 end
 
 def BinFloat(*args)
