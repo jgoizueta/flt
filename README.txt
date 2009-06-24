@@ -249,14 +249,22 @@ Or with a generic method:
   puts Decimal('1.1').convert_to(Integer)            -> 1
   puts Decimal('1.1').convert_to(Rational)           -> 11/10
 
-Conversion is also possible to Float:
+Thera are also GDAS style conversion operations:
+
+    puts Decimal('1.1').to_integral_value              -> 1
+
+And conversion is also possible to Float:
   puts Decimal('1.1').to_f                           -> 1.1
   puts Decimal('1.1').convert_to(Float)              -> 1.1
   puts Float(Decimal('1.1'))                         -> 1.1
 
-And with GDAS style operations:
+Types with predefined bidirectional conversion (Integer and Rational)
+can be operated with Decimal on either side of an operator, and the result will be a Decimal.
+For Float there is no predefined bidirectional conversion (see below how to define it)
+and the result of an operation between Decimal and Float will be of type Float.
 
-  puts Decimal('1.1').to_integral_value              -> 1
+  puts (Decimal(1.1) + 2.0).class                    -> Float
+  puts (2.0 + Decimal(1.1)).class                    -> Float
 
 The conversion system is extensible. For example, we can include BigDecimal into it
 by defining suitable conversion procedures:

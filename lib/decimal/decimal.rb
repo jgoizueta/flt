@@ -1336,6 +1336,8 @@ class Decimal
     case other
       when *Decimal.context.coercible_types_or_decimal
         [Decimal(other),self]
+      when Float
+        [other, self.to_f]
       else
         super
     end
