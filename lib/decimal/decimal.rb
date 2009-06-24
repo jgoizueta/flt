@@ -10,7 +10,6 @@ module BigFloat
 # Decimal(...) -> Num(...)
 # Decimal.define_context -> define_context
 # Decimal. -> num_class.
-# TODO: num_class.nan etc. or Num.nan ?
 # TODO: arithmetic rounding in arbitrary radix must be reviewed; in general the number of extra
 #       digits used before rounding should be adjusted for each radix. This has already been done for division only.
 
@@ -303,6 +302,11 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       @num_class
     end
 
+    def Num(*args)
+      num_class.Num(*args)
+    end
+    private :Num
+
     def radix
       @num_class.radix
     end
@@ -451,6 +455,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
 
     # Copy the state from other Context object.
     def copy_from(other)
+      raise TypeError, "Assign #{other.num_class} context to #{self.num_class} context" if other.num_class != self.num_class
       @rounding = other.rounding
       @precision = other.precision
       @traps = other.traps.dup
@@ -741,35 +746,35 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     # Maximum finite number
     def maximum_finite(sign=+1)
       return exception(InvalidOperation, "Exact context maximum finite value") if exact?
-      # equals +Decimal(+1, 1, emax)
-      # equals Decimal.infinity.next_minus(self)
-      Decimal(sign, Decimal.int_radix_power(precision)-1, etop)
+      # equals +Num(+1, 1, emax)
+      # equals Num.infinity.next_minus(self)
+      Num(sign, num_class.int_radix_power(precision)-1, etop)
     end
 
     # Minimum positive normal number
     def minimum_normal(sign=+1)
       return exception(InvalidOperation, "Exact context maximum normal value") if exact?
-      Decimal(sign, 1, emin)
+      Num(sign, 1, emin)
     end
 
     # Maximum subnormal number
     def maximum_subnormal(sign=+1)
       return exception(InvalidOperation, "Exact context maximum subnormal value") if exact?
       # equals mininum_normal.next_minus(self)
-      Decimal(sign, Decimal.int_radix_power(precision-1)-1, etiny)
+      Num(sign, num_class.int_radix_power(precision-1)-1, etiny)
     end
 
     # Minimum nonzero positive number (minimum positive subnormal)
     def minimum_nonzero(sign=+1)
       return exception(InvalidOperation, "Exact context minimum nonzero value") if exact?
-      Decimal(sign, 1, etiny)
+      Num(sign, 1, etiny)
     end
 
     # This is the difference between 1 and the smallest Decimal
     # value greater than 1: (Decimal(1).next_plus - Decimal(1))
     def epsilon(sign=+1)
       return exception(InvalidOperation, "Exact context epsilon") if exact?
-      Decimal(sign, 1, 1-precision)
+      Num(sign, 1, 1-precision)
     end
 
     # The strict epsilon is the smallest value that produces something different from 1
@@ -786,23 +791,23 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       when :half_even, :half_down #, :up #  :up #     :down,    :half_down, :up05, :floor
         # next largest:    0.0...050...1 (+precision-1 additional digits here)
         exp = 1-2*precision
-        coeff = 1 + Decimal.int_radix_power(precision)/2
+        coeff = 1 + num_class.int_radix_power(precision)/2
       when :half_up
         # next largest:    0.0...05 (precision digits shown to the right of the decimal point)
         exp = 1-2*precision
-        coeff = Decimal.int_radix_power(precision)/2
+        coeff = num_class.int_radix_power(precision)/2
       when :up, :ceiling, :up05
         # smallest epsilon
         return minimum_nonzero(sign)
       end
-      return Decimal(sign, coeff, exp)
+      return Num(sign, coeff, exp)
     end
 
     # This is the maximum relative error corresponding to 1/2 ulp:
     #  (radix/2)*radix**(-precision) == epsilon/2
     # This is called "machine epsilon" in Goldberg's "What Every Computer Scientist..."
     def half_epsilon(sign=+1)
-      Decimal(sign, Decimal.radix/2, -precision)
+      Num(sign, Decimal.radix/2, -precision)
     end
 
     def to_s
@@ -821,7 +826,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
         exception(InvalidOperation, 'Exact maximum significand')
         nil
       else
-        Decimal.int_radix_power(precision)-1
+        num_class.int_radix_power(precision)-1
       end
     end
 
@@ -1020,17 +1025,17 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   class << self
     # A decimal number with value zero and the specified sign
     def zero(sign=+1)
-      new([sign, 0, 0])
+      new [sign, 0, 0]
     end
 
     # A decimal infinite number with the specified sign
     def infinity(sign=+1)
-      new([sign, 0, :inf])
+      new [sign, 0, :inf]
     end
 
     # A decimal NaN (not a number)
     def nan()
-      new([+1, nil, :nan])
+      new [+1, nil, :nan]
     end
   end
 
@@ -1403,7 +1408,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
 
       if self.infinite?
         return context.exception(InvalidOperation,"(+-)INF * 0") if other.zero?
-        return num_class.infinity(resultsign) # TODO: use just Num.infinity(resultsign) ?
+        return num_class.infinity(resultsign)
       end
       if other.infinite?
         return context.exception(InvalidOperation,"0 * (+-)INF") if self.zero?
@@ -4315,13 +4320,15 @@ class BinFloat < Num
   # the DefaultContext is the base for new contexts; it can be changed.
   DefaultContext = BinFloat::Context.new(
                              :exact=>false, :precision=>53, :rounding=>:half_even,
-                             :emin=> -1024, :emax=>+1024,
+                             :emin=> -1025, :emax=>+1023,
                              :flags=>[],
                              :traps=>[DivisionByZero, Overflow, InvalidOperation],
                              :ignored_flags=>[],
                              :capitals=>true,
                              :clamp=>true)
 
+  ExtendedContext = BinFloat::Context.new(DefaultContext,
+                             :traps=>[], :flags=>[], :clamp=>false)
 
   def initialize(*args)
     super(*args)

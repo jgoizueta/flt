@@ -4,5 +4,6 @@ include BigFloat
 
 def initialize_context
   Decimal.context = Decimal::ExtendedContext
+  BinFloat.context = BinFloat::ExtendedContext
 end
 
