@@ -25,6 +25,10 @@ class TestBin < Test::Unit::TestCase
     assert_equal 1.0/3, (BinFloat(1) / BinFloat(3))
     assert_equal Math.sqrt(2), BinFloat(2).sqrt
     assert_equal 0.1, BinFloat('0.1')
+
+    assert_equal Float::MAX, BinFloat.context.maximum_finite
+    assert_equal Float::MIN, BinFloat.context.minimum_normal
+
   end
 
 end
