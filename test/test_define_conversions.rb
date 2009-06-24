@@ -93,7 +93,7 @@ class TestDefineConversions < Test::Unit::TestCase
       assert_equal Decimal('7.1'), Decimal('7')+0.1
     end
     assert_equal Decimal('11'), Decimal(11.0)
-    assert Decimal(11.0).is_a?(Decimal)
+    assert_instance_of Decimal, Decimal(11.0)
 
     Decimal.context.define_conversion_from(Float) do |x, context|
       Decimal.context(context, :exact=>true) do
@@ -106,6 +106,35 @@ class TestDefineConversions < Test::Unit::TestCase
 
     assert_equal '0.1000000000000000055511151231257827021181583404541015625', Decimal(0.1).to_s
     assert_equal '1.100000000000000088817841970012523233890533447265625', Decimal(1.1).to_s
+
+  end
+
+  def test_conversion_types
+
+    assert_instance_of Decimal, Decimal(1)+3
+    assert_instance_of Decimal, 3+Decimal(1)
+    assert_instance_of Decimal, Rational(1,5)+Decimal(1)
+    assert_instance_of Decimal, Decimal(1)+Rational(1,5)
+    assert_instance_of Float, Decimal(1)+3.0
+    assert_instance_of Float, 3.0+Decimal(1)
+
+    Decimal.context.define_conversion_from(Float) do |x, context|
+      s,e = Math.frexp(x)
+      significand = Math.ldexp(s, Float::MANT_DIG).to_i
+      exponent = e - Float::MANT_DIG
+      # the number is (as a Rational) significand * exponent**Float::RADIX
+      Decimal(significand*(Float::RADIX**exponent ))
+    end
+
+    assert_instance_of Decimal, Decimal(1)+3.0
+    assert_instance_of Decimal, 3.0+Decimal(1)
+
+    Decimal.context.define_conversion_from(BigDecimal) do |x, context|
+      Decimal(x.to_s) # or use x.split etc.
+    end
+
+    assert_instance_of Decimal, Decimal(1)+BigDecimal('3')
+    assert_instance_of Decimal, BigDecimal('3')+Decimal(1)
 
   end
 
