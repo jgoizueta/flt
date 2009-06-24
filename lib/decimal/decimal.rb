@@ -11,6 +11,8 @@ module BigFloat
 # Decimal.define_context -> define_context
 # Decimal. -> num_class.
 # TODO: num_class.nan etc. or Num.nan ?
+# TODO: arithmetic rounding in arbitrary radix must be reviewed; in general the number of extra
+#       digits used before rounding should be adjusted for each radix. This has already been done for division only.
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
 
@@ -838,8 +840,8 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     end
 
     # Internal use: array of numeric types that be coerced to Decimal, including Decimal
-    def coercible_types_or_decimal
-      [Decimal] + coercible_types
+    def coercible_types_or_num
+      [num_class] + coercible_types
     end
 
     # Internally used to convert numeric types to Decimal (or to an array [sign,coefficient,exponent])
@@ -1070,7 +1072,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       arg = args.first
       case arg
 
-      when Decimal
+      when num_class
         @sign, @coeff, @exp = arg.split
 
       when *context.coercible_types
@@ -1112,7 +1114,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
             if exp >= 0
               num_class.new(coeff*10**exp)
             else
-              num_class.new(coeff)/num_class.new(10**-exp)
+              sign,coeff,exp = (num_class.new(coeff)/num_class.new(10**-exp)).split
             end
           end
           @coeff, @exp = coeff, exp
@@ -1248,7 +1250,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # Used internally to convert numbers to be used in an operation to a suitable numeric type
   def coerce(other)
     case other
-      when *num_class.context.coercible_types_or_decimal
+      when *num_class.context.coercible_types_or_num
         [Num(other),self]
       else
         super
@@ -1259,7 +1261,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   def _bin_op(op, meth, other, context=nil)
     context = define_context(context)
     case other
-      when *context.coercible_types_or_decimal
+      when *context.coercible_types_or_num
         self.send meth, Num(other, context), context
       else
         x, y = other.coerce(self)
@@ -1448,7 +1450,8 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     else
       # TODO: how many digits to use for binary radix?
       prec = context.exact? ? self.number_of_digits + 4*other.number_of_digits : context.precision
-      shift = other.number_of_digits - self.number_of_digits + prec + 1
+      shift = other.number_of_digits - self.number_of_digits + prec
+      shift += num_class.radix==10 ? 1 : 3 # TODO: review, generalize
       exp = self.exponent - other.exponent - shift
       if shift >= 0
         coeff, remainder = (self.coefficient*num_class.int_radix_power(shift)).divmod(other.coefficient)
@@ -1604,7 +1607,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       local.ignore_all_flags
       result = self._fix(local)
       if result == self
-        result = self + Decimal(+1, 1, local.etiny-1)
+        result = self + Num(+1, 1, local.etiny-1)
       end
     end
     result
@@ -2054,7 +2057,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # 0 if both are equal or +1 if the first is greater than the secong.
   def <=>(other)
     case other
-    when *num_class.context.coercible_types_or_decimal
+    when *num_class.context.coercible_types_or_num
       other = Num(other)
       if self.special? || other.special?
         if self.nan? || other.nan?
