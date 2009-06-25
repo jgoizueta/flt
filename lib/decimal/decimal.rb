@@ -982,16 +982,21 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       local_context(*args, &blk)
     elsif args.empty?
       # return the current context
-      Thread.current["FP::#{self}.context"] ||= self::DefaultContext.dup
+      # return the current context
+      self._context = self::DefaultContext.dup if _context.nil?
+      _context
     else
       # change the current context
+      # TODO: consider doing self._context = ... here
+      # so we would have Decimal.context = c that assigns a duplicate of c
+      # and Decimal.context c to set alias c
       self.context = define_context(*args)
     end
   end
 
   # Change the current context (thread-local).
   def self.context=(c)
-    Thread.current["FP::#{self}.context"] = c.dup
+    self._context = c.dup
   end
 
   # Defines a scope with a local context. A context can be passed which will be
@@ -999,9 +1004,9 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # options to apply to the local scope.
   # Changes done to the current context are reversed when the scope is exited.
   def self.local_context(*args)
-    keep = context.dup
-    self.context = define_context(*args)
-    result = yield self.context
+    keep = self.context # use this so _context is initialized if necessary
+    self.context = define_context(*args) # this dups the assigned context
+    result = yield _context
     # TODO: consider the convenience of copying the flags from Decimal.context to keep
     # This way a local context does not affect the settings of the previous context,
     # but flags are transferred.
@@ -1009,8 +1014,20 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     #   keep.flags = Decimal.context.flags
     # Another alternative to consider: logically or the flags:
     #   keep.flags ||= Decimal.context.flags # (this requires implementing || in Flags)
-    self.context = keep
+    self._context = keep
     result
+  end
+
+  class <<self
+    # This is the thread-local context storage low level interface
+    protected
+    def _context #:nodoc:
+      # TODO: memoize the variable id
+      Thread.current['BigFloat::#{self}.context']
+    end
+    def _context=(c) #:nodoc:
+      Thread.current['BigFloat::#{self}.context'] = c
+    end
   end
 
   def num_class
@@ -1095,7 +1112,6 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
           @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for Decimal: #{arg.inspect}").split
           return
         end
-        puts "Parse #{arg} -> \n#{m.inspect}"
         @sign =  (m.sign == '-') ? -1 : +1
         if m.int || m.onlyfrac
           if m.int
@@ -4432,7 +4448,6 @@ end
     end
 
     def algM(context, f, e, round_mode, eb=10) # ceiling & floor must be swapped for negative numbers
-      puts "algM #{f} #{e} #{eb} -> #{context.num_class.radix}"
       if e<0
        u,v,k = f,eb**(-e),0
       else
@@ -4442,7 +4457,6 @@ end
       if exact_mode = context.exact?
         exact_mode = :quiet if !context.traps[Num::Inexact]
         n = [(Math.log(u)/Math.log(2)).ceil,1].max # TODO: check if correct and optimize
-        puts "u=#{u} n=#{n}"
         context.precision = n
       else
         n = context.precision
