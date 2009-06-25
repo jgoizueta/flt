@@ -4424,22 +4424,23 @@ end
       z = context.num_class.new(+1,q,k)
       exact = (r==0)
       if (round_mode == :down || round_mode == :floor)
-        [z, exact]
+        # z = z
       elsif (round_mode == :up || round_mode == :ceiling)
-        [z.next_plus(context), exact]
+        z = z.next_plus(context)
       elsif r<v_r
-        [z, exact]
+        # z = z
       elsif r>v_r
-        [z.next_plus(context), exact]
+        z = z.next_plus(context)
       else
         # tie
         if (round_mode == :half_down) || (round_mode == :half_even && q.even?) ||
            (round_mode == :down) || (round_mode == :floor)
-          [z, exact]
+           # z = z
         else
-          [z.next_plus(context), exact]
+          z = z.next_plus(context)
         end
       end
+      return z, exact
     end
 
     def algM(context, f, e, round_mode, eb=10) # ceiling & floor must be swapped for negative numbers
