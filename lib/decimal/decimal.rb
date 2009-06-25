@@ -11,7 +11,8 @@ module BigFloat
 # TODO: write tests for BinFloat
 # TODO: put Num, Decimal, BinFloat in separate files
 # TODO: update documentation; check rdoc results for clarity given the new Num/Decimal/BinFloat structure
-# TODO: port Burger and Dybvig formatting algorithms from Nio
+# TODO: test, debug, enhance Burger and Dybvig formatting algorithms; add formatting options
+# TODO: port native Float extensions from float-formats
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
 
@@ -4378,9 +4379,49 @@ class BinFloat < Num
         "#{sgn}sNaN#{@coeff}"
       end
     else
-      # TODO: this is just provisional for testing
-      # use Nio::BurgerDybvig::float_to_digits or Nio::BurgerDybvig::float_to_digits_max
-      self.to_f.to_s
+      inexact = true
+      rounding = context.rounding
+      if @sign == -1
+        if rounding == :ceiling
+          rounding = :floor
+        elsif rounding == :floor
+          rounding = :ceiling
+        end
+      end
+      output_radix = 10
+      x = self.abs.to_f
+
+      p = self.number_of_digits # use context.precision ? / handle exacts
+
+      if false
+        # use as many digits as possible
+        dec_pos,r,*digits = BurgerDybvig.float_to_digits_max(x,@coeff,@exp,rounding,
+                                 context.etiny,p,num_class.radix,output_radix)
+        inexact = :roundup if r
+      else
+        # use as few digits as possible
+        dec_pos,*digits = BurgerDybvig.float_to_digits(x,@coeff,@exp,rounding,
+                                 context.etiny,p,num_class.radix,output_radix)
+      end
+      # TODO: format properly
+      digits = digits.map{|d| d.to_s(output_radix)}.join
+      if dec_pos <= 0
+        if dec_pos >= -4 && digits.length <= 15
+          digits = "0." + "0"*(-dec_pos) + digits
+        else
+          digits = digits[0,1]+"."+digits[1..-1]+"E#{dec_pos-1}"
+        end
+      elsif dec_pos > digits.length
+        if dec_pos <= 20
+          digits = digits + "0"*(dec_pos-digits.length)
+        else
+          # TODO: if digits.length == 1
+          digits = digits[0,1]+"."+digits[1..-1]+"E#{dec_pos-1}"
+        end
+      elsif dec_pos != digits.length
+        digits = digits[0...dec_pos] + "." + digits[dec_pos..-1]
+      end
+      txt = ((sign==-1) ? '-' : '') + digits
     end
   end
 
@@ -4471,6 +4512,185 @@ end
       end
 
     end
+  end
+
+  # Burger and Dybvig free formatting algorithm, translated directly from Scheme;
+  # after some testing, of the three different implementations in their
+  # paper, the second seems to be more efficient in Ruby.
+  # This algorithm formats arbitrary base floating pont numbers as decimal
+  # text literals.
+  module BurgerDybvig # :nodoc: all
+    module_function
+    def float_to_digits(v,f,e,round_mode,min_e,p,b,_B)
+      # since this handles only positive numbers and ceiling and floor
+      # are not symmetrical, they should have been swapped before calling this.
+      roundl, roundh = rounding_h_l(round_mode, f)
+
+        if e >= 0
+          if f != exptt(b,p-1)
+            be = exptt(b,e)
+            r,s,m_p,m_m,k = scale(f*be*2,2,be,be,0,_B,roundl ,roundh,v)
+          else
+            be = exptt(b,e)
+            be1 = be*b
+            r,s,m_p,m_m,k = scale(f*be1*2,b*2,be1,be,0,_B,roundl ,roundh,v)
+          end
+        else
+          if e==min_e or f != exptt(b,p-1)
+            r,s,m_p,m_m,k = scale(f*2,exptt(b,-e)*2,1,1,0,_B,roundl ,roundh,v)
+          else
+            r,s,m_p,m_m,k = scale(f*b*2,exptt(b,1-e)*2,b,1,0,_B,roundl ,roundh,v)
+          end
+        end
+        [k]+generate(r,s,m_p,m_m,_B,roundl ,roundh)
+    end
+
+    def float_to_digits_max(v,f,e,round_mode,min_e,p,b,_B)
+      roundl, roundh = rounding_h_l(round_mode, f)
+        if e >= 0
+          if f != exptt(b,p-1)
+            be = exptt(b,e)
+            r,s,m_p,m_m,k = scale(f*be*2,2,be,be,0,_B,roundl ,roundh,v)
+          else
+            be = exptt(b,e)
+            be1 = be*b
+            r,s,m_p,m_m,k = scale(f*be1*2,b*2,be1,be,0,_B,roundl ,roundh,v)
+          end
+        else
+          if e==min_e or f != exptt(b,p-1)
+            r,s,m_p,m_m,k = scale(f*2,exptt(b,-e)*2,1,1,0,_B,roundl ,roundh,v)
+          else
+            r,s,m_p,m_m,k = scale(f*b*2,exptt(b,1-e)*2,b,1,0,_B,roundl ,roundh,v)
+          end
+        end
+        [k]+generate_max(r,s,m_p,m_m,_B,roundl ,roundh)
+    end
+
+    def rounding_h_l(round_mode, f)
+       # to support IEEE rounding modes (see algM) here,
+       # the m_p,m_m passed to generate should be modified when the rounding
+       # is :ieee_up,:ieee_down or :ieee_zero (here equivalent to :ieee_down since numbers as positive)
+       # The should be substituted in those cases by r and r+1, and roundl,roundh would take
+       # the values [true,false] for :ieee_down/:ieee_zero and [false,true] for :ieee_up
+      case round_mode
+        # TODO: review and complete
+        when :half_even
+          roundl = roundh = ((f%2)==0)
+        when :up, :ceiling
+          roundl = true
+          roundh = false
+        when :down, :floor
+          roundl = false
+          roundh = true
+        else
+          # here we don't assume any rounding in the floating point numbers
+          # the result is valid for any rounding but may produce more digits
+          # than stricly necessary for specifica rounding modes.
+          roundl = false
+          roundh = false
+      end
+      return roundl, roundh
+    end
+
+    def scale(r,s,m_p,m_m,k,_B,low_ok ,high_ok,v)
+      return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if v==0
+      est = (logB(_B,v)-1E-10).ceil.to_i
+      if est>=0
+        fixup(r,s*exptt(_B,est),m_p,m_m,est,_B,low_ok,high_ok)
+      else
+        sc = exptt(_B,-est)
+        fixup(r*sc,s,m_p*sc,m_m*sc,est,_B,low_ok,high_ok)
+      end
+    end
+
+    def fixup(r,s,m_p,m_m,k,_B,low_ok,high_ok)
+      if (high_ok ? (r+m_p >= s) : (r+m_p > s)) # too low?
+        [r,s*_B,m_p,m_m,k+1]
+      else
+        [r,s,m_p,m_m,k]
+      end
+    end
+
+    def scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok)
+      loop do
+        if (high_ok ? (r+m_p >= s) : (r+m_p > s)) # k is too low
+          s *= _B
+          k += 1
+        elsif (high_ok ? ((r+m_p)*_B<s) : ((r+m_p)*_B<=s)) # k is too high
+          r *= _B
+          m_p *= _B
+          m_m *= _B
+          k -= 1
+        else
+          break
+        end
+      end
+      [r,s,m_p,m_m,k]
+    end
+
+    def generate(r,s,m_p,m_m,_B,low_ok ,high_ok)
+      list = []
+      loop do
+        d,r = (r*_B).divmod(s)
+        m_p *= _B
+        m_m *= _B
+        tc1 = low_ok ? (r<=m_m) : (r<m_m)
+        tc2 = high_ok ? (r+m_p >= s) : (r+m_p > s)
+
+        if not tc1
+          if not tc2
+            list << d
+          else
+            list << d+1
+            break
+          end
+        else
+          if not tc2
+            list << d
+            break
+          else
+            if r*2 < s
+              list << d
+              break
+            else
+              list << d+1
+              break
+            end
+          end
+        end
+
+      end
+      list
+    end
+
+    def generate_max(r,s,m_p,m_m,_B,low_ok ,high_ok)
+      list = [false]
+      loop do
+        d,r = (r*_B).divmod(s)
+        m_p *= _B
+        m_m *= _B
+
+        list << d
+
+        tc1 = low_ok ? (r<=m_m) : (r<m_m)
+        tc2 = high_ok ? (r+m_p >= s) : (r+m_p > s)
+
+        if tc1 && tc2
+          list[0] = true if r*2 >= s
+          break
+        end
+      end
+      list
+    end
+
+    def exptt(_B, k)
+      _B**k # TODO: memoize computed values or use table for common bases and exponents
+    end
+
+    def logB(_B, x)
+      Math.log(x)/Math.log(_B) # TODO: memoize 1/log(_B)
+    end
+
   end
 
 end # BigFloat
