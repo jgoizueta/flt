@@ -1131,9 +1131,10 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
           if num_class.radix != 10
             # convert coeff*10**exp to coeff'*radix**exp'
             # coeff, exp = num_class.decimal_to_radix(coeff, exp, context)
-            # Use Nio::Clinger::algM if 10%num_exp.radix == 0 unless context.exact?
-            # for context.exact? ... check for exact conversion or raise Inexact
-            # just for testing:
+            # Unlike definition of a Decimal by a text literal, when a text (decimal) literal is converted
+            # to a BinFloat rounding is performed as dictated by the context, unlike exact precision is
+            # requested. To avoid rounding without exact mode, the number should be constructed by
+            # givin the sign, coefficient and exponent.
             if (10%num_class.radix) == 0
               rounding = context.rounding
               if @sign == -1
@@ -4433,7 +4434,7 @@ end
         z = z.next_plus(context)
       else
         # tie
-        if (round_mode == :half_down) || (round_mode == :half_even && q.even?) ||
+        if (round_mode == :half_down) || (round_mode == :half_even && ((q%2)==0)) ||
            (round_mode == :down) || (round_mode == :floor)
            # z = z
         else
