@@ -1534,7 +1534,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     # express the number in radix**2 base
     e = (@exp >> 1)
     if (@exp & 1)!=0
-      c = @coeff*Num.radix
+      c = @coeff*num_class.radix
       l = (number_of_digits >> 1) + 1
     else
       c = @coeff
