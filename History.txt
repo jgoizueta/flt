@@ -26,5 +26,7 @@
 
 * Bug fixes:
   - Decimal#normal? was incorrect for special values and zero
+  - After a local context, the global context was set to a copy of the original
+    context, so any previously stored reference to it was now unbound.
 
 * New functionality:

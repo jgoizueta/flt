@@ -1006,16 +1006,20 @@ class Decimal
       local_context(*args, &blk)
     elsif args.empty?
       # return the current context
-      Thread.current['Decimal.context'] ||= DefaultContext.dup
+      self._context = DefaultContext.dup if _context.nil?
+      _context
     else
       # change the current context
+      # TODO: consider doing _context = ... here
+      # so we would have Decimal.context = c that assigns a duplicate of c
+      # and Decimal.context c to set alias c
       Decimal.context = define_context(*args)
     end
   end
 
   # Change the current context (thread-local).
   def Decimal.context=(c)
-    Thread.current['Decimal.context'] = c.dup
+    self._context = c.dup
   end
 
   # Defines a scope with a local context. A context can be passed which will be
@@ -1023,9 +1027,9 @@ class Decimal
   # options to apply to the local scope.
   # Changes done to the current context are reversed when the scope is exited.
   def Decimal.local_context(*args)
-    keep = context.dup
-    Decimal.context = define_context(*args)
-    result = yield Decimal.context
+    keep = Decimal.context # use this so _context is initialized if necessary
+    Decimal.context = define_context(*args) # this dups the assigned context
+    result = yield _context
     # TODO: consider the convenience of copying the flags from Decimal.context to keep
     # This way a local context does not affect the settings of the previous context,
     # but flags are transferred.
@@ -1033,8 +1037,19 @@ class Decimal
     #   keep.flags = Decimal.context.flags
     # Another alternative to consider: logically or the flags:
     #   keep.flags ||= Decimal.context.flags # (this requires implementing || in Flags)
-    Decimal.context = keep
+    self._context = keep
     result
+  end
+
+  class <<self
+    # This is the thread-local context storage low level interface
+    protected
+    def _context #:nodoc:
+      Thread.current['Decimal.context']
+    end
+    def _context=(c) #:nodoc:
+      Thread.current['Decimal.context'] = c
+    end
   end
 
   # A decimal number with value zero and the specified sign
