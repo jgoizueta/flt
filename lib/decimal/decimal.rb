@@ -6,13 +6,12 @@ require 'ostruct'
 
 module BigFloat
 
-# ongoing adaptation:
-# Decimal(...) -> Num(...)
-# Decimal.define_context -> define_context
-# Decimal. -> num_class.
 # TODO: arithmetic rounding in arbitrary radix must be reviewed; in general the number of extra
 #       digits used before rounding should be adjusted for each radix. This has already been done for division only.
+# TODO: write tests for BinFloat
 # TODO: put Num, Decimal, BinFloat in separate files
+# TODO: update documentation; check rdoc results for clarity given the new Num/Decimal/BinFloat structure
+# TODO: port Burger and Dybvig formatting algorithms from Nio
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
 
