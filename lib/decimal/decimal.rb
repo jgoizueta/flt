@@ -3549,9 +3549,10 @@ class Decimal
     if ROUND_ARITHMETIC
       (@coeff % Decimal.int_radix_power(i))==0 ? 0 : -1
     else
+      return 0 if i==0
       d = @coeff.to_s
-      p = d.size - i
-      d[p..-1].match(/\A0+\Z/) ? 0 : -1
+      tail = d[-i..-1]
+      (tail.nil? || tail.match(/\A0*\Z/)) ? 0 : -1
     end
   end
 
@@ -3570,9 +3571,19 @@ class Decimal
         _round_half_up(i)
       end
     else
+      return 0 if i==0
       d = @coeff.to_s
       p = d.size - i
-      d[p..-1].match(/^5d*$/) ? -1 : _round_half_up(i)
+      rdig = d[p,1]
+      if '6789'.include?(rdig)
+        1
+      elsif '1234'.include?(rdig)
+        -1
+      elsif rdig=='5'
+        d[p+1..-1].match(/^0*$/) ? -1 : +1
+      else # rdig=='0'
+        d[p..-1].match(/^0*$/) ? 0 : -1
+      end
     end
 
   end
@@ -3587,6 +3598,7 @@ class Decimal
         (@coeff % m)==0 ? 0 : -1
       end
     else
+      return 0 if i==0
       d = @coeff.to_s
       p = d.size - i
       if '56789'.include?(d[p,1])
@@ -3608,6 +3620,7 @@ class Decimal
         _round_half_up(i)
       end
     else
+      return 0 if i==0
       d = @coeff.to_s
       p = d.size - i
 
