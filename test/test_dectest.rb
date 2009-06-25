@@ -147,7 +147,7 @@ class TestBasic < Test::Unit::TestCase
               next if EXCEPTIONS.include?(id)
               if funct
                 # do test
-                msg = "Test #{id}: #{funct}(#{valstemp.join(',')}) = #{ans}"
+                msg = "  Test #{id}: #{funct}(#{valstemp.join(',')}) = #{ans}"
                 #File.open('dectests.txt','a'){|f| f.puts msg}
                 expected = result = result_flags = nil
                 Decimal.local_context do |context|

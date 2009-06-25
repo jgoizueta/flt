@@ -2203,7 +2203,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # Number of digits in the significand
   def number_of_digits
     # digits.size
-    @coeff.to_s(num_class.radix).size # TODO: optimize in derived classes
+    @coeff.is_a?(Integer) ? @coeff.to_s(num_class.radix).size : 0 # TODO: optimize in derived classes
   end
 
   # Digits of the significand as an array of integers
@@ -2541,6 +2541,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     else
       slf = Decimal.new(self)
     end
+
     changed = slf._round(rounding, nd)
     coeff = num_class.int_div_radix_power(@coeff, nd)
     coeff += 1 if changed==1
@@ -3808,58 +3809,6 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     end
     return Decimal(+1, Decimal.int_mult_radix_power(xc, zeros), xe-zeros)
   end
-
-  # Decimal-specific rounding functions
-
-  # Round down (toward 0, truncate) to i digits
-  def _round_down(i)
-    d = @coeff.to_s
-    p = d.size - i
-    d[p..-1].match(/\A0+\Z/) ? 0 : -1
-  end
-
-  # Round to closest i-digit number with ties down (rounds 5 toward 0)
-  def _round_half_down(i)
-    d = @coeff.to_s
-    p = d.size - i
-    d[p..-1].match(/^5d*$/) ? -1 : _round_half_up(i)
-  end
-
-  # Round to closest i-digit number with ties up (rounds 5 away from 0)
-  def _round_half_up(i)
-    d = @coeff.to_s
-    p = d.size - i
-    if '56789'.include?(d[p,1])
-      1
-    else
-      d[p..-1].match(/^0+$/) ? 0 : -1
-    end
-  end
-
-  # Round to closest i-digit number with ties (5) to an even digit
-  def _round_half_even(i)
-    d = @coeff.to_s
-    p = d.size - i
-
-    if d[p..-1].match(/\A#{Decimal.radix/2}0*\Z/) && (p==0 || ((d[p-1,1].to_i%2)==0))
-      -1
-    else
-      _round_half_up(i)
-    end
-  end
-
-  # Round down unless digit i-1 is 0 or 5
-  def _round_up05(i)
-    d = @coeff.to_s
-    p = d.size - i
-    dg = (p>0) ? d[p-1,1].to_i : 0
-    if [0,Decimal.radix/2].include?(dg)
-      -_round_down(i)
-    else
-      _round_down(i)
-    end
-  end
-
 
   # Compute a lower bound for the adjusted exponent of self.log10()
   # In other words, find r such that self.log10() >= 10**r.
