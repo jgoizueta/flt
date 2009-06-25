@@ -4416,32 +4416,27 @@ end
     module_function
 
     def ratio_float(context, u,v,k,round_mode)
-      # This assumes a round to neareast mode (half_up, half_down or half_even)
-      # round up (infinite, away from zero), down (zero, truncate), ceiling (+inf.) and floor (-fin)
-      # are not treated correctly; also since this handles only positive numbers and ceiling and floor
+      # since this handles only positive numbers and ceiling and floor
       # are not symmetrical, they should have been swapped before calling this.
-
       q = u.div v
       r = u-q*v
       v_r = v-r
       z = context.num_class.new(+1,q,k)
       exact = (r==0)
-      if r<v_r
-        # down
-        # TODO: this may need correction for round_mode :up or :ceiling
+      if (round_mode == :down || round_mode == :floor)
+        [z, exact]
+      elsif (round_mode == :up || round_mode == :ceiling)
+        [z.next_plus(context), exact]
+      elsif r<v_r
         [z, exact]
       elsif r>v_r
-        # up
-        # TODO: this may need correction for round_mode :down or :floor
         [z.next_plus(context), exact]
       else
         # tie
         if (round_mode == :half_down) || (round_mode == :half_even && q.even?) ||
            (round_mode == :down) || (round_mode == :floor)
-          # rown down
           [z, exact]
         else
-          # round up
           [z.next_plus(context), exact]
         end
       end
