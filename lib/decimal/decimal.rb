@@ -1023,10 +1023,10 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     protected
     def _context #:nodoc:
       # TODO: memoize the variable id
-      Thread.current['BigFloat::#{self}.context']
+      Thread.current["BigFloat::#{self}.context"]
     end
     def _context=(c) #:nodoc:
-      Thread.current['BigFloat::#{self}.context'] = c
+      Thread.current["BigFloat::#{self}.context"] = c
     end
   end
 
