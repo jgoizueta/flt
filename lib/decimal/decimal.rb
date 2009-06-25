@@ -28,19 +28,29 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
 
   # Numerical conversion base support
   # base (default) coercible types associated to procedures for numerical conversion
-  @base_coercible_types = {
+  @_base_coercible_types = {
     Integer=>lambda{|x, context| x>=0 ? [+1,x,0] : [-1,-x,0]},
     Rational=>lambda{|x, context|
       x, y = Decimal.new(x.numerator), Decimal.new(x.denominator)
       x.divide(y, context)
     }
   }
-  @base_conversions = {
+  @_base_conversions = {
     Integer=>:to_i, Rational=>:to_r, Float=>:to_f
   }
   class <<self
-    attr_reader :base_coercible_types
-    attr_reader :base_conversions
+    attr_reader :_base_coercible_types
+    attr_reader :_base_conversions
+    def base_coercible_types
+      Num._base_coercible_types
+    end
+    def base_conversions
+      Num._base_conversions
+    end
+    # We use this two level scheme to acces base_... because we're using instance variables of the object
+    # Num to store the base_... objects (and we store them to avoid generating them each time) and to access
+    # them would requiere that derived classes define their own versios of the accesors, even if they
+    # only call super.
   end
 
   # Base class for errors.
@@ -291,8 +301,8 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
         @ignored_flags = Num::Flags()
         @traps = Num::Flags()
         @flags = Num::Flags()
-        @coercible_type_handlers = Num.base_coercible_types.dup
-        @conversions = Num.base_conversions.dup
+        @coercible_type_handlers = num_class.base_coercible_types.dup
+        @conversions = num_class.base_conversions.dup
       end
       assign options.first
 
@@ -1099,7 +1109,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
 
       when *context.coercible_types
         v = context._coerce(arg)
-        @sign, @coeff, @exp = v.is_a?(Decimal) ? v.split : v
+        @sign, @coeff, @exp = v.is_a?(Num) ? v.split : v
 
       when String
         if arg.strip != arg
@@ -4305,6 +4315,37 @@ class BinFloat < Num
 
   end
 
+  class <<self
+
+    def base_coercible_types
+      unless defined? @base_coercible_types
+        @base_coercible_types = super.merge(
+          Float=>lambda{|x, context|
+            if x.nan?
+              BinFloat.nan
+            elsif x.infinite?
+              BinFloat.infinity(x<0 ? -1 : +1)
+            elsif x.zero?
+              BinFloat.zero((x.to_s[0,1].strip=="-") ? -1 : +1)
+            else
+              coeff, exp = Math.frexp(x)
+              coeff = Math.ldexp(coeff, Float::MANT_DIG).to_i
+              exp -= Float::MANT_DIG
+              if coeff < 0
+                sign = -1
+                coeff = -coeff
+              else
+                sign = +1
+              end
+              BinFloat(sign, coeff, exp)
+            end
+          }
+        )
+      end
+      @base_coercible_types
+    end
+  end
+
   # the DefaultContext is the base for new contexts; it can be changed.
   DefaultContext = BinFloat::Context.new(
                              :exact=>false, :precision=>53, :rounding=>:half_even,
@@ -4317,6 +4358,7 @@ class BinFloat < Num
 
   ExtendedContext = BinFloat::Context.new(DefaultContext,
                              :traps=>[], :flags=>[], :clamp=>false)
+
 
   def initialize(*args)
     super(*args)

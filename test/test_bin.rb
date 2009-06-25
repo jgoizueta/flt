@@ -204,10 +204,45 @@ class TestBin < Test::Unit::TestCase
     }.each do |n|
       BinFloat.context.flags[Num::Inexact] = false
       b = BinFloat(n)
-      assert_equal Float(n), BinFloat(n)
+      assert_equal Float(n), BinFloat(n).to_f
       assert !b.nan?, "BinFloat('#{n}') is not NaN in exact precision mode"
       assert !BinFloat.context.flags[Num::Inexact], "BinFloat('#{n}') does not set Inexact flag"
     end
+  end
+
+  def test_float_to_bin_float
+    %w{
+      0.12343749827397239423432
+      0.123437
+      0.123437E57
+      0.1
+      0.1111111111111111111111111
+      0.1E56
+      0.5 0.125 7333 0.126
+      3423322.345
+      1069756.78125
+      106975678125E-5
+      2.1E6
+      3E20
+      1.1
+      1.1E31
+      -1.1E31
+      0.0
+      -0.0
+    }.each do |n|
+      f = Float(n)
+      assert_equal f, BinFloat(f).to_f
+    end
+    nan = 0.0/0.0
+    inf = 1.0/0.0
+    minf = -1.0/0.0
+    assert_equal(-1, BinFloat(-0.0).sign)
+    assert_equal(-1, BinFloat(minf).sign)
+    assert_equal(+1, BinFloat(0.0).sign)
+    assert_equal(+1, BinFloat(inf).sign)
+    assert BinFloat(nan).nan?, "Float NaN to BinFloat produces NaN"
+    assert BinFloat(inf).infinite?, "Float +Infinity to BinFloat produces Infinite"
+    assert BinFloat(minf).infinite?, "Float -Infinity to BinFloat produces Infinite"
   end
 
 end
