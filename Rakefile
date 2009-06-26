@@ -15,8 +15,8 @@ require 'bigfloat/version'
 task :default => 'spec:run'
 
 
-PROJ.name = 'ruby-decimal'
-PROJ.description = "Ruby Decimal Type"
+PROJ.name = 'bigfloat'
+PROJ.description = "Arbitray-Precision Floating-Point"
 PROJ.authors = 'Javier Goizueta'
 PROJ.email = 'javier@goizueta.info'
 PROJ.version = BigFloat::VERSION::STRING

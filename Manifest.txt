@@ -3,8 +3,7 @@ License.txt
 Manifest.txt
 README.txt
 Rakefile
-lib/decimal.rb
-lib/binfloat.rb
+lib/bigfloat.rb
 lib/bigfloat/version.rb
 lib/bigfloat/support.rb
 lib/bigfloat/decimal.rb

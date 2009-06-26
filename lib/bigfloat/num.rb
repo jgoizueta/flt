@@ -15,6 +15,7 @@ module BigFloat
 # TODO: update documentation; check rdoc results for clarity given the new Num/Decimal/BinFloat structure
 # TODO: test, debug, enhance Burger and Dybvig formatting algorithms; add formatting options
 # TODO: port native Float extensions from float-formats
+# TODO: consider renaming Decimal->Dec or DecNum, BinFloat->Bin or BinNum
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
 
