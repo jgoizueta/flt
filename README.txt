@@ -327,7 +327,7 @@ Note that the conversion we've defined depends on the context precision:
 
 The use of Decimal can be made less verbose by requiring:
 
-  require 'decimal/shortcut'
+  require 'bigfloat/d'
 
 This file defines +D+ as a synonym for +Decimal+:
 

@@ -172,6 +172,7 @@ $:.unshift File.dirname(__FILE__) + '/lib'
 
 
 require File.dirname(__FILE__) + '/lib/decimal'
+require File.dirname(__FILE__) + '/lib/binfloat'
 
 
 puts expand_text(File.read(ARGV.shift),"[")

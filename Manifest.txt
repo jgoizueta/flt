@@ -4,10 +4,13 @@ Manifest.txt
 README.txt
 Rakefile
 lib/decimal.rb
-lib/decimal/version.rb
-lib/decimal/decimal.rb
-lib/decimal/support.rb
-lib/decimal/shortcut.rb
+lib/binfloat.rb
+lib/bigfloat/version.rb
+lib/bigfloat/support.rb
+lib/bigfloat/decimal.rb
+lib/bigfloat/binfloat.rb
+lib/bigfloat/d.rb
+lib/bigfloat/b.rb
 setup.rb
 test/all_tests.rb
 test/helper.rb
@@ -25,4 +28,4 @@ test/test_to_rf.rb
 test/test_epsilon.rb
 test/test_ulp.rb
 test/test_odd_even.rb
-
+test/test_bin.rb

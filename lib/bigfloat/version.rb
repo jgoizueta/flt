@@ -1,4 +1,4 @@
-module DecimalSupport
+module BigFloat
   module VERSION #:nodoc:
     MAJOR = 0
     MINOR = 2

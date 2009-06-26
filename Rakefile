@@ -10,8 +10,7 @@ rescue LoadError
 end
 
 ensure_in_path 'lib'
-#require 'decimal'
-require 'decimal/version'
+require 'bigfloat/version'
 
 task :default => 'spec:run'
 
@@ -20,7 +19,7 @@ PROJ.name = 'ruby-decimal'
 PROJ.description = "Ruby Decimal Type"
 PROJ.authors = 'Javier Goizueta'
 PROJ.email = 'javier@goizueta.info'
-PROJ.version = DecimalSupport::VERSION::STRING
+PROJ.version = BigFloat::VERSION::STRING
 PROJ.rubyforge.name = 'ruby-decimal'
 PROJ.url = "http://#{PROJ.rubyforge.name}.rubyforge.org"
 PROJ.rdoc.opts = [
