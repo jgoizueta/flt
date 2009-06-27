@@ -203,7 +203,28 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
   # ...
 
   # Ruby-style to string conversion.
-  def to_s(eng=false,context=nil)
+  def to_s(*args)
+    eng=false
+    context=nil
+
+    # admit legacy arguments eng, context in that order
+    if [true,false].include?(args.first)
+      eng = args.shift
+    end
+    if args.first.is_a?(Decimal::Context)
+      context = args.shift
+    end
+    # admit also :eng to specify the eng mode
+    if args.first == :eng
+      eng = true
+      args.shift
+    end
+    raise TypeError, "Invalid arguments to BinFloat#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
+    # an admit arguments through a final parameters Hash
+    options = args.first || {}
+    context = options[:context] if options[:context]
+    eng = options[:eng] if options.has_key?(:eng)
+
     # (context || num_class.context).to_string(self)
     context = define_context(context)
     sgn = sign<0 ? '-' : ''

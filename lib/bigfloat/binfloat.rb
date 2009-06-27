@@ -88,9 +88,30 @@ class BinFloat < Num
   end
 
   # Ruby-style to string conversion.
-  def to_s(eng=false,context=nil)
+  def to_s(*args)
+    eng=false
+    context=nil
+
+    # admit legacy arguments eng, context in that order
+    if [true,false].include?(args.first)
+      eng = args.shift
+    end
+    if args.first.is_a?(BinFloat::Context)
+      context = args.shift
+    end
+    # admit also :eng to specify the eng mode
+    if args.first == :eng
+      eng = true
+      args.shift
+    end
+    raise TypeError, "Invalid arguments to BinFloat#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
+    # an admit arguments through a final parameters Hash
+    options = args.first || {}
+    context = options.delete(:context) if options.has_key?(:context)
+    eng = options.delete(:eng) if options.has_key?(:eng)
+
     # TODO: eng formatting
-    format(context, 10, false)
+    format(context, options)
   end
 
   # Specific to_f conversion TODO: check if it represents an optimization
@@ -126,7 +147,7 @@ class BinFloat < Num
   # Convert to decimal so that if the decimal is converted to a BinFloat of the same precision
   # and with same rounding (i.e. BinFloat.from_decimal(x, context)) the value of the BinFloat
   # is preserved, but use as few decimal digits as possible.
-  def to_decimal(binfloat_context=nil)
+  def to_decimal(binfloat_context=nil, any_rounding=false)
     if special?
       if nan?
         Decimal.nan
@@ -137,8 +158,15 @@ class BinFloat < Num
       Decimal.zero(self.sign)
     else
       context = define_context(binfloat_context)
-      Decimal(format(context, 10, false))
+      Decimal(format(context, :base=>10, :all_digits=>false, :any_rounding=>any_rounding))
     end
+  end
+
+  # Convert to decimal so that if the decimal is converted to a BinFloat of the same precision
+  # and with any rounding the value of the BinFloat is preserved, but use as few decimal digits
+  # as possible.
+  def to_decimal_any_rounding(binfloat_context=nil)
+    to_decimal(binfloat_context, true)
   end
 
   # Convert Decimal to BinFloat
@@ -148,7 +176,27 @@ class BinFloat < Num
 
   private
 
-  def format(binfloat_context=nil, output_radix=10, all_digits=false)
+  # Convert to a text literal in the specified base. If the result is
+  # converted to BinFloat with the specified context rounding and the
+  # same precision that self has (self.number_of_digits), the same
+  # number will be produced.
+  #
+  # Options:
+  # :base output base, 10 by default
+  #
+  # :any_rounding if true he text literal will have enough digits to be
+  # converted back to self in any rounding mode. Otherwise only enough
+  # digits for conversion in the rounding mode specified by the context
+  # are produced.
+  #
+  # :all_digits if true all significant digits are shown. A digit
+  # is considere as significant here if when used on input, cannot
+  # arbitrarily change its value and preserve the parsed value of the
+  # floating point number.
+  def format(binfloat_context, options={})
+    output_radix = options[:base] || 10
+    all_digits = options[:all_digits]
+    any_rounding = options[:any_rounding]
 
     sgn = sign<0 ? '-' : ''
     if special?
@@ -163,7 +211,7 @@ class BinFloat < Num
 
     context = define_context(binfloat_context)
     inexact = true
-    rounding = context.rounding
+    rounding = context.rounding unless any_rounding
     if @sign == -1
       if rounding == :ceiling
         rounding = :floor
