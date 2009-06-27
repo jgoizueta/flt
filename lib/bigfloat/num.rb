@@ -13,7 +13,7 @@ module BigFloat
 #       digits used before rounding should be adjusted for each radix. This has already been done for division only.
 # TODO: write tests for BinFloat
 # TODO: update documentation; check rdoc results for clarity given the new Num/Decimal/BinFloat structure
-# TODO: test, debug, enhance Burger and Dybvig formatting algorithms; add formatting options
+# TODO: Burger and Dybvig formatting algorithms: add formatting options
 # TODO: port native Float extensions from float-formats
 # TODO: consider renaming Decimal->Dec or DecNum, BinFloat->Bin or BinNum
 # TODO: consider moving base conversions to other module: i.e. BinFloats would be read from or written to
