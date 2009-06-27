@@ -16,6 +16,8 @@ module BigFloat
 # TODO: test, debug, enhance Burger and Dybvig formatting algorithms; add formatting options
 # TODO: port native Float extensions from float-formats
 # TODO: consider renaming Decimal->Dec or DecNum, BinFloat->Bin or BinNum
+# TODO: consider moving base conversions to other module: i.e. BinFloats would be read from or written to
+#       binary text literals only. Conversions would be in a separate gem.
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
 
@@ -1157,7 +1159,10 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
                   rounding = :ceiling
                 end
               end
-              ans, exact = Clinger.algM(context, coeff, exp, rounding, 10)
+              # TODO: for exact rounding, use BurgerDybvig.float_to_digits (to convert base 10 to base 2)
+              # generating the minimum number of digits for the input precision (convert input to Decimal first)
+              # then check for an exact result.
+              ans, exact = Support::Clinger.algM(context, coeff, exp, rounding, 10)
               context.exception(Inexact,"Inexact decimal to radix #{num_class.radix} conversion") if !exact
               if !exact && context.exact?
                 @sign, coeff, exp =  num_class.nan.split
