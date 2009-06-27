@@ -28,3 +28,4 @@ test/test_epsilon.rb
 test/test_ulp.rb
 test/test_odd_even.rb
 test/test_bin.rb
+test/test_binfloat_conversion.rb
