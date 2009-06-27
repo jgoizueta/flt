@@ -38,7 +38,8 @@ To install the library use gem from the command line: (you may not need +sudo+)
   sudo gem install ruby-decimal
 
 Then require the library in your code (if it fails you may need to <tt>require 'rubygems'</tt> first)
-  require 'decimal'
+  require 'bigfloat'
+  include BigFloat
 
 Now we can use the Decimal class simply like this:
 
@@ -172,7 +173,7 @@ digits trigger the Decimal::Inexact exception.
   puts Decimal('1E20')-Decimal('1E-20')              -> 99999999999999999999.99999999999999999999
   puts Decimal(16).sqrt                              -> 4
   puts Decimal(16)/Decimal(4)                        -> 4
-  puts Decimal(1)/Decimal(3)                         -> Exception : Decimal::Inexact
+  puts Decimal(1)/Decimal(3)                         -> Exception : BigFloat::Num::Inexact
 
   Decimal.context.precision = 5
   puts Decimal('1E20')-Decimal('1E-20')              -> 1.0000E+20
@@ -236,7 +237,7 @@ set until cleared) and a exception is raised if the corresponding trap has the v
   puts Decimal(1)/Decimal(0)                                -> Infinity
   puts Decimal.context.flags[Decimal::DivisionByZero]       -> true
   Decimal.context.traps[Decimal::DivisionByZero] = true
-  puts Decimal(1)/Decimal(0)                                -> Exception : Decimal::DivisionByZero
+  puts Decimal(1)/Decimal(0)                                -> Exception : BigFloat::Num::DivisionByZero
 
 ==Numerical conversion
 
@@ -277,8 +278,8 @@ can be operated with Decimal on either side of an operator, and the result will 
 For Float there is no predefined bidirectional conversion (see below how to define it)
 and the result of an operation between Decimal and Float will be of type Float.
 
-  puts (Decimal(1.1) + 2.0).class                    -> Float
-  puts (2.0 + Decimal(1.1)).class                    -> Float
+  puts (Decimal('1.1') + 2.0).class                    -> Float
+  puts (2.0 + Decimal('1.1')).class                    -> Float
 
 The conversion system is extensible. For example, we can include BigDecimal into it
 by defining suitable conversion procedures:
@@ -322,6 +323,36 @@ Note that the conversion we've defined depends on the context precision:
   Decimal.local_context(:precision=>12) { puts Decimal(0.1) } -> 0.100000000000
 
   Decimal.local_context(:exact=>true) { puts Decimal(0.1) }   -> 0.1000000000000000055511151231257827021181583404541015625
+
+A different approach for Float to Decimal conversion is to find the shortest (fewer digits) Decimal
+that rounds to the Float with the binary precision that the Float has.
+We will assume that the Decimal to Float conversion done with the rounding mode of the Decimal context.
+The BinFloat class has a method to perform this kind of conversion, so we will use it.
+
+  Decimal.context.define_conversion_from(Float) do |x, dec_context|
+    BinFloat.context(:rounding=>dec_context.rounding) do |bin_context|
+      BinFloat(x).to_decimal
+    end
+  end
+
+The result is independent of the context precision.
+
+  puts Decimal(0.1)                                  -> 0.1
+  puts Decimal(1.0/3)                                -> 0.3333333333333333
+
+This conversion gives the results expected most of the time when the Float value is define by a
+decimal literal, care must be taken:
+
+  puts Decimal(0.10000000000000001)                   -> 0.1
+
+The BinFloat also a instance method +to_decimal_exact+ to perform the previous 'exact' conversion, that
+could have be written:
+
+  Decimal.context.define_conversion_from(Float) do |x, context|
+    Decimal.context(context) do
+      BinFloat(x).to_decimal_exact
+    end
+  end
 
 == Abbreviation
 
