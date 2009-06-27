@@ -64,7 +64,7 @@ end
 
 
 class ExampleExpander
-  def initialize(sep=" -> ", align=52)
+  def initialize(sep="# -> ", align=51)
     @sep = sep
     @align = align
     @irb = MimickIRB.new

@@ -43,7 +43,7 @@ Then require the library in your code (if it fails you may need to <tt>require '
 
 Now we can use the Decimal class simply like this:
 
-  puts Decimal(1)/Decimal(3)                         -> 0.3333333333333333333333333333
+  puts Decimal(1)/Decimal(3)                       # -> 0.3333333333333333333333333333
 
 Decimal() is a constructor that can be used instead of Decimal.new()
 
@@ -55,47 +55,47 @@ for exponents.
 
 Each thread has an active context that can be accessed like this:
 
-  puts Decimal.context.precision                     -> 28
+  puts Decimal.context.precision                   # -> 28
 
 The active context can be globally for the current thread:
 
   Decimal.context.precision = 2
-  puts Decimal.context.precision                     -> 2
-  puts Decimal(1)/Decimal(3)                         -> 0.33
+  puts Decimal.context.precision                   # -> 2
+  puts Decimal(1)/Decimal(3)                       # -> 0.33
   Decimal.context.precision += 7
-  puts Decimal.context.precision                     -> 9
-  puts Decimal(1)/Decimal(3)                         -> 0.333333333
+  puts Decimal.context.precision                   # -> 9
+  puts Decimal(1)/Decimal(3)                       # -> 0.333333333
 
 Or it can be altered locally inside a block:
 
   Decimal.context do
     Decimal.context.precision = 5
     puts Decimal.context.precision
-  end                                                -> 5
-  puts Decimal.context.precision                     -> 9
+  end                                              # -> 5
+  puts Decimal.context.precision                   # -> 9
 
 The block for a local context can be passed the current context as an argument:
 
   Decimal.context do |local_context|
     local_context.precision = 5
     puts Decimal.context.precision
-  end                                                -> 5
-  puts Decimal.context.precision                     -> 9
+  end                                              # -> 5
+  puts Decimal.context.precision                   # -> 9
 
 A context object can be used to define the local context:
 
   my_context = Decimal::Context(:precision=>20)
   Decimal.context(my_context) do |context|
     puts context.precision
-  end                                                -> 20
+  end                                              # -> 20
 
 And individual parameters can be assigned like this:
 
-  puts Decimal.context.precision                     -> 9
-  puts Decimal.context.rounding                      -> half_even
+  puts Decimal.context.precision                   # -> 9
+  puts Decimal.context.rounding                    # -> half_even
   Decimal.context(:rounding=>:down) do |context|
-    puts context.precision                           -> 9
-    puts context.rounding                            -> down
+    puts context.precision                         # -> 9
+    puts context.rounding                          # -> down
   end
 
 Contexts created with the Decimal::Context() constructor
@@ -105,15 +105,15 @@ that object:
 
   Decimal::DefaultContext.precision = 10
   Decimal.context = Decimal::Context(:rounding=>:half_up)
-  puts Decimal.context.precision                     -> 10
+  puts Decimal.context.precision                   # -> 10
 
 Note that a context object assigned to Decimal.context is copied,
 so it is not altered through Decimal.context:
 
-  puts my_context.precision                          -> 20
+  puts my_context.precision                        # -> 20
   Decimal.context = my_context
   Decimal.context.precision = 2
-  puts my_context.precision                          -> 20
+  puts my_context.precision                        # -> 20
 
 So, DefaultContext is not altered when modifying Decimal.context.
 
@@ -121,12 +121,12 @@ Methods that use a context have an optional parameter to override
 the active context (Decimal.context) :
 
   Decimal.context.precision = 3
-  puts Decimal(1).divide(3)                          -> 0.333
-  puts Decimal(1).divide(3, my_context)              -> 0.33333333333333333333
+  puts Decimal(1).divide(3)                        # -> 0.333
+  puts Decimal(1).divide(3, my_context)            # -> 0.33333333333333333333
 
 Individual context parameters can also be overriden:
 
-  puts Decimal(1).divide(3, :precision=>6)           -> 0.333333
+  puts Decimal(1).divide(3, :precision=>6)         # -> 0.333333
 
 There are two additional predefined contexts Decimal::ExtendedContext
 and Decimal::BasicContext that are not meant to be modified; they
@@ -137,8 +137,8 @@ Decimal::ExtendedContext in the following examples:
 
 Most decimal operations can be executed by using either Context or Decimal methods:
 
-  puts Decimal.context.exp(1)                        -> 2.71828183
-  puts Decimal(1).exp                                -> 2.71828183
+  puts Decimal.context.exp(1)                      # -> 2.71828183
+  puts Decimal(1).exp                              # -> 2.71828183
 
 If using Context methods, values are automatically converted as if the Decimal() constructor
 was used.
@@ -149,20 +149,20 @@ Results are normally rounded using the precision (number of significant digits)
 and rounding mode defined in the context.
 
   Decimal.context.precision = 4
-  puts Decimal(1)/Decimal(3)                         -> 0.3333
-  puts Decimal('1E20')-Decimal('1E-20')              -> 1.000E+20
+  puts Decimal(1)/Decimal(3)                       # -> 0.3333
+  puts Decimal('1E20')-Decimal('1E-20')            # -> 1.000E+20
   Decimal.context.rounding = :half_up
-  puts +Decimal('100.05')                            -> 100.1
+  puts +Decimal('100.05')                          # -> 100.1
   Decimal.context.rounding = :half_even
-  puts +Decimal('100.05')                            -> 100.0
+  puts +Decimal('100.05')                          # -> 100.0
 
 Note that input values are not rounded, only results; we use
 the plus operator to force rounding here:
 
   Decimal.context.precision = 4
   x = Decimal('123.45678')
-  puts x                                             -> 123.45678
-  puts +x                                            -> 123.5
+  puts x                                           # -> 123.45678
+  puts +x                                          # -> 123.5
 
 Precision can be also set to exact to avoid rounding, by using
 the exact property or using a 0 precision. In exact mode results
@@ -170,30 +170,30 @@ are never rounded and results that have an infinite number of
 digits trigger the Decimal::Inexact exception.
 
   Decimal.context.exact = true
-  puts Decimal('1E20')-Decimal('1E-20')              -> 99999999999999999999.99999999999999999999
-  puts Decimal(16).sqrt                              -> 4
-  puts Decimal(16)/Decimal(4)                        -> 4
-  puts Decimal(1)/Decimal(3)                         -> Exception : BigFloat::Num::Inexact
+  puts Decimal('1E20')-Decimal('1E-20')            # -> 99999999999999999999.99999999999999999999
+  puts Decimal(16).sqrt                            # -> 4
+  puts Decimal(16)/Decimal(4)                      # -> 4
+  puts Decimal(1)/Decimal(3)                       # -> Exception : BigFloat::Num::Inexact
 
   Decimal.context.precision = 5
-  puts Decimal('1E20')-Decimal('1E-20')              -> 1.0000E+20
-  puts Decimal(16).sqrt                              -> 4
-  puts Decimal(16)/Decimal(4)                        -> 4
-  puts Decimal(1)/Decimal(3)                         -> 0.33333
+  puts Decimal('1E20')-Decimal('1E-20')            # -> 1.0000E+20
+  puts Decimal(16).sqrt                            # -> 4
+  puts Decimal(16)/Decimal(4)                      # -> 4
+  puts Decimal(1)/Decimal(3)                       # -> 0.33333
 
 There are also some methods for explicit rounding that provide
 an interface compatible with the Ruby interface of Float:
 
-  puts Decimal('101.5').round                        -> 102
-  puts Decimal('101.5').round(0)                     -> 102
-  puts Decimal('101.12345').round(2)                 -> 101.12
-  puts Decimal('101.12345').round(-1)                -> 1.0E+2
-  puts Decimal('101.12345').round(:places=>2)        -> 101.12
-  puts Decimal('101.12345').round(:precision=>2)     -> 1.0E+2
-  puts Decimal('101.5').round(:rounding=>:half_up)   -> 102
-  puts Decimal('101.5').ceil                         -> 102
-  puts Decimal('101.5').floor                        -> 101
-  puts Decimal('101.5').truncate                     -> 101
+  puts Decimal('101.5').round                      # -> 102
+  puts Decimal('101.5').round(0)                   # -> 102
+  puts Decimal('101.12345').round(2)               # -> 101.12
+  puts Decimal('101.12345').round(-1)              # -> 1.0E+2
+  puts Decimal('101.12345').round(:places=>2)      # -> 101.12
+  puts Decimal('101.12345').round(:precision=>2)   # -> 1.0E+2
+  puts Decimal('101.5').round(:rounding=>:half_up) # -> 102
+  puts Decimal('101.5').ceil                       # -> 102
+  puts Decimal('101.5').floor                      # -> 101
+  puts Decimal('101.5').truncate                   # -> 101
 
 ==Special values
 
@@ -234,52 +234,52 @@ set until cleared) and a exception is raised if the corresponding trap has the v
 
   Decimal.context.traps[Decimal::DivisionByZero] = false
   Decimal.context.flags[Decimal::DivisionByZero] = false
-  puts Decimal(1)/Decimal(0)                                -> Infinity
-  puts Decimal.context.flags[Decimal::DivisionByZero]       -> true
+  puts Decimal(1)/Decimal(0)                              # -> Infinity
+  puts Decimal.context.flags[Decimal::DivisionByZero]     # -> true
   Decimal.context.traps[Decimal::DivisionByZero] = true
-  puts Decimal(1)/Decimal(0)                                -> Exception : BigFloat::Num::DivisionByZero
+  puts Decimal(1)/Decimal(0)                              # -> Exception : BigFloat::Num::DivisionByZero
 
 ==Numerical conversion
 
 By default, Decimal is interoperable with Integer and Rational.
 Conversion happens automatically to operands:
 
-  puts Decimal('0.1') + 1                            -> 1.1
-  puts 7 + Decimal('0.2')                            -> 7.2
-  puts Rational(5,2) + Decimal('3')                  -> 5.5
+  puts Decimal('0.1') + 1                          # -> 1.1
+  puts 7 + Decimal('0.2')                          # -> 7.2
+  puts Rational(5,2) + Decimal('3')                # -> 5.5
 
 Conversion can also be done explicitely with
 the Decimal constructor:
 
-   puts Decimal(7)                                   -> 7
-   puts Decimal(Rational(1,10))                      -> 0.1
+   puts Decimal(7)                                 # -> 7
+   puts Decimal(Rational(1,10))                    # -> 0.1
 
 Converting a Decimal to other numerical types can be done with specific Ruby-style methods.
 
-  puts Decimal('1.1').to_i                           -> 1
-  puts Decimal('1.1').to_r                           -> 11/10
+  puts Decimal('1.1').to_i                         # -> 1
+  puts Decimal('1.1').to_r                         # -> 11/10
 
 (note the truncated result of to_i)
 Or with a generic method:
-  puts Decimal('1.1').convert_to(Integer)            -> 1
-  puts Decimal('1.1').convert_to(Rational)           -> 11/10
+  puts Decimal('1.1').convert_to(Integer)          # -> 1
+  puts Decimal('1.1').convert_to(Rational)         # -> 11/10
 
 Thera are also GDAS style conversion operations:
 
-    puts Decimal('1.1').to_integral_value              -> 1
+    puts Decimal('1.1').to_integral_value            # -> 1
 
 And conversion is also possible to Float:
-  puts Decimal('1.1').to_f                           -> 1.1
-  puts Decimal('1.1').convert_to(Float)              -> 1.1
-  puts Float(Decimal('1.1'))                         -> 1.1
+  puts Decimal('1.1').to_f                         # -> 1.1
+  puts Decimal('1.1').convert_to(Float)            # -> 1.1
+  puts Float(Decimal('1.1'))                       # -> 1.1
 
 Types with predefined bidirectional conversion (Integer and Rational)
 can be operated with Decimal on either side of an operator, and the result will be a Decimal.
 For Float there is no predefined bidirectional conversion (see below how to define it)
 and the result of an operation between Decimal and Float will be of type Float.
 
-  puts (Decimal('1.1') + 2.0).class                    -> Float
-  puts (2.0 + Decimal('1.1')).class                    -> Float
+  puts (Decimal('1.1') + 2.0).class                  # -> Float
+  puts (2.0 + Decimal('1.1')).class                  # -> Float
 
 The conversion system is extensible. For example, we can include BigDecimal into it
 by defining suitable conversion procedures:
@@ -294,8 +294,8 @@ by defining suitable conversion procedures:
 Now we can mix BigDecimals and Decimals in expressions and convert from Decimal
 to BigDecimal:
 
-  puts BigDecimal.new('1.1') + Decimal('2.2')        -> 3.3
-  puts Decimal('1.1').convert_to(BigDecimal)         -> 0.11E1
+  puts BigDecimal.new('1.1') + Decimal('2.2')      # -> 3.3
+  puts Decimal('1.1').convert_to(BigDecimal)       # -> 0.11E1
 
 Note that the conversions are defined in a Context object and will be available only
 when that context applies. That way we can define conversions for specific purposes
@@ -318,11 +318,11 @@ a given tolerance. If we take the first approach we can define this conversion:
 
 Note that the conversion we've defined depends on the context precision:
 
-  Decimal.local_context(:precision=>20) { puts Decimal(0.1) } -> 0.10000000000000000555
+  Decimal.local_context(:precision=>20) { puts Decimal(0.1) } # -> 0.10000000000000000555
 
-  Decimal.local_context(:precision=>12) { puts Decimal(0.1) } -> 0.100000000000
+  Decimal.local_context(:precision=>12) { puts Decimal(0.1) } # -> 0.100000000000
 
-  Decimal.local_context(:exact=>true) { puts Decimal(0.1) }   -> 0.1000000000000000055511151231257827021181583404541015625
+  Decimal.local_context(:exact=>true) { puts Decimal(0.1) } # -> 0.1000000000000000055511151231257827021181583404541015625
 
 A different approach for Float to Decimal conversion is to find the shortest (fewer digits) Decimal
 that rounds to the Float with the binary precision that the Float has.
@@ -337,13 +337,13 @@ The BinFloat class has a method to perform this kind of conversion, so we will u
 
 The result is independent of the context precision.
 
-  puts Decimal(0.1)                                  -> 0.1
-  puts Decimal(1.0/3)                                -> 0.3333333333333333
+  puts Decimal(0.1)                                # -> 0.1
+  puts Decimal(1.0/3)                              # -> 0.3333333333333333
 
 This conversion gives the results expected most of the time when the Float value is define by a
 decimal literal, care must be taken:
 
-  puts Decimal(0.10000000000000001)                   -> 0.1
+  puts Decimal(0.10000000000000001)                 # -> 0.1
 
 The BinFloat also a instance method +to_decimal_exact+ to perform the previous 'exact' conversion, that
 could have be written:
@@ -363,15 +363,15 @@ The use of Decimal can be made less verbose by requiring:
 This file defines +D+ as a synonym for +Decimal+:
 
   D.context.precision = 3
-  puts +D('1.234')                                   -> 1.23
+  puts +D('1.234')                                 # -> 1.23
 
 == Error analysis
 
 The Decimal#ulp() method returns the value of a "unit in the last place" for a given number
 
   D.context.precision = 4
-  puts D('1.5').ulp                                  -> 0.001
-  puts D('1.5E10').ulp                               -> 1E+7
+  puts D('1.5').ulp                                # -> 0.001
+  puts D('1.5E10').ulp                             # -> 1E+7
 
 Whe can compute the error in ulps of an approximation +aprx+ to correclty rounded value +exct+ with:
 
@@ -379,14 +379,14 @@ Whe can compute the error in ulps of an approximation +aprx+ to correclty rounde
     (aprx-exct).abs/exct.ulp
   end
 
-  puts ulps(Decimal('0.5000'), Decimal('0.5003'))    -> 3
-  puts ulps(Decimal('0.5000'), Decimal('0.4997'))    -> 3
+  puts ulps(Decimal('0.5000'), Decimal('0.5003'))  # -> 3
+  puts ulps(Decimal('0.5000'), Decimal('0.4997'))  # -> 3
 
-  puts ulps(Decimal('0.1000'), Decimal('0.1003'))    -> 3E+1
-  puts ulps(Decimal('0.1000'), Decimal('0.0997'))    -> 3E+1
+  puts ulps(Decimal('0.1000'), Decimal('0.1003'))  # -> 3E+1
+  puts ulps(Decimal('0.1000'), Decimal('0.0997'))  # -> 3E+1
 
-  puts ulps(Decimal(1), Decimal(10).next_minus)      -> 8.999E+4
-  puts ulps(Decimal(1), Decimal(10).next_plus)       -> 9.01E+4
+  puts ulps(Decimal(1), Decimal(10).next_minus)    # -> 8.999E+4
+  puts ulps(Decimal(1), Decimal(10).next_plus)     # -> 9.01E+4
 
 Note that in the definition of ulps we use exct.ulp. If we had use aprx.ulp Decimal(10).next_plus
 would seem to be a better approximation to Decimal(1) than Decimal(10).next_minus. (Admittedly,
