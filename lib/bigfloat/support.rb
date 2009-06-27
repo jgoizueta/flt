@@ -335,12 +335,19 @@ module BigFloat
       end
     end
 
+    #
     # these are functions from Nio::Clinger, generalized for arbitrary floating point formats
+    # Clinger algorithms to read floating point numbers from text literas with correct rounding.
+    # from his paper: "How to Read Floating Point Numbers Accurately"
+    # (William D. Clinger)
     module Clinger #:nodoc:
 
       module_function
 
-      def ratio_float(context, u,v,k,round_mode)
+      # Given exact positive integers u and v with beta**(n-1) <= u/v < beta**n
+      # and exact integer k, returns the floating point number closest to u/v * beta**n
+      # (beta is the floating-point radix)
+      def ratio_float(context, u, v, k, round_mode)
         # since this handles only positive numbers and ceiling and floor
         # are not symmetrical, they should have been swapped before calling this.
         q = u.div v
@@ -368,6 +375,10 @@ module BigFloat
         return z, exact
       end
 
+      # AlgorithmM:
+      # Given exact integers f and e, with f nonnegative, returns the floating-point number
+      # closest to f * eb**e
+      # (eb is the input radix)
       def algM(context, f, e, round_mode, eb=10) # ceiling & floor must be swapped for negative numbers
         if e<0
          u,v,k = f,eb**(-e),0
@@ -409,8 +420,12 @@ module BigFloat
     end # Clinger
 
     # Burger and Dybvig free formatting algorithm, translated directly from Scheme;
-    # after some testing, of the three different implementations in their
+    # from their paper: "Printing Floating-Point Numbers Quickly and Accurately"
+    # (Robert G. Burger, R. Kent Dybvig)
+    #
+    # After some testing, of the three different implementations in their
     # paper, the second seems to be more efficient in Ruby.
+    #
     # This algorithm formats arbitrary base floating pont numbers as decimal
     # text literals.
     module BurgerDybvig # :nodoc: all
@@ -422,7 +437,7 @@ module BigFloat
       # that rounding is used; otherwise enough digits to produce v with
       # any rounding are delivered.
       #
-      # If the all parameter is true, all significant digits are generated,
+      # If the +all+ parameter is true, all significant digits are generated,
       # i.e. all digits that, if used on input, cannot arbitrarily change
       # preserving the parsed value of the floating point number.
       # This will be useful to generate a fixed number of digits or if
@@ -430,8 +445,8 @@ module BigFloat
       # In this case an additional logical value that tells if the last digit
       # should be rounded-up.
       def float_to_digits(v, f, e, round_mode, min_e, p, b, _B, all=false)
-        # since this handles only positive numbers and ceiling and floor
-        # are not symmetrical, they should have been swapped before calling this.
+        # Since this method handles only positive numbers and ceiling and floor
+        # are not symmetrical, they should have been swapped before the call.
         roundl, roundh = rounding_l_h(round_mode, f)
         if e >= 0
           if f != exptt(b, p-1)
@@ -449,9 +464,9 @@ module BigFloat
             r, s, m_p, m_m, k = scale(f*b*2, exptt(b,1-e)*2, b, 1, 0, _B, roundl ,roundh, v)
           end
         end
-        # The value to be formatted is v=r/s; m- = m_m/s = (v- + v)/2; m+ = m_p/s = (v + v+)/2
+        # The value to be formatted is v=r/s; m- = m_m/s = (v - v-)/2; m+ = m_p/s = (v+ - v)/2
         m_m, m_p = rounding_range(r, s, m_m, m_p, round_mode)
-        # Now m_m, m_p are the limits of the rounding range
+        # Now m_m, m_p define the rounding range
         if all
           [k] + generate_max(r, s, m_p, m_m, _B, roundl, roundh)
         else
@@ -463,12 +478,12 @@ module BigFloat
       # of the rounding range of v (f is the significand of v) are included in the range.
       # The range limits are based on m-, m+ for round to nearest rounding modes (:half_...),
       # on v-, v for round up and on v, v+ or round down.
-      # m- = (v- + v)/1 and m+ = (v+ + v)/2 with v-, v+ he adjacent values to v,
+      # m- = (v - v-)/2 and m+ = (v+ - v)/2 with v-, v+ he adjacent values to v,
       # v.next_minus, v.next_plus
       def rounding_l_h(round_mode, f)
         case round_mode
           when :half_even
-            # rounding rage is (m-,m+) if v is odd and [m-,m+] if even
+            # rounding rage is (v-m-,v+m+) if v is odd and [v+m-,v+m+] if even
             l = h = ((f%2)==0)
           when :up, :ceiling
             # rounding rage is (v-,v]
@@ -479,10 +494,10 @@ module BigFloat
             # floor is treated here assuming f>0
             l, h = true, false
           when :half_up
-            # rounding rage is [m-,m+)
+            # rounding rage is [v+m-,v+m+)
             l, h = true, false
           when :half_down
-            # rounding rage is (m-,m+]
+            # rounding rage is (v+m-,v+m+]
             l, h = false, true
           else
             # Here we don't assume any rounding in the floating point numbers
@@ -491,7 +506,7 @@ module BigFloat
             # That is, enough digits are generated so that when the result is
             # converted to floating point with the specified precision and
             # correct rounding, the result is the original number.
-            # rounding range is (m-,m+)
+            # rounding range is (v+m-,v+m+)
             l = h = false
         end
         return l, h
@@ -500,7 +515,6 @@ module BigFloat
       # Compute the limits of the rounding range (as differences from v)
       # The value to be formatted is v=r/s; m- = m_m/s = (v- - v)/2; m+ = m_p/s = (v - v+)/2
       def rounding_range(r, s, m_m, m_p, round_mode)
-        # puts "s=#{s} r=#{r} m-=#{m_m} m_p=#{m_p} #{r.to_f/s.to_f} #{m_m==m_p}"
         case round_mode
         when :up, :ceiling
           # ceiling is treated here assuming f>0
