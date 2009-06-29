@@ -1515,6 +1515,8 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       prec = context.exact? ? self.number_of_digits + 4*other.number_of_digits : context.precision
       shift = other.number_of_digits - self.number_of_digits + prec
       shift += num_class.radix==10 ? 1 : 3 # TODO: review, generalize
+      # shift += 2
+      # shift += 2
       exp = self.exponent - other.exponent - shift
       if shift >= 0
         coeff, remainder = (self.coefficient*num_class.int_radix_power(shift)).divmod(other.coefficient)
@@ -2880,8 +2882,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
 
   # Round down unless digit i-1 is 0 or 5
   def _round_up05(i)
-    dg = (@coeff%num_class.int_radix_power(i+1))/num_class.int_radix_power(i)
-    if [0,num_class.radix/2].include?(dg)
+    if ((@coeff/num_class.int_radix_power(i))%(num_class.radix/2))==0
       -_round_down(i)
     else
       _round_down(i)
