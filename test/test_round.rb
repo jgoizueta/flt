@@ -45,5 +45,55 @@ class TestRound < Test::Unit::TestCase
 
   end
 
+  def detect_rounding(type)
+    x = type.new(1)*type.int_radix_power(type.context.precision+1)
+    y = x + type.int_radix_power(2)
+    h = type.radix/2
+    b = h*type.radix
+    z = type.new(type.int_radix_power(2) - 1)
+    type.context do
+      type.context.precision = 8 if type.context.exact?
+      if x + 1 == y
+        if (y + 1 == y) && type.radix==10
+          :up05
+        elsif -x - 1 == -y
+          :up
+        else
+          :ceiling
+        end
+      else # x + 1 == x
+        if x + z == x
+          if -x - z == -x
+            :down
+          else
+            :floor
+          end
+        else # x + z == y
+          # round to nearest
+          if x + b == x
+            if y + b == y
+              :half_down
+            else
+              :half_even
+            end
+          else # x + b == y
+            :half_up
+          end
+        end
+      end
+    end
+  end
+
+  def test_round_detection
+    [Decimal, BinFloat].each do |type|
+      [:half_even, :half_up, :half_down, :down, :up, :floor, :ceiling, :up05].each do |rounding|
+        type.context(:rounding=>rounding) do
+          next if type==BinFloat && rounding==:up05
+          assert_equal rounding, detect_rounding(type)
+        end
+      end
+    end
+  end
+
 
 end
