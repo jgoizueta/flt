@@ -9,9 +9,6 @@ require 'ostruct'
 
 module BigFloat
 
-# TODO: arithmetic rounding in arbitrary radix must be reviewed; in general the number of extra
-#       digits used before rounding should be adjusted for each radix. This has already been done for division only.
-# TODO: write tests for BinFloat
 # TODO: update documentation; check rdoc results for clarity given the new Num/Decimal/BinFloat structure
 # TODO: Burger and Dybvig formatting algorithms: add formatting options
 # TODO: port native Float extensions from float-formats
@@ -1595,7 +1592,13 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       e += shift
     else
       return context.exception(Inexact) if context.exact?
-      n += 1 if (n%5)==0 # TODO: generalize to radix!=10
+      # result is not exact; adjust to ensure correct rounding
+      if num_class.radix == 10
+        n += 1 if (n%5)==0
+      else
+        n = num_class.int_mult_radix_power(n, 2) + 1
+        e -= 2
+      end
     end
     ans = Num(+1,n,e)
     num_class.local_context(:rounding=>:half_even) do
