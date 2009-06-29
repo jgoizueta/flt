@@ -1511,12 +1511,9 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       exp = self.exponent - other.exponent
       coeff = 0
     else
-      # TODO: how many digits to use for binary radix?
       prec = context.exact? ? self.number_of_digits + 4*other.number_of_digits : context.precision
       shift = other.number_of_digits - self.number_of_digits + prec
-      shift += num_class.radix==10 ? 1 : 3 # TODO: review, generalize
-      # shift += 2
-      # shift += 2
+      shift += 1
       exp = self.exponent - other.exponent - shift
       if shift >= 0
         coeff, remainder = (self.coefficient*num_class.int_radix_power(shift)).divmod(other.coefficient)
@@ -1525,8 +1522,19 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       end
       if remainder != 0
         return context.exception(Inexact) if context.exact?
-        coeff += 1 if (coeff%(num_class.radix/2)) == 0
+        # result is not exact; adjust to ensure correct rounding
+        if num_class.radix == 10
+          # perform 05up rounding so the the final rounding will be correct
+          coeff += 1 if (coeff%5) == 0
+        else
+          # since we will round to less digits and there is a remainder, we just need
+          # to append some nonzero digit; but we must avoid producing a tie (adding a single
+          # digit whose value is radix/2), so we append two digits, 01, that will be rounded away
+          coeff = num_class.int_mult_radix_power(coeff, 2) + 1
+          exp -= 2
+        end
       else
+        # result is exact; get as close to idaal exponent as possible
         ideal_exp = self.exponent - other.exponent
         while (exp < ideal_exp) && ((coeff % Decimal.radix)==0)
           coeff /= num_class.radix
