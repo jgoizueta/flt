@@ -196,7 +196,7 @@ class Float
 
   # ulp (unit in the last place) according to the definition proposed by J.M. Muller in
   # "On the definition of ulp(x)" INRIA No. 5504
-  def ulp
+  def ulp(mode=:low)
     return self if nan?
     x = abs
     if x < Math.ldexp(1,MIN_EXP) # x < RADIX*MIN_N
@@ -205,7 +205,7 @@ class Float
       Math.ldexp(1,MAX_EXP-MANT_DIG) # res = MAX - MAX.prev
     else
       f,e = Math.frexp(x)
-      e -= 1 if f==Math.ldexp(1,-1) # assign the smaller ulp to radix powers
+      e -= 1 if f==Math.ldexp(1,-1) if mode==:low # assign the smaller ulp to radix powers
       Math.ldexp(1,e-MANT_DIG)
     end
   end
@@ -248,6 +248,11 @@ class Float
     # infinitie value with specified sign
     def infinite(sign=+1)
       (sign < 0) ? -1.0/0.0 : 1.0/0.0
+    end
+
+    # This provides an common interface (with BigFloat classes) to precision, rounding, etc.
+    def context
+      self
     end
 
     # This is the difference between 1.0 and the smallest floating-point
@@ -327,6 +332,21 @@ class Float
       Math.ldexp(sign*coeff, exp)
     end
 
+    def Float.new(*args)
+      args = *args if args.size==1 && args.first.is_a?(Array)
+      if args.size==3
+        Math.ldexp(args[0]*args[1],args[2])
+      elsif args.size==2
+        Math.ldexp(args[0],args[1])
+      else
+        Float(*args)
+      end
+    end
+
+    def precision
+      MANT_DIG
+    end
+
     # detect actual rounding mode
     def rounding
       x = x = Math::ldexp(1, Float::MANT_DIG+1) # 10000...00*Float::RADIX**2 == Float::RADIX**(Float::MANT_DIG+1)
@@ -362,6 +382,22 @@ class Float
           end
         end
       end
+    end
+
+    def emin
+      MIN_EXP-1
+    end
+
+    def emax
+      MAX_EXP-1
+    end
+
+    def etiny
+      MIN_EXP - MANT_DIG
+    end
+
+    def etop
+      MAX_EXP - MANT_DIG
     end
 
   end

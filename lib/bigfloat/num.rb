@@ -749,9 +749,9 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
 
     # ulp (unit in the last place) according to the definition proposed by J.M. Muller in
     # "On the definition of ulp(x)" INRIA No. 5504
-    def ulp(x=nil)
+    def ulp(x=nil, mode=:low)
       x ||= 1
-      _convert(x).ulp(self)
+      _convert(x).ulp(self, mode)
     end
 
     # Some singular Decimal values that depend on the context
@@ -2085,7 +2085,10 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
 
   # ulp (unit in the last place) according to the definition proposed by J.M. Muller in
   # "On the definition of ulp(x)" INRIA No. 5504
-  def ulp(context = nil)
+  # If the mode parameter has the value :high the Golberg ulp is computed instead; which is
+  # different on the powers of the radix (which are the borders between areas of different
+  # ulp-magnitude)
+  def ulp(context = nil, mode=:low)
     context = define_context(context)
 
     return context.exception(InvalidOperation, "ulp in exact context") if context.exact?
@@ -2113,9 +2116,9 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       # Powers of the radix, r**n, are between areas with different ulp values: r**(n-p-1) and r**(n-p)
       # (p is context.precision).
       # This method and the ulp definitions by Muller, Kahan and Harrison assign the smaller ulp value
-      # to r**n; the definition by Goldberg assigns it to the larger ulp.
+      # to r**n; the definition by Goldberg assigns it to the larger ulp (so ulp varies with adjusted_exponent).
       # The next line selects the smaller ulp for powers of the radix:
-      exp -= 1 if sig == num_class.int_radix_power(context.precision-1)
+      exp -= 1 if sig == num_class.int_radix_power(context.precision-1) if mode == :low
 
       return Num(+1, 1, exp)
     end
