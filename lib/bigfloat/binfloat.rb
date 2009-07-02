@@ -87,6 +87,10 @@ class BinFloat < Num
     super(*args)
   end
 
+  def number_of_digits
+    @coeff.is_a?(Integer) ? _nbits(@coeff) : 0
+  end
+
   # Ruby-style to string conversion.
   def to_s(*args)
     eng=false

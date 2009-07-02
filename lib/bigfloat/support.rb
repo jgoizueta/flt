@@ -636,4 +636,27 @@ module BigFloat
     end # BurgerDybvig
 
   end # Support
+
+  # Number of bits in binary representation of the positive integer n, or 0 if n == 0.
+  def _nbits(x)
+    raise  TypeError, "The argument to _nbits should be nonnegative." if x < 0
+    if x.is_a?(Fixnum)
+      return 0 if x==0
+      x.to_s(2).length
+    elsif x <= NBITS_LIMIT
+      Math.frexp(x).last
+    else
+      n = 0
+      while x!=0
+        y = x
+        x >>= NBITS_BLOCK
+        n += NBITS_BLOCK
+      end
+      n += y.to_s(2).length - NBITS_BLOCK if y!=0
+      n
+    end
+  end
+  NBITS_BLOCK = 32
+  NBITS_LIMIT = Math.ldexp(1,Float::MANT_DIG)
+
 end # BigFloat

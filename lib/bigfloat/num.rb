@@ -2237,7 +2237,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # Number of digits in the significand
   def number_of_digits
     # digits.size
-    @coeff.is_a?(Integer) ? @coeff.to_s(num_class.radix).size : 0 # TODO: optimize in derived classes
+    @coeff.is_a?(Integer) ? @coeff.to_s(num_class.radix).size : 0
   end
 
   # Digits of the significand as an array of integers

@@ -200,7 +200,9 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     super(*args)
   end
 
-  # ...
+  def number_of_digits
+    @coeff.is_a?(Integer) ? _number_of_digits(@coeff) : 0
+  end
 
   # Ruby-style to string conversion.
   def to_s(*args)
@@ -402,14 +404,14 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     if (self_adj >= 0) == (other.sign == +1)
       # self > 1 and other +ve, or self < 1 and other -ve
       # possibility of overflow
-      if bound >= context.emax.to_s.length
+      if bound >= _number_of_digits(context.emax)
         ans = Decimal(result_sign, 1, context.emax+1)
       end
     else
       # self > 1 and other -ve, or self < 1 and other +ve
       # possibility of underflow to 0
       etiny = context.etiny
-      if bound >= (-etiny).to_s.length
+      if bound >= _number_of_digits(-etiny)
         ans = Decimal(result_sign, 1, etiny-1)
       end
     end
@@ -451,7 +453,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       loop do
         coeff, exp = _dpower(xc, xe, yc, ye, p+extra)
         #break if (coeff % Decimal.int_mult_radix_power(5,coeff.to_s.length-p-1)) != 0
-        break if (coeff % (5*10**(coeff.to_s.length-p-1))) != 0
+        break if (coeff % (5*10**(_number_of_digits(coeff)-p-1))) != 0
         extra += 3
       end
       ans = Decimal(result_sign, coeff, exp)
@@ -513,7 +515,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       loop do
         coeff = _dlog10(c, e, places)
         # assert coeff.abs.to_s.length-p >= 1
-        break if (coeff % (5*10**(coeff.abs.to_s.length-p-1)))!=0
+        break if (coeff % (5*10**(_number_of_digits(coeff.abs)-p-1)))!=0
         places += 3
       end
       ans = Decimal(coeff<0 ? -1 : +1, coeff.abs, -places)
@@ -556,10 +558,10 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # the default context.  For smaller exponent the result is
     # indistinguishable from 1 at the given precision, while for
     # larger exponent the result either overflows or underflows.
-    if self.sign == +1 and adj > ((context.emax+1)*3).to_s.length
+    if self.sign == +1 and adj > _number_of_digits((context.emax+1)*3)
       # overflow
       ans = Decimal(+1, 1, context.emax+1)
-    elsif self.sign == -1 and adj > ((-context.etiny+1)*3).to_s.length
+    elsif self.sign == -1 and adj > _number_of_digits((-context.etiny+1)*3)
       # underflow to 0
       ans = Decimal(+1, 1, context.etiny-1)
     elsif self.sign == +1 and adj < -p
@@ -581,7 +583,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       coeff = exp = nil
       loop do
         coeff, exp = _dexp(c, e, p+extra)
-        break if (coeff % (5*10**(coeff.to_s.length-p-1)))!=0
+        break if (coeff % (5*10**(_number_of_digits(coeff)-p-1)))!=0
         extra += 3
       end
       ans = Decimal(+1, coeff, exp)
@@ -631,7 +633,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     loop do
       coeff = _dlog(c, e, places)
       # assert coeff.to_s.length-p >= 1
-      break if (coeff % (5*10**(coeff.abs.to_s.length-p-1))) != 0
+      break if (coeff % (5*10**(_number_of_digits(coeff.abs)-p-1))) != 0
       places += 3
     end
     ans = Decimal((coeff<0) ? -1 : +1, coeff.abs, -places)
@@ -850,9 +852,9 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     if ye >= 0
       m, n = yc*10**ye, 1
     else
-      return nil if (xe != 0) and ((yc*xe).abs.to_s.length <= -ye)
+      return nil if (xe != 0) and (_number_of_digits((yc*xe).abs) <= -ye)
       xc_bits = _nbits(xc)
-      return nil if (xc != 1) and ((yc.abs*xc_bits).to_s.length <= -ye)
+      return nil if (xc != 1) and (_number_of_digits(yc.abs*xc_bits) <= -ye)
       m, n = yc, Decimal.int_radix_power(-ye)
       while ((m % 2) == 0) && ((n % 2) == 0)
         m /= 2
@@ -897,10 +899,9 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # by this point the result *is* exactly representable
     # adjust the exponent to get as close as possible to the ideal
     # exponent, if necessary
-    str_xc = xc.to_s
     if other.integral? && other.sign == +1
       ideal_exponent = self.exponent*other.to_i
-      zeros = [xe-ideal_exponent, p-str_xc.length].min
+      zeros = [xe-ideal_exponent, p-_number_of_digits(xc)].min
     else
       zeros = 0
     end
@@ -918,8 +919,8 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # (1-1/x)/2.31 > 0.  If x < 1 then |log10(x)| > (1-x)/2.31 > 0
 
     adj = self.exponent + number_of_digits - 1
-    return adj.to_s.length - 1 if adj >= 1 # self >= 10
-    return (-1-adj).to_s.length-1 if adj <= -2 # self < 0.1
+    return _number_of_digits(adj) - 1 if adj >= 1 # self >= 10
+    return _number_of_digits(-1-adj)-1 if adj <= -2 # self < 0.1
 
     c = self.coefficient
     e = self.exponent
@@ -942,11 +943,11 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     adj = self.exponent + number_of_digits - 1
     if adj >= 1
       # argument >= 10; we use 23/10 = 2.3 as a lower bound for ln(10)
-      return (adj*23/10).to_s.length - 1
+      return _number_of_digits(adj*23/10) - 1
     end
     if adj <= -2
       # argument <= 0.1
-      return ((-1-adj)*23/10).to_s.length - 1
+      return _number_of_digits((-1-adj)*23/10) - 1
     end
     c = self.coefficient
     e = self.exponent
@@ -957,30 +958,12 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       return num.length - den.length - ((num < den) ? 1 : 0)
     end
     # adj == -1, 0.1 <= self < 1
-    return e + (10**-e - c).to_s.length - 1
+    return e + _number_of_digits(10**-e - c) - 1
   end
 
   module AuxiliarFunctions #:nodoc:
 
     module_function
-
-    # Number of bits in binary representation of the positive integer n, or 0 if n == 0.
-    #--
-    # This function from Tim Peters was taken from here:
-    # http://mail.python.org/pipermail/python-list/1999-July/007758.html
-    # The correction being in the function definition is for speed, and
-    # the whole function is not resolved with math.log because of avoiding
-    # the use of floats.
-    #++
-    def _nbits(n, correction = {                      #:nodoc:
-            '0'=> 4, '1'=> 3, '2'=> 2, '3'=> 2,
-            '4'=> 1, '5'=> 1, '6'=> 1, '7'=> 1,
-            '8'=> 0, '9'=> 0, 'a'=> 0, 'b'=> 0,
-            'c'=> 0, 'd'=> 0, 'e'=> 0, 'f'=> 0})
-      raise  TypeError, "The argument to _nbits should be nonnegative." if n < 0
-      hex_n = "%x" % n
-      4*hex_n.length - correction[hex_n[0,1]]
-    end
 
     # Given integers xc, xe, yc and ye representing Decimals x = xc*10**xe and
     # y = yc*10**ye, compute x**y.  Returns a pair of integers (c, e) such that:
@@ -996,7 +979,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # We assume that: x is positive and not equal to 1, and y is nonzero.
     def _dpower(xc, xe, yc, ye, p)
       # Find b such that 10**(b-1) <= |y| <= 10**b
-      b = yc.abs.to_s.length + ye
+      b = _number_of_digits(yc.abs) + ye
 
       # log(x) = lxc*10**(-p-b-1), to p+b+1 places after the decimal point
       lxc = _dlog(xc, xe, p+b+1)
@@ -1012,7 +995,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       if pc == 0
           # we prefer a result that isn't exactly 1; this makes it
           # easier to compute a correctly rounded result in __pow__
-          if (xc.to_s.length + xe >= 1) == (yc > 0) # if x**y > 1:
+          if (_number_of_digits(xc) + xe >= 1) == (yc > 0) # if x**y > 1:
               coeff, exp = 10**(p-1)+1, 1-p
           else
               coeff, exp = 10**p-1, -p
@@ -1041,7 +1024,8 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         p += 2
 
         # compute log(10) with extra precision = adjusted exponent of c*10**e
-        extra = [0, e + c.to_s.length - 1].max
+        # TODO: without the .abs tests fail because c is negative: c should not be negative!!
+        extra = [0, e + _number_of_digits(c.abs) - 1].max
         q = p + extra
 
         # compute quotient c*10**e/(log(10)) = c*10**(e+q)/(log(10)*10**q),
@@ -1135,7 +1119,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       end
 
       # Taylor series with T terms
-      t = -(-10*m.to_s.length/(3*l)).to_i
+      t = -(-10*_number_of_digits(m)/(3*l)).to_i
       yshift = _rshift_nearest(y, r)
       w = _div_nearest(m, t)
       # (1...t).reverse_each do |k| # Ruby 1.9
@@ -1158,7 +1142,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       #   f >= 0 and 1 <= d <= 10, or
       #   f <= 0 and 0.1 <= d <= 1.
       # Thus for c*10**e close to 1, f = 0
-      l = c.to_s.length
+      l = _number_of_digits(c)
       f = e+l - ((e+l >= 1) ? 1 : 0)
 
       if p > 0
@@ -1202,7 +1186,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         # rewrite c*10**e as d*10**f with either f >= 0 and 1 <= d <= 10,
         # or f <= 0 and 0.1 <= d <= 1.  Then we can compute 10**p * log(c*10**e)
         # as 10**p * log(d) + 10**p*f * log(10).
-        l = c.to_s.length
+        l = _number_of_digits(c)
         f = e+l - ((e+l >= 1) ? 1 : 0)
 
         # compute approximation to 10**p*log(d), with error < 27
@@ -1223,7 +1207,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
         # compute approximation to f*10**p*log(10), with error < 11.
         if f
-            extra = f.abs.to_s.length - 1
+            extra = _number_of_digits(f.abs) - 1
             if p + extra >= 0
                 # error in f * _log10_digits(p+extra) < |f| * 1 = |f|
                 # after division, error < |f|/10**extra + 0.5 < 10 + 0.5 < 11
@@ -1263,7 +1247,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         r = _nbits((x<<l)/m)
 
         # Taylor series.  (2**L)**T > M
-        t = -(-10*m.to_s.length/(3*l)).to_i
+        t = -(-10*_number_of_digits(m)/(3*l)).to_i
         y = _div_nearest(x, t)
         mshift = m<<r
         (1...t).to_a.reverse.each do |i|
@@ -1328,7 +1312,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       p += 2
 
       # compute log(10) with extra precision = adjusted exponent of c*10**e
-      extra = [0, e + c.to_s.length - 1].max
+      extra = [0, e + _number_of_digits(c) - 1].max
       q = p + extra
 
       # compute quotient c*10**e/(log(10)) = c*10**(e+q)/(log(10)*10**q),
@@ -1347,6 +1331,19 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       # error in result of _iexp < 120;  error after division < 0.62
       return _div_nearest(_iexp(rem, 10**p), 1000), quot - p + 3
     end
+
+    # number of bits in a nonnegative integer
+    def _number_of_digits(i)
+      raise  TypeError, "The argument to _number_of_digits should be nonnegative." if i < 0
+      if i.is_a?(Fixnum) || (i > NUMBER_OF_DIGITS_MAX_VALID_LOG)
+        # for short integers this is faster
+        # note that here we return 1 for 0
+        i.to_s.length
+      else
+        (Math.log10(i)+1).floor
+      end
+    end
+    NUMBER_OF_DIGITS_MAX_VALID_LOG = 10.0**(Float::DIG-1)
 
   end # AuxiliarFunctions
 
