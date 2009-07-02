@@ -1166,13 +1166,14 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     end
 
     # Compute a lower bound for 100*log10(c) for a positive integer c.
-    def _log10_lb(c, correction = {
-            '1'=> 100, '2'=> 70, '3'=> 53, '4'=> 40, '5'=> 31,
-            '6'=> 23, '7'=> 16, '8'=> 10, '9'=> 5})
+    def _log10_lb(c)
         raise ArgumentError, "The argument to _log10_lb should be nonnegative." if c <= 0
         str_c = c.to_s
-        return 100*str_c.length - correction[str_c[0,1]]
+        return 100*str_c.length - LOG10_LB_CORRECTION[str_c[0,1]]
     end
+    LOG10_LB_CORRECTION = { # (1..9).map_hash{|i| 100 - (100*Math.log10(i)).floor}
+      '1'=> 100, '2'=> 70, '3'=> 53, '4'=> 40, '5'=> 31,
+      '6'=> 23, '7'=> 16, '8'=> 10, '9'=> 5}
 
     # Given integers c, e and p with c > 0, compute an integer
     # approximation to 10**p * log(c*10**e), with an absolute error of
