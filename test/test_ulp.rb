@@ -71,6 +71,57 @@ class TestUlp < Test::Unit::TestCase
 
   end
 
+  BIN_NUMBERS = %w{
+    00000
+    00001
+    00010
+    00011
+    00111
+    01000
+    01001
+    01111
+    10000
+    10001
+  }
+
+
+  def test_ulp_bin
+    BinFloat.context.precision = 4
+    BinFloat.context.emin = -99
+    BinFloat.context.emax =  99
+
+    numbers = []
+    [0, -10, 10].each do |exp|
+      numbers += BIN_NUMBERS.map{|n| BinFloat(+1, n.to_i(2), exp)}
+      numbers += BIN_NUMBERS.map{|n| BinFloat(-1, n.to_i(2), exp)}
+    end
+
+    (numbers+[BinFloat.zero,BinFloat.zero(-1),
+             BinFloat.context.minimum_nonzero, BinFloat.context.maximum_subnormal, BinFloat.context.minimum_normal,
+             BinFloat.context.maximum_finite]).each do |x|
+        if x >= 0
+          assert_equal x-x.next_minus, x.ulp
+        else
+          assert_equal x.next_plus-x, x.ulp
+        end
+    end
+
+    assert_equal BinFloat.context.maximum_finite-BinFloat.context.maximum_finite.next_minus, BinFloat.infinity.ulp
+    assert_equal BinFloat(+1,1,-5), BinFloat(+1,1,-1).ulp
+    assert_equal BinFloat(+1,1,-7), BinFloat(+1,1,-3).ulp
+    assert_equal BinFloat(+1,1,-5), BinFloat(+1,4,-3).ulp
+    assert_equal BinFloat(+1,1,-7), BinFloat(+1,4,-5).ulp
+    assert_equal BinFloat(+1,1,-5), BinFloat(+1,2**4-1,-5).ulp
+    assert_equal BinFloat(+1,1,-7), BinFloat(+1,2**4-1,-7).ulp
+    assert_equal BinFloat(+1,1,-5), BinFloat(+1,4*(2**4-1),-7).ulp
+    assert_equal BinFloat(+1,1,-7), BinFloat(+1,4*(2**4-1),-9).ulp
+
+    BinFloat.context.exact = true
+    assert BinFloat(1).ulp.nan?, "No ulps can be computed in exact contexts"
+    BinFloat.context.traps[BinFloat::InvalidOperation] = true
+    assert_raise(BinFloat::InvalidOperation) { BinFloat(1).ulp }
+
+  end
 
 
 end
