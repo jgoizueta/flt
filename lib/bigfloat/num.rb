@@ -11,10 +11,7 @@ module BigFloat
 
 # TODO: update documentation; check rdoc results for clarity given the new Num/Decimal/BinFloat structure
 # TODO: Burger and Dybvig formatting algorithms: add formatting options
-# TODO: port native Float extensions from float-formats
 # TODO: consider renaming Decimal->Dec or DecNum, BinFloat->Bin or BinNum
-# TODO: consider moving base conversions to other module: i.e. BinFloats would be read from or written to
-#       binary text literals only. Conversions would be in a separate gem.
 # TODO: for BinFloat#to_s consider using the context precision as a minimum and/or adding an exact mode
 # TODO: for BinFloat(String) with non exact precision, use context precision only if no exact conversion is possible
 # TODO: selecting the kind of ulp is awkward; consider one of these options:
