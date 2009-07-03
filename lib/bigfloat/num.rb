@@ -1549,7 +1549,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       else
         # result is exact; get as close to idaal exponent as possible
         ideal_exp = self.exponent - other.exponent
-        while (exp < ideal_exp) && ((coeff % Decimal.radix)==0)
+        while (exp < ideal_exp) && ((coeff % num_class.radix)==0)
           coeff /= num_class.radix
           exp += 1
         end
