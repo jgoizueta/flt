@@ -569,8 +569,6 @@ module BigFloat
       end
 
       def generate(r,s,m_p,m_m,_B,low_ok ,high_ok)
-        ul =
-
         list = []
         loop do
           d,r = (r*_B).divmod(s)
