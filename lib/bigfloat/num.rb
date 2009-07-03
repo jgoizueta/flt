@@ -836,12 +836,22 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     end
 
     # Maximum integral significand value for numbers using this context's precision.
-    def maximum_significand
+    def maximum_coefficient
       if exact?
-        exception(InvalidOperation, 'Exact maximum significand')
+        exception(InvalidOperation, 'Exact maximum coefficient')
         nil
       else
         num_class.int_radix_power(precision)-1
+      end
+    end
+
+    # Minimum value of a normalized coefficient (normalized unit)
+    def minimum_normalized_coefficient
+      if exact?
+        exception(InvalidOperation, 'Exact maximum coefficient')
+        nil
+      else
+        num_class.int_radix_power(precision-1)
       end
     end
 
@@ -1640,7 +1650,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
         if context.exact?
            return context.exception(InvalidOperation, 'Exact +INF next minus')
         else
-          return Num(+1, context.maximum_significand, context.etop)
+          return Num(+1, context.maximum_coefficient, context.etop)
         end
       end
     end
@@ -1672,7 +1682,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
         if context.exact?
            return context.exception(InvalidOperation, 'Exact -INF next plus')
         else
-          return Num(-1, context.maximum_significand, context.etop)
+          return Num(-1, context.maximum_coefficient, context.etop)
         end
       end
     end
