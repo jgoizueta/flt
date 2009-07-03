@@ -769,7 +769,8 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     # Minimum positive normal number
     def minimum_normal(sign=+1)
       return exception(InvalidOperation, "Exact context maximum normal value") if exact?
-      Num(sign, 1, emin)
+      #Num(sign, 1, emin).normalize(self)
+      Num(sign, minimum_normalized_coefficient, etiny)
     end
 
     # Maximum subnormal number
