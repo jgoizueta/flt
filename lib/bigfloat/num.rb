@@ -37,8 +37,9 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   @_base_coercible_types = {
     Integer=>lambda{|x, context| x>=0 ? [+1,x,0] : [-1,-x,0]},
     Rational=>lambda{|x, context|
-      x, y = Decimal.new(x.numerator), Decimal.new(x.denominator)
-      x.divide(y, context)
+      x, y = context.num_class.new(x.numerator), context.num_class.new(x.denominator)
+      z = x.divide(y, context)
+      z
     }
   }
   @_base_conversions = {
