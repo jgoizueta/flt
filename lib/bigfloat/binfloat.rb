@@ -46,15 +46,7 @@ class BinFloat < Num
 
     # Normalized strict epsilon; see Num::Context.epsilon()
     def strict_epsilon(sign=+1)
-      x = super
-      if x.subnormal?
-        while x.exponent > etiny
-          x = scaleb(x, -1)
-        end
-      else
-        x = x.normalize
-      end
-      x
+      super.normalize
     end
 
     # Normalized strict epsilon; see Num::Context.epsilon()

@@ -2003,16 +2003,27 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
 
   # normalizes so that the coefficient has precision digits
   # (this is not the old GDA normalize function)
+  # Note that this reduces precision to that specified by the context if the
+  # number is more precise.
+  # For surnormal numbers the Subnormal flag is raised an a subnormal is returned
+  # but with the smallest possible exponent.
   def normalize(context=nil)
     context = define_context(context)
     return Num(self) if self.special? || self.zero?
-    return context.exception(InvalidOperation, "Normalize in exact context") if context.exact?
-    return context.exception(Subnormal, "Cannot normalize subnormal") if self.subnormal?
-    min_normal_coeff = num_class.int_radix_power(context.precision-1)
     sign, coeff, exp = self._fix(context).split
-    while coeff < min_normal_coeff
-      coeff *= num_class.radix
-      exp -= 1
+    return context.exception(InvalidOperation, "Normalize in exact context") if context.exact?
+    if self.subnormal?
+      context.exception Subnormal
+      if exp > context.etiny
+        coeff = num_class.int_mult_radix_power(coeff, exp - context.etiny)
+        exp = context.etiny
+      end
+    else
+      min_normal_coeff = context.minimum_normalized_coefficient
+      while coeff < min_normal_coeff
+        coeff = num_class.int_mult_radix_power(coeff, 1)
+        exp -= 1
+      end
     end
     Num(sign, coeff, exp)
   end
