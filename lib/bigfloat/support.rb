@@ -623,6 +623,32 @@ module BigFloat
         list
       end
 
+      def adjust(dec_pos, roundup, digits, base)
+        if roundup
+          # carry = roundup ? 1 : 0
+          # digits = digits.reverse.map{|d| d += carry; d>=base ? 0 : (carry=0;d)}.reverse
+          # if carry != 0
+          #   digits.unshift carry
+          #   dec_pos += 1
+          # end
+          i = digits.size - 1
+          while i>=0
+            digits[i] += 1
+            if digits[i] == base
+              digits[i] == 0
+            else
+              break
+            end
+            i -= 1
+          end
+          if i<0
+            dec_pos += 1
+            digits.unshift 1
+          end
+        end
+        return dec_pos, digits
+      end
+
       def exptt(_B, k)
         _B**k # TODO: memoize computed values or use table for common bases and exponents
       end

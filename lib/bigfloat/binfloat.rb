@@ -195,7 +195,7 @@ class BinFloat < Num
   # the same context precision that the original number had (number_of_digits).
   #
   # To render teh exact value of the BinFloat in decimal this can be used instead:
-  #   BinFloat.to_decimal_exact(x).to_s
+  #   x.to_decimal_exact.to_s
   #
   # Options:
   # :base output base, 10 by default
@@ -328,6 +328,7 @@ class BinFloat < Num
     output_radix = options[:base] || 10
     all_digits = options[:all_digits]
     any_rounding = options[:any_rounding]
+    eng = options[:eng]
 
     sgn = sign<0 ? '-' : ''
     if special?
@@ -356,25 +357,44 @@ class BinFloat < Num
 
     dec_pos,round_needed,*digits = Support::BurgerDybvig.float_to_digits(x,@coeff,@exp,rounding,
                                            context.etiny,p,num_class.radix,output_radix, all_digits)
-    # TODO: format properly
-    digits = digits.map{|d| d.to_s(output_radix)}.join
-    if dec_pos <= 0
-      if dec_pos >= -4 && digits.length <= 15
-        digits = "0." + "0"*(-dec_pos) + digits
-      else
-        digits = digits[0,1]+"."+digits[1..-1]+"E#{dec_pos-1}"
-      end
-    elsif dec_pos > digits.length
-      if dec_pos <= 20
-        digits = digits + "0"*(dec_pos-digits.length)
-      else
-        # TODO: if digits.length == 1
-        digits = digits[0,1]+"."+digits[1..-1]+"E#{dec_pos-1}"
-      end
-    elsif dec_pos != digits.length
-      digits = digits[0...dec_pos] + "." + digits[dec_pos..-1]
+    dec_pos, digits = Support::BurgerDybvig.adjust(dec_pos, round_needed, digits, output_radix)
+
+    ds = digits.map{|d| d.to_s(output_radix)}.join
+    sgn = ((sign==-1) ? '-' : '')
+    n_ds = ds.size
+    exp = dec_pos - n_ds
+    leftdigits = dec_pos
+
+    # TODO: DRY (this code is duplicated in Decimal#to_s)
+    if exp<=0 && leftdigits>-6
+      dotplace = leftdigits
+    elsif !eng
+      dotplace = 1
+    elsif @coeff==0
+      dotplace = (leftdigits+1)%3 - 1
+    else
+      dotplace = (leftdigits-1)%3 + 1
     end
-    ((sign==-1) ? '-' : '') + digits
+
+    if dotplace <=0
+      intpart = '0'
+      fracpart = '.' + '0'*(-dotplace) + ds
+    elsif dotplace >= n_ds
+      intpart = ds + '0'*(dotplace - n_ds)
+      fracpart = ''
+    else
+      intpart = ds[0...dotplace]
+      fracpart = '.' + ds[dotplace..-1]
+    end
+
+    if leftdigits == dotplace
+      e = ''
+    else
+      e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
+    end
+
+    sgn + intpart + fracpart + e
+
   end
 
 end
