@@ -17,17 +17,10 @@ module BigFloat
 #       binary text literals only. Conversions would be in a separate gem.
 # TODO: for BinFloat#to_s consider using the context precision as a minimum and/or adding an exact mode
 # TODO: for BinFloat(String) with non exact precision, use context precision only if no exact conversion is possible
-#
-# epsilon (& ulp, strict_epsilon, etc.)
-# are returned with the minium precision possible.
-# I prefer this, at least for decimal, but in for BinFloat is has the consequence that if we
-# print those values they are shown with very little precision.
-# To avoid this:
-# A) for non-decimal radix, return epsilon etc. normalized
-# B) modify BinFloat#to_s (that uses number_of_digits precision) so that more precision is shown:
-#    B.1) use minimum(context.precision, number_of_digits)
-#    B.2) use context.precision
-#    B.3) give exact output by default
+# TODO: selecting the kind of ulp is awkward; consider one of these options:
+#       * don't support variant ulps; always use Muller's ulp
+#       * use an options hash for the kind of ulp parameter
+#       * keep the kind of ulp in the context
 
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
