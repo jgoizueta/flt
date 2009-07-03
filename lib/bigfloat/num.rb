@@ -15,7 +15,19 @@ module BigFloat
 # TODO: consider renaming Decimal->Dec or DecNum, BinFloat->Bin or BinNum
 # TODO: consider moving base conversions to other module: i.e. BinFloats would be read from or written to
 #       binary text literals only. Conversions would be in a separate gem.
-# TODO: for BinFloat#to_s consider using the context precision as a minimum
+# TODO: for BinFloat#to_s consider using the context precision as a minimum and/or adding an exact mode
+# TODO: for BinFloat(String) with non exact precision, use context precision only if no exact conversion is possible
+#
+# epsilon (& ulp, strict_epsilon, etc.)
+# are returned with the minium precision possible.
+# I prefer this, at least for decimal, but in for BinFloat is has the consequence that if we
+# print those values they are shown with very little precision.
+# To avoid this:
+# A) for non-decimal radix, return epsilon etc. normalized
+# B) modify BinFloat#to_s (that uses number_of_digits precision) so that more precision is shown:
+#    B.1) use minimum(context.precision, number_of_digits)
+#    B.2) use context.precision
+#    B.3) give exact output by default
 
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
