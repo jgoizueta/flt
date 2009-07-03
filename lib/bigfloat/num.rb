@@ -89,12 +89,12 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # also a quiet NaN, but with the original sign, and an optional
   # diagnostic information.
   class InvalidOperation < Exception
-    def self.handle(context=nil, *args)
+    def self.handle(context, *args)
       if args.size>0
         sign, coeff, exp = args.first.split
-        Decimal.new([sign, coeff, :nan])._fix_nan(context)
+        context.num_class.new([sign, coeff, :nan])._fix_nan(context)
       else
-        Decimal.nan
+        context.num_class.nan
       end
     end
     def initialize(context=nil, *args)
@@ -109,7 +109,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # of the signs of the operands for divide, or 1 for an odd power of -0.
   class DivisionByZero < Exception
     def self.handle(context,sign,*args)
-      Decimal.infinity(sign)
+      context.num_class.infinity(sign)
     end
     def initialize(context=nil, sign=nil, *args)
       @sign = sign
@@ -125,7 +125,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # The result is NaN.
   class DivisionImpossible < Exception
     def self.handle(context,*args)
-      Decimal.nan
+      context.num_class.nan
     end
   end
 
@@ -137,7 +137,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   #  The result is NaN.
   class DivisionUndefined < Exception
     def self.handle(context,*args)
-      Decimal.nan
+      context.num_class.nan
     end
   end
 
@@ -150,7 +150,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # in which case the result is Nan
   class Inexact < Exception
     def self.handle(context, *args)
-      Decimal.nan if context.exact?
+      context.num_class.nan if context.exact?
     end
   end
 
@@ -176,18 +176,18 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   class Overflow < Exception
     def self.handle(context, sign, *args)
       if [:half_up, :half_even, :half_down, :up].include?(context.rounding)
-        Decimal.infinity(sign)
+        context.num_class.infinity(sign)
       elsif sign==+1
         if context.rounding == :ceiling
-          Decimal.infinity(sign)
+          context.num_class.infinity(sign)
         else
-          Decimal.new([sign, Decimal.int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
+          context.num_class.new([sign, context.num_class.int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
         end
       elsif sign==-1
         if context.rounding == :floor
-          Decimal.infinity(sign)
+          context.num_class.infinity(sign)
         else
-          Decimal.new([sign, Decimal.int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
+          context.num_class.new([sign, context.num_class.int_radix_power(context.precision) - 1, context.emax - context.precision + 1])
         end
       end
     end
@@ -234,7 +234,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # the values are required to be used.  The result is NaN.
   class InvalidContext < Exception
     def self.handle(context,*args)
-      Decimal.nan
+      context.num_class.nan
     end
   end
 
@@ -262,7 +262,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   # syntax.  The result is NaN.
   class ConversionSyntax < InvalidOperation
     def self.handle(context, *args)
-      Decimal.nan
+      context.num_class.nan
     end
   end
 
@@ -595,7 +595,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     # x == normalized_integral_significand(x) * radix**(normalized_integral_exponent)
     def normalized_integral_significand(x)
       x = _convert(x)
-      x.coefficient*(Decimal.int_radix_power(precision - x.number_of_digits))
+      x.coefficient*(num_class.int_radix_power(precision - x.number_of_digits))
     end
 
     # Returns both the (signed) normalized integral significand and the corresponding exponent
@@ -801,7 +801,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     # of the particular rounding rules used.
     def strict_epsilon(sign=+1)
       return exception(InvalidOperation, "Exact context strict epsilon") if exact?
-      # assume radix is even (Decimal.radix%2 == 0)
+      # assume radix is even (num_class.radix%2 == 0)
       case rounding
       when :down, :floor
         # largest epsilon: 0.0...10 (precision digits shown to the right of the decimal point)
@@ -826,7 +826,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     #  (radix/2)*radix**(-precision) == epsilon/2
     # This is called "machine epsilon" in Goldberg's "What Every Computer Scientist..."
     def half_epsilon(sign=+1)
-      Num(sign, Decimal.radix/2, -precision)
+      Num(sign, num_class.radix/2, -precision)
     end
 
     def to_s
@@ -963,7 +963,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
           base = self::DefaultContext
           options = arg
         else
-          raise TypeError,"invalid argument for Decimal.Context"
+          raise TypeError,"invalid argument for #{num_class}.Context"
         end
       when 2
         base = args.first
@@ -2589,7 +2589,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       slf = Num(sign, 1, exp-1)
       nd = number_of_digits
     else
-      slf = Decimal.new(self)
+      slf = num_class.new(self)
     end
 
     changed = slf._round(rounding, nd)
@@ -2826,9 +2826,9 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       other_coeff = other.coefficient*other.sign
       de = self.exponent - other.exponent
       if de >= 0
-        self_coeff = Decimal.int_mult_radix_power(self_coeff, de)
+        self_coeff = num_class.int_mult_radix_power(self_coeff, de)
       else
-        other_coeff = Decimal.int_mult_radix_power(other_coeff, -de)
+        other_coeff = num_class.int_mult_radix_power(other_coeff, -de)
       end
       q, r = self_coeff.divmod(other_coeff)
       if r<0
@@ -2958,7 +2958,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
       other_len = other.number_of_digits
       exp = tmp.exponent + [-1, tmp_len - prec - 2].min
       if (other_len+other.exponent-1 < exp) && prec>0
-        other = Decimal.new([other.sign, 1, exp])
+        other = num_class.new([other.sign, 1, exp])
       end
       tmp = Num(tmp.sign,
                         num_class.int_mult_radix_power(tmp.coefficient, tmp.exponent-other.exponent),
