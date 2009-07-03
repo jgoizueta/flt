@@ -548,7 +548,7 @@ class Decimal
     # normalizes so that the coefficient has precision digits
     # (this is not the old GDA normalize function)
     def normalize(x)
-      _convert(x).reduce(self)
+      _convert(x).normalize(self)
     end
 
     # Adjusted exponent of x returned as a Decimal value.
