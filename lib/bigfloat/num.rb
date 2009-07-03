@@ -18,7 +18,8 @@ module BigFloat
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
 
-  extend BigFloat::Support # allows use of unqualified FlagValues(), Flags()
+  extend Support # allows use of unqualified FlagValues(), Flags(), etc.
+  include Support::AuxiliarFunctions # make auxiliar functions available unqualified to instance menthods
 
   ROUND_HALF_EVEN = :half_even
   ROUND_HALF_DOWN = :half_down
@@ -298,6 +299,7 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
         base = options.shift
         copy_from base
       else
+        @exact = false
         @rounding = @emin = @emax = nil
         @capitals = false
         @clamp = false

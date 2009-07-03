@@ -349,39 +349,7 @@ class Float
 
     # detect actual rounding mode
     def rounding
-      x = x = Math::ldexp(1, Float::MANT_DIG+1) # 10000...00*Float::RADIX**2 == Float::RADIX**(Float::MANT_DIG+1)
-      y = x + Math::ldexp(1, 2)                 # 00000...01*Float::RADIX**2 == Float::RADIX**2
-      h = Float::RADIX/2
-      b = h*Float::RADIX
-      z = Float::RADIX**2 - 1
-      if x + 1 == y
-        if (y + 1 == y) && Float::RADIX==10
-          :up05
-        elsif -x - 1 == -y
-          :up
-        else
-          :ceiling
-        end
-      else # x + 1 == x
-        if x + z == x
-          if -x - z == -x
-            :down
-          else
-            :floor
-          end
-        else # x + z == y
-          # round to nearest
-          if x + b == x
-            if y + b == y
-              :half_down
-            else
-              :half_even
-            end
-          else # x + b == y
-            :half_up
-          end
-        end
-      end
+      BigFloat::Support.detect_float_rounding
     end
 
     def emin

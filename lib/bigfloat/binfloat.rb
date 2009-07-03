@@ -70,10 +70,18 @@ class BinFloat < Num
   end
 
   # the DefaultContext is the base for new contexts; it can be changed.
+  # DefaultContext = BinFloat::Context.new(
+  #                            :precision=>113,
+  #                            :emin=> -16382, :emax=>+16383,
+  #                            :rounding=>:half_even,
+  #                            :flags=>[],
+  #                            :traps=>[DivisionByZero, Overflow, InvalidOperation],
+  #                            :ignored_flags=>[],
+  #                            :capitals=>true,
+  #                            :clamp=>true)
   DefaultContext = BinFloat::Context.new(
                              :exact=>false, :precision=>53, :rounding=>:half_even,
-                             :emin=> -1025, :emax=>+1023,
-                             :flags=>[],
+                             :emin=> -1025, :emax=>+1023,                             :flags=>[],
                              :traps=>[DivisionByZero, Overflow, InvalidOperation],
                              :ignored_flags=>[],
                              :capitals=>true,
@@ -81,6 +89,68 @@ class BinFloat < Num
 
   ExtendedContext = BinFloat::Context.new(DefaultContext,
                              :traps=>[], :flags=>[], :clamp=>false)
+
+  IEEEHalfContext = BinFloat::Context.new(
+                            :precision=>1,
+                            :emin=> -14, :emax=>+15,
+                            :rounding=>:half_even,
+                            :flags=>[],
+                            :traps=>[DivisionByZero, Overflow, InvalidOperation],
+                            :ignored_flags=>[],
+                            :capitals=>true,
+                            :clamp=>true)
+
+  IEEESingleContext = BinFloat::Context.new(
+                            :precision=>24,
+                            :emin=> -126, :emax=>+127,
+                            :rounding=>:half_even,
+                            :flags=>[],
+                            :traps=>[DivisionByZero, Overflow, InvalidOperation],
+                            :ignored_flags=>[],
+                            :capitals=>true,
+                            :clamp=>true)
+
+  IEEEDoubleContext = BinFloat::Context.new(
+                            :precision=>53,
+                            :emin=> -1022, :emax=>+1023,
+                            :rounding=>:half_even,
+                            :flags=>[],
+                            :traps=>[DivisionByZero, Overflow, InvalidOperation],
+                            :ignored_flags=>[],
+                            :capitals=>true,
+                            :clamp=>true)
+
+  IEEEQuadContext = BinFloat::Context.new(
+                            :precision=>113,
+                            :emin=> -16382, :emax=>+16383,
+                            :rounding=>:half_even,
+                            :flags=>[],
+                            :traps=>[DivisionByZero, Overflow, InvalidOperation],
+                            :ignored_flags=>[],
+                            :capitals=>true,
+                            :clamp=>true)
+
+  IEEEExtendedContext = BinFloat::Context.new(
+                            :precision=>64,
+                            :emin=> -16382, :emax=>+16383,
+                            :rounding=>:half_even,
+                            :flags=>[],
+                            :traps=>[DivisionByZero, Overflow, InvalidOperation],
+                            :ignored_flags=>[],
+                            :capitals=>true,
+                            :clamp=>true)
+
+  if Float::RADIX==2
+    FloatContext = BinFloat::Context.new(
+                               :precision=>Float::MANT_DIG,
+                               :rounding=>Support::AuxiliarFunctions.detect_float_rounding,
+                               :emin=>Float::MIN_EXP-1, :emax=>Float::MAX_EXP+1,
+                               :flags=>[],
+                               :traps=>[DivisionByZero, Overflow, InvalidOperation],
+                               :ignored_flags=>[],
+                               :capitals=>true,
+                               :clamp=>true)
+  end
 
 
   def initialize(*args)

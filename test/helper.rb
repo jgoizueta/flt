@@ -7,48 +7,17 @@ def initialize_context
   BinFloat.context = BinFloat::ExtendedContext
 end
 
-def detect_float_rounding
-  x = x = Math::ldexp(1, Float::MANT_DIG+1) # 10000...00*Float::RADIX**2 == Float::RADIX**(Float::MANT_DIG+1)
-  y = x + Math::ldexp(1, 2)                 # 00000...01*Float::RADIX**2 == Float::RADIX**2
-  h = Float::RADIX/2
-  b = h*Float::RADIX
-  z = Float::RADIX**2 - 1
-  if x + 1 == y
-    if (y + 1 == y) && Float::RADIX==10
-      :up05
-    elsif -x - 1 == -y
-      :up
-    else
-      :ceiling
-    end
-  else # x + 1 == x
-    if x + z == x
-      if -x - z == -x
-        :down
-      else
-        :floor
-      end
-    else # x + z == y
-      # round to nearest
-      if x + b == x
-        if y + b == y
-          :half_down
-        else
-          :half_even
-        end
-      else # x + b == y
-        :half_up
-      end
-    end
-  end
-end
-
 def float_emulation_context
   raise "BinFloat tests require that Float is binary" unless Float::RADIX==2
-  BinFloat.context.precision = Float::MANT_DIG
-  BinFloat.context.emin = Float::MIN_EXP-1
-  BinFloat.context.emax = Float::MAX_EXP-1
-  BinFloat.context.rounding = detect_float_rounding
+  BinFloat.context = BinFloat::FloatContext
+  BinFloat.context.clamp = false
+  BinFloat.context.traps.clear!
+  BinFloat.context.flags.clear!
+  #
+  # BinFloat.context.precision = Float::MANT_DIG
+  # BinFloat.context.emin = Float::MIN_EXP-1
+  # BinFloat.context.emax = Float::MAX_EXP-1
+  # BinFloat.context.rounding = :half_even
 end
 
 def random_integer(min, max)
