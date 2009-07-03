@@ -181,7 +181,34 @@ class BinFloat < Num
     @coeff.is_a?(Integer) ? _nbits(@coeff) : 0
   end
 
-  # Ruby-style to string conversion.
+  # Convert to a text literal in the specified base (10 by default).
+  #
+  # If the output base is 2, the rendered value is the exact value of the BinFloat;
+  # showing also trailing zeros, just as for Decimal.
+  #
+  # With bases different from 2, like the default 10, the BinFloat number is treated
+  # as an approximation with a precision of number_of_digits. The conversioin renders
+  # that aproximation in other base without introducing additional precision.
+  #
+  # The resulting text numeral is such that it has as few digits as possible while
+  # preserving the original while if converted back to BinFloat with
+  # the same context precision that the original number had (number_of_digits).
+  #
+  # To render teh exact value of the BinFloat in decimal this can be used instead:
+  #   BinFloat.to_decimal_exact(x).to_s
+  #
+  # Options:
+  # :base output base, 10 by default
+  #
+  # :any_rounding if true he text literal will have enough digits to be
+  # converted back to self in any rounding mode. Otherwise only enough
+  # digits for conversion in the rounding mode specified by the context
+  # are produced.
+  #
+  # :all_digits if true all significant digits are shown. A digit
+  # is considered as significant here if when used on input, cannot
+  # arbitrarily change its value and preserve the parsed value of the
+  # floating point number.
   def to_s(*args)
     eng=false
     context=nil
@@ -204,8 +231,7 @@ class BinFloat < Num
     context = options.delete(:context) if options.has_key?(:context)
     eng = options.delete(:eng) if options.has_key?(:eng)
 
-    # TODO: eng formatting
-    format(context, options)
+    format(context, options.merge(:eng=>eng))
   end
 
   # Specific to_f conversion TODO: check if it represents an optimization
@@ -292,6 +318,12 @@ class BinFloat < Num
   # is considere as significant here if when used on input, cannot
   # arbitrarily change its value and preserve the parsed value of the
   # floating point number.
+  #
+  # Note that when :base=>10 (the default) we're regarding the binary number x
+  # as an approximation with x.number_of_digits precision and showing that
+  # inexact value in decimal without introducing additional precision.
+  # If the exact value of the number expressed in decimal is desired (we consider
+  # the BinFloat an exact number), this can be done with BinFloat.to_decimal_exact(x).to_s
   def format(binfloat_context, options={})
     output_radix = options[:base] || 10
     all_digits = options[:all_digits]
@@ -322,8 +354,8 @@ class BinFloat < Num
 
     p = self.number_of_digits
 
-      dec_pos,round_needed,*digits = Support::BurgerDybvig.float_to_digits(x,@coeff,@exp,rounding,
-                               context.etiny,p,num_class.radix,output_radix, all_digits)
+    dec_pos,round_needed,*digits = Support::BurgerDybvig.float_to_digits(x,@coeff,@exp,rounding,
+                                           context.etiny,p,num_class.radix,output_radix, all_digits)
     # TODO: format properly
     digits = digits.map{|d| d.to_s(output_radix)}.join
     if dec_pos <= 0
