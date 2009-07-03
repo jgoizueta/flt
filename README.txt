@@ -392,6 +392,53 @@ Note that in the definition of ulps we use exct.ulp. If we had use aprx.ulp Deci
 would seem to be a better approximation to Decimal(1) than Decimal(10).next_minus. (Admittedly,
 such bad approximations should not be common.)
 
+== BinFloat Input/Output
+
+BinFloat can be defined with a decimal string literal and converted to one with to_s, as Decimal,
+but in this case these are inexact operations subject to some specific precision limits.
+
+On input, e.g. BinFloat('0.1'), the context precision is used to define the precision of the result,
+i.e. the produced number is rounded to the context precision, unlike Decimal.
+
+On output the number's precision (number_of_digits) is used, so that the output converts back to
+the same number if the same precision is used; the context is ignored.
+
+If we define a number with the sign-coefficient-exponent constructor, the context precision is ignored
+as with Decimal. The next produces a number with just 1-bit of precision:
+
+  x = BinFloat(+1, 1, -3)
+  puts x.number_of_digits                          # -> 1
+
+Now, if we convert it to a decimal string, the internal precision (1 bit) is used, so it contains little
+information:
+
+  puts x                                           # -> 0.1
+
+Let's convert that output back to another BinFloat. Note that the new number will be rendered
+exactly as the original number in decimal, but has been defined with the context precision, so:
+
+  y = BinFloat(x.to_s)
+  puts y                                           # -> 0.1
+  puts BinFloat(x.to_s) == x                       # -> false
+  puts y.number_of_digits                          # -> 53
+
+Both numbers are not equal. If we show them in binary with to_s(:base=>2) no conversion is needed
+and the exact values are shown and we see the difference:
+
+  puts x.to_s(:base=>2)                            # -> 0.001
+  puts y.to_s(:base=>2)                            # -> 1.100110011001100110011001100110011001100110011001101E-4
+
+If we wanted to convert back the decimal value to the original value we had to use the original
+precision for the conversion:
+
+  y = BinFloat(x.to_s, :precision=>x.number_of_digits)
+  puts x == y                                      # -> true
+
+Note also that if we normalize a value we will change it's precision to that of the context:
+
+  puts x.number_of_digits                          # -> 1
+  puts x.normalize.number_of_digits                # -> 53
+
 == More Information
 
 Consult the documentation for the classes Decimal and Decimal::Context.
