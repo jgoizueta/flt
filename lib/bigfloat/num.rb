@@ -15,9 +15,7 @@ module BigFloat
 # TODO: consider renaming Decimal->Dec or DecNum, BinFloat->Bin or BinNum
 # TODO: consider moving base conversions to other module: i.e. BinFloats would be read from or written to
 #       binary text literals only. Conversions would be in a separate gem.
-# TODO: for BinFlaot(String) (i.e. Num(String) with radix!=10), consider using
-#       the maximum of context.precision, String needed precision, i.e. normalize the result only if
-#       number_of_digits < precision (so numbers are not rounded on input)
+# TODO: for BinFloat#to_s consider using the context precision as a minimum
 
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
