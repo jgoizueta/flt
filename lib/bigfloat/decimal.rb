@@ -917,6 +917,9 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # exponent of x.  For 0.1 <= x <= 10 we use the inequalities
     # 1-1/x <= log(x) <= x-1. If x > 1 we have |log10(x)| >
     # (1-1/x)/2.31 > 0.  If x < 1 then |log10(x)| > (1-x)/2.31 > 0
+    #
+    # The original Python cod used lexical order (having converted to strings) for (num < den) and (num < 231)
+    # so the results would be different e.g. for num = 9; Can this happen? What is the correct way?
 
     adj = self.exponent + number_of_digits - 1
     return _number_of_digits(adj) - 1 if adj >= 1 # self >= 10
@@ -926,13 +929,13 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     e = self.exponent
     if adj == 0
       # 1 < self < 10
-      num = (c - Decimal.int_radix_power(-e)).to_s
-      den = (231*c).to_s
-      return num.length - den.length - ((num < den) ? 1 : 0) + 2
+      num = (c - Decimal.int_radix_power(-e))
+      den = (231*c)
+      return _number_of_digits(num) - _number_of_digits(den) - ((num < den) ? 1 : 0) + 2
     end
     # adj == -1, 0.1 <= self < 1
-    num = (Decimal.int_radix_power(-e)-c).to_s
-    return num.length + e - ((num < "231") ? 1 : 0) - 1
+    num = (Decimal.int_radix_power(-e)-c)
+    return _number_of_digits(num.to_i) + e - ((num < 231) ? 1 : 0) - 1
   end
 
   # Compute a lower bound for the adjusted exponent of self.ln().
@@ -940,6 +943,10 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
   # that self is finite and positive and that self != 1.
   def _ln_exp_bound
     # for 0.1 <= x <= 10 we use the inequalities 1-1/x <= ln(x) <= x-1
+    #
+    # The original Python cod used lexical order (having converted to strings) for (num < den))
+    # so the results would be different e.g. for num = 9m den=200; Can this happen? What is the correct way?
+
     adj = self.exponent + number_of_digits - 1
     if adj >= 1
       # argument >= 10; we use 23/10 = 2.3 as a lower bound for ln(10)
@@ -953,9 +960,9 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     e = self.exponent
     if adj == 0
       # 1 < self < 10
-      num = (c-(10**-e)).to_s
-      den = c.to_s
-      return num.length - den.length - ((num < den) ? 1 : 0)
+      num = c-(10**-e)
+      den = c
+      return _number_of_digits(num) - _number_of_digits(den) - ((num < den) ? 1 : 0)
     end
     # adj == -1, 0.1 <= self < 1
     return e + _number_of_digits(10**-e - c) - 1
@@ -1329,7 +1336,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       # reduce remainder back to original precision
       rem = _div_nearest(rem, 10**extra)
 
-      # error in result of _iexp < 120;  error after division < 0.62
+      # error in result of _iexp < 1s20;  error after division < 0.62
       return _div_nearest(_iexp(rem, 10**p), 1000), quot - p + 3
     end
 
