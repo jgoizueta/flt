@@ -36,9 +36,28 @@ class BinFloat < Num
       super(BinFloat, *options)
     end
 
-  end
+    # The special values are normalized for binary floats: this keeps the context precision in the values
+    # which will be used in conversion to decimal text to yield more natural results.
 
-  class <<self
+    # Normalized epsilon; see Num::Context.epsilon()
+    def epsilon(sign=+1)
+      super.normalize
+    end
+
+    # Normalized strict epsilon; see Num::Context.epsilon()
+    def strict_epsilon(sign=+1)
+      super.normalize
+    end
+
+    # Normalized strict epsilon; see Num::Context.epsilon()
+    def half_epsilon(sign=+1)
+      super.normalize
+
+    end
+
+  end # BinFloat::Context
+
+  class <<self # BinFloat class methods
 
     def base_coercible_types
       unless defined? @base_coercible_types
@@ -67,6 +86,7 @@ class BinFloat < Num
       end
       @base_coercible_types
     end
+
   end
 
   # the DefaultContext is the base for new contexts; it can be changed.
@@ -246,6 +266,11 @@ class BinFloat < Num
   # Convert Decimal to BinFloat
   def BinFloat.from_decimal(x, binfloat_context=nil)
     BinFloat(x.to_s, binfloat_context)
+  end
+
+  # For BinFloat the generic Num#ulp() is normalized
+  def ulp(context=nil, mode=:low)
+    super(context, mode).normalize(context)
   end
 
   private
