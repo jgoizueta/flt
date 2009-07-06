@@ -89,11 +89,13 @@ class TestTolerance < Test::Unit::TestCase
   end
 
   def test_ulps
-    t = SigDecimalsTolerance.new(4)
+    Decimal.context.precision = 4
+    t = UlpsTolerance.new(2)
 
-    assert t.eq?(Decimal('1.2345678'), Decimal('1.235'))
-    assert t.eq?(Decimal('12345678'), Decimal('12350000'))
-    assert !t.eq?(Decimal('12345678'), Decimal('12380000'))
+    assert t.eq?(Decimal('1.2345678'), Decimal('1.236'))
+    assert !t.eq?(Decimal('1.2345678'), Decimal('1.237'))
+    assert t.eq?(Decimal('12345678'), Decimal('12360000'))
+    assert !t.eq?(Decimal('12345678'), Decimal('12370000'))
 
   end
 
