@@ -11,14 +11,15 @@
 
 require 'bigfloat/tolerance'
 
-def BigFloat::Tolerance.define_sugar(value_class, *tol_classes) #:nodoc:
-  tol_classes.each do |tol_class|
-    suffix = tol_class.to_s.split('::').last.
-      gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2').
-      gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase
-    puts "defining #{suffix} for #{value_class}"
-    value_class.send(:define_method, suffix) do
-      tol_class.new(self)
+module BigFloat
+  def Tolerance.define_sugar(value_class, *tol_classes) #:nodoc:
+    tol_classes.each do |tol_class|
+      suffix = tol_class.to_s.split('::').last.
+        gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2').
+        gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase
+      value_class.send(:define_method, suffix) do
+        tol_class.new(self)
+      end
     end
   end
 end

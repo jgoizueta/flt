@@ -1,15 +1,109 @@
+# Tolerance for floating-point types (Float, BigFloat::BinFloat, BigFloat::Decimal)
+#
+# Tolerance can be used to allow for a tolerance in floating-point comparisons.
+#
+# A Tolerance can be defined independently of the type (floating-point numeric class)
+# it will be used with; The actual tolerance value will be compute for a particular reference value:
+#
+#   tol = Tolerance(3, :decimals)
+#   puts tol.value(Decimal('10.0')).inspect
+#   puts tol.value(10.0).inspect
+#   puts tol.value.inspect
+#
+#   tol = Tolerance(:epsilon)
+#   puts tol.value(Decimal('10.0')).inspect
+#   puts tol.value(10.0).inspect
+#   puts tol.value.inspect
+#
+# Tolerances can be:
+# * Absolute: the tolerance value is a fixed value independent of the values to be compared.
+# * Relative: the tolerance value is adjusted (scaled) to the magnitude of the numbers to be compared,
+#   so that it specifies admisible relative error values.
+#   Particular cases of relative tolerance are Percent and Permille tolerance.
+# * Floating: tolerance is scaled along with the floating-point values. Floating tolerances can be
+#   :native (the scaling is done with the same base as the floating point radix), or have a specific base.
+#   Currently floating tolerances use the :low convention at the powers of the radix (as ulps). Floating
+#   tolerances should be computed at the correct or exact value to be compared, not at an approximation, but
+#   note that binary tolerance operations (equals?, less_than?, ...) consider both arguments as approximations.
+#   A special case of a floating tolerance are tolerances specified in ULPs.
+#
+# Tolerances can be specified as:
+# * A specific value (valid for any type of tolerance: absolute, relative & floating)
+# * A number of digits, or, for specific bases, decimals or bits, available for absolute and floating (significant).
+# * Epsilon (or Big epsilon), optionally multiplied by a factor, available for all types of tolerances
+# * A number of ULPs, which implies a floating tolerance.
+# * A percent or permille value, only for relative tolerances.
+#
+# There exists a Tolerance-derived class for each valid combination of type of tolerance and specification mode,
+# but they all can be defined with the Tolerance() constructor.
+# The first parameter to the constructor is the tolerance value, and in some kinds of tolerance it can be
+# omitted. Next, the kind of tolerance is passed as a symbol; valid values are:
+# * :absolute
+# * :relative
+# * :floating Generic floating decimal; another parameter can be passed for a specific base
+# * :percent a particular kind of relative tolerance
+# * :permille a particular kind of relative tolerance
+# * :ulps a particular kind of floating tolerance
+# * :sig_decimals (significative rounded decimals) a particular kind of floating tolerance; another parameter specifies if rounded
+# * :decimals a particular kind of absolute tolerance
+# * :sig_bits (significative bits) a particular kind of floating tolerance; another parameter specifies if rouded
+# * :epsilon relative tolerance given as a multiple of epsilon (1 by default)
+# * :abs_epsilon absolute tolerance given as a multiple of epsilon (1 by default)
+# * :flt_epsilon floating tolerance given as a multiple of epsilon (1 by default)
+# * :big_epsilon relative tolerance given as a multiple of big-epsilon (1 by default)
+# * :abs_big_epsilon absolute tolerance given as a multiple of big-epsilon (1 by default)
+# * :flt_big_epsilon floating tolerance given as a multiple of big-epsilon (1 by default)
+#
+# Examples:
+#
+#   tol = Tolerance(100, :absolute)
+#   puts.tol.value(1.0)
+#   puts.tol.value(1.5)
+#   puts.tol.value(1.0E10)
+#   puts tol.eq?(11234.0, 11280.0)
+#
+#   tol = Tolerance(100, :relative)
+#   puts.tol.value(1.0)
+#   puts.tol.value(1.5)
+#   puts.tol.value(1.0E10)
+#   puts tol.eq?(11234.0, 11280.0)
+#
+#   tol = Tolerance(100, :floating)
+#   puts.tol.value(1.0)
+#   puts.tol.value(1.5)
+#   puts.tol.value(1.0E10)
+#   puts tol.eq?(11234.0, 11280.0)
+#
+#   tol = Tolerance(3, :sig_decimals)
+#   puts tol.eq?(1.234,1.23)
+#
+#   tol = Tolerance(1, :ulps)
+#   puts tol.eq?(3.3433, 3.3433.next)
+#   puts tol.eq?(Decimal('1.1'), Decimal('1.1').next)
+#
+#   tol = Tolerance(1, :percent)
+#   puts tol.equal?(3.14159, Math::PI)
+#
+
 require 'bigfloat'
 require 'bigfloat/float'
 
 module BigFloat
 
-  # Tolerance for floating-point types (Float, BigFloat::BinFloat, BigFloat::Decimal)
+  # The Tolerance class is a base class for all tolerances.
+  #
+  # Particular tolerance *kinds* (defined by a type of tolerance and the way to specify its value) are
+  # implemented in separate classes derived from Tolerance.
+  #
+  # Derived classes must implement at least one of the methods relative_to() or relative_to_many()
+  # and may also redefine cast_value() and descr_value()
   class Tolerance
 
     def initialize(value)
       @value = value
     end
 
+    # Value of the tolerance for a given (floating-point) quantity
     def value(x=nil)
       if x
         relative_to(x)
@@ -18,58 +112,87 @@ module BigFloat
       end
     end
 
+    # Shorthand for value()
     def [](x)
       value(x)
     end
 
+    # Description of the tolerance
     def to_s
       descr_value
     end
 
+    # Is x nearly zero? (zero within tolerance); if a second argument y is specified:
+    # is x nearly zero? compared to y?
     def zero?(x, y=nil)
       x.zero? || x.abs < value(y) # value(y || x)
     end
 
-    def less_than?(x,y)
-      y-x > relative_to_many(:max, x, y)
-    end
-
-    def greater_than?(x,y)
-      x-y > relative_to_many(:max, x, y)
-    end
-
-    def equals?(x, y)
-      (x-y).abs <= relative_to_many(:min, x, y)
-    end
-
-    def nearly_equals?
-      (x-y).abs <= relative_to_many(:max, x, y)
-    end
-
     # Returns true if the argument is approximately an integer
-    def apprx_i?(x)
-      equals?(x, x.round)
+    def integer?(x)
+      # Computing the tolerance at x seems the best option here
+      (x-x.round).abs <= relative_to(x)
     end
 
     # If the argument is close to an integer it rounds it
-    def apprx_i(x)
+    def integer(x)
+      # return integer?(x) ? x.round : nil
       r = x.round
-      return equals?(x,r) ? r : nil
+      ((x-r).abs <= relative_to(x)) ? r : nil
     end
 
-    # Derived classes must implement at least one of the methods
-    # relative_to or relative_to_many
-    # (this offers opportunities for optimization)
+    # Binary comparison operations that treat both arguments equally;
 
-    # Compute the tolerance value in relation to the value x;
+    # x < y within tolerance
+    def lt?(x,y)
+      y-x > relative_to_many(:max, x, y)
+    end
+
+    # x > y within tolerance
+    def gt?(x,y)
+      x-y > relative_to_many(:max, x, y)
+    end
+
+    # x == y within tolerance (relaxed)
+    def eq?(x, y)
+      (x-y).abs <= relative_to_many(:max, x, y)
+    end
+
+    # x == y within tolerance (strict)
+    def strong_eq?
+      (x-y).abs <= relative_to_many(:min, x, y)
+    end
+
+    # Binary operations that consider the second value the correct or exact value
+
+    # x < correct value y within tolerance
+    def less_than?(x,y)
+      y-x > relative_to(y)
+    end
+
+    # x > correct value y within tolerance
+    def greater_than?(x,y)
+      x-y > relative_to(y)
+    end
+
+    # x == correct value y within tolerance
+    def equals?(x, y)
+      (x-y).abs <= relative_to(y)
+    end
+
+    # This method is redefined in derived classes to compute the tolerance value in relation to the value x;
+    #
+    # If not redefined, relative_to_many will be used.
     def relative_to(x)
       relative_to_many(:max, x)
     end
 
-    # Compute the tolerance value in relation to the values xs;
-    # mode must be either :max or :min, and determines if the
-    # largerst (relaxed condition) or smallest (strict condition) of the
-    # relative tolerances is returned
+    # This method is redefined in derived classes to compute the tolerance value in relation to the values xs;
+    # mode must be either :max or :min, and determines if the largerst (relaxed condition) or smallest
+    #(strict condition) of the relative tolerances is returned.
+    #
+    # If not redefined, relative_to will be used, but redefining this method can be used to optimize the
+    # performance
     def relative_to_many(mode, *xs)
       xs.map{|x| relative_to(x)}.send(mode)
     end
@@ -81,32 +204,47 @@ module BigFloat
       num_class.Num(@value)
     end
 
-    # Descriptionof the reference value (can be redefined in derived classes)
+    # Description of the reference value (can be specialized in derived classes)
     def descr_value
       @value.to_s
     end
 
+    # Class methods
     class <<self
 
+      # Define a tolerance magnitude as a number of digits of the given base. If rounded is true
+      # it is assumed that results are rounded to n digits; otherwise truncation or directed rounding
+      # may occur and the tolerance will be larger.
       def digits(base, n, rounded=true)
         v = base**(-n)
         v /= 2 if rounded
         v
       end
 
+      # Define a tolerance magnitude as a number of decimal digits. If rounded is true
+      # it is assumed that results are rounded to n digits; otherwise truncation or directed rounding
+      # may occur and the tolerance will be larger.
       def decimals(n, rounded=true)
         digits 10, n, rounded
       end
 
+      # Define a tolerance magnitude as a number of binary digits. If rounded is true
+      # it is assumed that results are rounded to n digits; otherwise truncation or directed rounding
+      # may occur and the tolerance will be larger.
       def bits(n, rounded=true)
         digits 10, n, rounded
       end
 
+      # Define a tolerance magnitude in relation to the 'epsilon' of the floating-point type and context.
+      # A multiplier may be specified to scale the epsilon.
       def epsilon(num_class, mult=1)
         num_class.context.epsilon*mult
       end
 
-      # This is a tolerance that makes multiplication associative (if used with FloatingTolerance)
+      # Define a tolerance magnitude in relation to the 'big epsilon' of the floating-point type and context.
+      # A multiplier may be specified to scale the big epsilon.
+      #
+      # This is a tolerance that makes multiplication associative when used with FloatingTolerance.
       def big_epsilon(num_class, mult=1)
         e0 = num_class.context.epsilon
         # we could compute with round-up instead of using next_plus, but we can't do that with Float
@@ -119,6 +257,7 @@ module BigFloat
 
   end
 
+  # Implementation of absolute tolerances
   class AbsoluteTolerance < Tolerance
     def initialize(value)
       super
@@ -131,6 +270,7 @@ module BigFloat
     end
   end
 
+  # Implementation of relative tolerances
   class RelativeTolerance < Tolerance
     def initialize(value)
       super
@@ -143,26 +283,33 @@ module BigFloat
     end
   end
 
+  # Implementation of percent (relative) tolerances
   class PercentTolerance < RelativeTolerance
     def initialize(value)
-      super(value/100)
+      super
     end
     def to_s
       "#{descr_value}%"
     end
+    def cast_value(num_class)
+      num_class.Num(@value)/num_class.Num(100)
+    end
   end
 
+  # Implementation of permille (relative) tolerances
   class PermilleTolerance < RelativeTolerance
     def initialize(value)
-      super(value/1000)
+      super
     end
     def to_s
       "#{descr_value}/1000"
     end
+    def cast_value(num_class)
+      num_class.Num(@value)/num_class.Num(1000)
+    end
   end
 
-  # TODO: special values
-
+  # Implementation of floating tolerances
   class FloatingTolerance < Tolerance
     def initialize(value, radix=:native)
       super(value)
@@ -195,6 +342,7 @@ module BigFloat
 
       case xs.first
       when BigFloat::Num
+        # TODO: handle special values
         if @radix == :native || @radix == num_class.radix
           exp = xs.map do |x|
             x = x.normalize
@@ -238,6 +386,7 @@ module BigFloat
 
   end
 
+  # Implementation of (floating) tolerances given in ULPs (units in the last place)
   class UlpsTolerance < FloatingTolerance
     def initialize(n=nil, num_class=nil)
       @ulps = n || 1
@@ -246,7 +395,7 @@ module BigFloat
       super(unit.ulp*@ulps)
     end
     def to_s
-      "#{ulps} ulp#{ulps > 1 ? 's' : ''}"
+      "#{@ulps} ulp#{@ulps > 1 ? 's' : ''}"
     end
     def relative_to(x)
       @ulps*x.ulp
@@ -256,6 +405,7 @@ module BigFloat
     end
   end
 
+  # Implementation of (floating) tolerances given in number of significant decimal digits
   class SigDecimalsTolerance < FloatingTolerance
     def initialize(ndec, rounded = true)
       super Tolerance.decimals(ndec, rounded), 10
@@ -267,7 +417,7 @@ module BigFloat
     end
   end
 
-
+  # Implementation of (absolute) tolerances given in number of decimal digits
   class DecimalsTolerance < AbsoluteTolerance
     def initialize(ndec, rounded = true)
       super Tolerance.decimals(ndec, rounded)
@@ -279,6 +429,7 @@ module BigFloat
     end
   end
 
+  # Implementation of (floating) tolerances given in number of significant bits
   class SigBitsTolerance < FloatingTolerance
     def initialize(ndec, rounded = true)
       super Tolerance.bits(ndec, rounded), 2
@@ -290,31 +441,36 @@ module BigFloat
     end
   end
 
+  # Mixin for tolerances defined by Epsilon or a multiple of it
   module EpsilonMixin
     def initialize(mult=nil)
       @mult = mult || 1
       super nil
     end
     def cast_value(num_class)
-      Tolerance.epsilon(x.class, @mult)
+      Tolerance.epsilon(num_class, @mult)
     end
     def descr_value
       "#{@mult==1 ? '' : "#{@mult} "} eps."
     end
   end
 
+  # Implementation of (relative) tolerances given as a multiple of Epsilon
   class EpsilonTolerance < RelativeTolerance
     include EpsilonMixin
   end
 
+  # Implementation of (absolute) tolerances given as a multiple of Epsilon
   class AbsEpsilonTolerance < AbsoluteTolerance
     include EpsilonMixin
   end
 
+  # Implementation of (floating) tolerances given as a multiple of Epsilon
   class FltEpsilonTolerance < FloatingTolerance
     include EpsilonMixin
   end
 
+  # Mixin for tolerances defined by Big Epsilon or a multiple of it
   module BigEpsilonMixin
     def initialize(mult=nil)
       @mult = mult || 1
@@ -328,18 +484,30 @@ module BigFloat
     end
   end
 
+  # Implementation of (relative) tolerances given as a multiple of Big Epsilon
   class BigEpsilonTolerance < RelativeTolerance
     include BigEpsilonMixin
   end
 
+  # Implementation of (absolute) tolerances given as a multiple of Big Epsilon
   class AbsBigEpsilonTolerance < AbsoluteTolerance
     include EpsilonMixin
   end
 
+  # Implementation of (floating) tolerances given as a multiple of Big Epsilon
   class FltBigEpsilonTolerance < FloatingTolerance
     include BigEpsilonMixin
   end
 
+  # Tolerance constructor.
+  #
+  # The first parameter is the value (magnitude) of the tolerance, and is optional for some tolerances.
+  #
+  # The next parameter is the kind of tolerance as a symbol. It corresponds to the name of the
+  # implementation class minus the Tolerance suffix, and converted to snake-case (lowercase with underscores to
+  # separate words.)
+  #
+  # Finally any additional parameters admitted by the class constructor can be passed.
   def Tolerance(*args)
     if args.first.is_a?(Symbol)
       value = nil
