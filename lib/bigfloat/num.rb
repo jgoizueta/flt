@@ -11,14 +11,21 @@ module BigFloat
 
 # TODO: update documentation; check rdoc results for clarity given the new Num/Decimal/BinFloat structure
 # TODO: Burger and Dybvig formatting algorithms: add formatting options
-# TODO: consider renaming Decimal->Dec or DecNum, BinFloat->Bin or BinNum
 # TODO: for BinFloat#to_s consider using the context precision as a minimum and/or adding an exact mode
 # TODO: for BinFloat(String) with non exact precision, use context precision only if no exact conversion is possible
 # TODO: selecting the kind of ulp is awkward; consider one of these options:
 #       * don't support variant ulps; always use Muller's ulp
 #       * use an options hash for the kind of ulp parameter
 #       * keep the kind of ulp in the context
-
+# TODO: Rename classes:
+#       * Names such as BigFloat, APFloat, are not accurate since this module also includes
+#         extensions to Float.
+#       * Decide whether to use same module for Float-Formats & this (Num etc.)
+#       * Use symmetrical naming? (Decimal/Binary DecNum/BinNum ...) or asymmetrical (Decimal/BinFloat...)
+#       * Names to be considered:
+#         - BigFloat: FltPnt, APFloat, FP, Flt, ...
+#         - Decimal:  DecFloat, Dec, DecNum, BigDec, ...
+#         - BinFloat: Binary, Bin, BinNum, APFloat, MPFloat, BigFloat, ...
 
 class Num # APFloat (arbitrary precision float) MPFloat ...
 
