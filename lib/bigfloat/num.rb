@@ -843,7 +843,8 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
     end
 
     def inspect
-      "<#{self.class}:\n" +
+      class_name = self.class.to_s.split('::').last
+      "<#{class_name}:\n" +
       instance_variables.map { |v| "  #{v}: #{eval(v).inspect}"}.join("\n") +
       ">\n"
     end
@@ -2161,10 +2162,13 @@ class Num # APFloat (arbitrary precision float) MPFloat ...
   end
 
   def inspect
+    # TODO: depending on the final naming of module and classes, it may or may not be desiderable to
+    # remove the class name qualifier
+    class_name = num_class.to_s.split('::').last
     if $DEBUG
-      "#{num_class}('#{self}') [coeff:#{@coeff.inspect} exp:#{@exp.inspect} s:#{@sign.inspect} radix:#{num_class.radix}]"
+      "#{class_name}('#{self}') [coeff:#{@coeff.inspect} exp:#{@exp.inspect} s:#{@sign.inspect} radix:#{num_class.radix}]"
     else
-      "#{num_class}('#{self}')"
+      "#{class_name}('#{self}')"
     end
   end
 
