@@ -235,6 +235,11 @@ class Float
   end
 
   class <<self
+
+    def radix
+      Float::RADIX
+    end
+
     # NaN (not a number value)
     def nan
       0.0/0.0
@@ -332,7 +337,7 @@ class Float
       Math.ldexp(sign*coeff, exp)
     end
 
-    def Float.new(*args)
+    def new(*args)
       args = *args if args.size==1 && args.first.is_a?(Array)
       if args.size==3
         Math.ldexp(args[0]*args[1],args[2])
@@ -341,6 +346,10 @@ class Float
       else
         Float(*args)
       end
+    end
+
+    def Num(*args)
+      self.new(*args)
     end
 
     def precision
