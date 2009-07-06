@@ -82,7 +82,7 @@
 #   puts tol.eq?(Decimal('1.1'), Decimal('1.1').next)
 #
 #   tol = Tolerance(1, :percent)
-#   puts tol.equal?(3.14159, Math::PI)
+#   puts tol.equal_to?(3.14159, Math::PI)
 #
 
 require 'bigfloat'
@@ -143,23 +143,23 @@ module BigFloat
 
     # Binary comparison operations that treat both arguments equally;
 
-    # x < y within tolerance
+    # less-than: x < y within tolerance
     def lt?(x,y)
       y-x > relative_to_many(:max, x, y)
     end
 
-    # x > y within tolerance
+    # greater_than: x > y within tolerance
     def gt?(x,y)
       x-y > relative_to_many(:max, x, y)
     end
 
-    # x == y within tolerance (relaxed)
+    # equals: x == y within tolerance (relaxed)
     def eq?(x, y)
       (x-y).abs <= relative_to_many(:max, x, y)
     end
 
-    # x == y within tolerance (strict)
-    def strong_eq?
+    # strongly equals: x == y within tolerance (strict)
+    def seq?
       (x-y).abs <= relative_to_many(:min, x, y)
     end
 
@@ -176,7 +176,7 @@ module BigFloat
     end
 
     # x == correct value y within tolerance
-    def equals?(x, y)
+    def equal_to?(x, y)
       (x-y).abs <= relative_to(y)
     end
 
