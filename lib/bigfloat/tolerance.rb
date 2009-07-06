@@ -57,21 +57,21 @@
 # Examples:
 #
 #   tol = Tolerance(100, :absolute)
-#   puts.tol.value(1.0)
-#   puts.tol.value(1.5)
-#   puts.tol.value(1.0E10)
+#   puts tol.value(1.0)
+#   puts tol.value(1.5)
+#   puts tol.value(1.0E10)
 #   puts tol.eq?(11234.0, 11280.0)
 #
 #   tol = Tolerance(100, :relative)
-#   puts.tol.value(1.0)
-#   puts.tol.value(1.5)
-#   puts.tol.value(1.0E10)
+#   puts tol.value(1.0)
+#   puts tol.value(1.5)
+#   puts tol.value(1.0E10)
 #   puts tol.eq?(11234.0, 11280.0)
 #
 #   tol = Tolerance(100, :floating)
-#   puts.tol.value(1.0)
-#   puts.tol.value(1.5)
-#   puts.tol.value(1.0E10)
+#   puts tol.value(1.0)
+#   puts tol.value(1.5)
+#   puts tol.value(1.0E10)
 #   puts tol.eq?(11234.0, 11280.0)
 #
 #   tol = Tolerance(3, :sig_decimals)
