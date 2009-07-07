@@ -5,9 +5,14 @@ README.txt
 Rakefile
 lib/bigfloat.rb
 lib/bigfloat/version.rb
+lib/bigfloat/num.rb
 lib/bigfloat/support.rb
 lib/bigfloat/decimal.rb
+lib/bigfloat/decimal/math.rb
 lib/bigfloat/binfloat.rb
+lib/bigfloat/float.rb
+lib/bigfloat/tolerance.rb
+lib/bigfloat/tolerance/sugar.rb
 lib/bigfloat/d.rb
 lib/bigfloat/b.rb
 setup.rb
@@ -30,3 +35,4 @@ test/test_odd_even.rb
 test/test_bin.rb
 test/test_binfloat_conversion.rb
 test/test_bin_arithmetic.rb
+test/test_tol.rb
