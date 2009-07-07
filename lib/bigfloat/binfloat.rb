@@ -5,7 +5,7 @@ module BigFloat
 class BinFloat < Num
 
   class << self
-    # Numerical base of Decimal.
+    # Numerical base.
     def radix
       2
     end
@@ -29,7 +29,7 @@ class BinFloat < Num
   end
 
   # The context defines the arithmetic context: rounding mode, precision,...
-  # Decimal.context is the current (thread-local) context.
+  # BinFloat.context is the current (thread-local) context.
   class Context < Num::ContextBase
 
     def initialize(*options)
