@@ -3,15 +3,18 @@ require 'bigfloat/decimal'
 module BigFloat
   class Decimal
     module Math
+
+      extend BigFloat # to access constructor methods Decimal
+
       module_function
 
       # Trinogometry
 
       # Pi
-      def pi()
-        three = Decimal(3)      # substitute "three=3.0" for regular floats
+      def pi(decimals=nil)
+        three = Decimal(3)
         lasts, t, s, n, na, d, da = 0, three, 3, 1, 0, 0, 24
-        Decimal.context do |local_context|
+        Decimal.context(:precision=>decimals) do |local_context|
           local_context.precision += 2 # extra digits for intermediate steps
           while s != lasts
             lasts = s
