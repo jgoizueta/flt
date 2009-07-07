@@ -477,7 +477,7 @@ module BigFloat
       super nil
     end
     def cast_value(num_class)
-      Tolerance.big_epsilon(x.class, @mult)
+      Tolerance.big_epsilon(num_class, @mult)
     end
     def descr_value
       "#{@mult==1 ? '' : "#{@mult} "} big eps."
