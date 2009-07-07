@@ -214,10 +214,6 @@ class Float
     nan? || infinite?
   end
 
-  def zero?
-    self == 0.0
-  end
-
   def normal?
     if special? || zero?
       false
