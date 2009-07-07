@@ -1097,7 +1097,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
 
   def initialize(*args)
     context = nil
-    if args.size>0 && args.last.kind_of?(ContextBase)
+    if args.size>0 && (args.last.kind_of?(ContextBase) || args.last.nil?)
       context ||= args.pop
     elsif args.size>1 && args.last.instance_of?(Hash)
       context ||= args.pop
