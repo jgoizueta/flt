@@ -515,7 +515,7 @@ module BigFloat
     else
       value = args.shift
     end
-    cls_name = args.shift.to_s.gsub(/(^|_)(.)/){$2.upcase} + "Tolerance"
+    cls_name = (args.shift || :absolute).to_s.gsub(/(^|_)(.)/){$2.upcase} + "Tolerance"
     BigFloat.const_get(cls_name).new(value, *args)
   end
 
