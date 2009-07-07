@@ -291,7 +291,7 @@ class BinFloat < Num
 
   # Convert Decimal to BinFloat
   def BinFloat.from_decimal(x, binfloat_context=nil)
-    BinFloat(x.to_s, binfloat_context)
+    BigFloat.BinFloat(x.to_s, binfloat_context)
   end
 
   # For BinFloat the generic Num#ulp() is normalized
