@@ -399,14 +399,16 @@ module BigFloat
     def initialize(n=nil, num_class=nil)
       @ulps = n || 1
       num_class ||= Float
-      unit = num_class.new(1)
-      super(unit.ulp*@ulps)
+      unit = num_class.Num(1)
+      n = num_class.Num(@ulps)
+      super(unit.ulp*n)
     end
     def to_s
-      "#{@ulps} ulp#{@ulps > 1 ? 's' : ''}"
+      "#{@ulps} ulp#{(!@ulps.kind_of?(Numeric) || (@ulps > 1)) ? 's' : ''}"
     end
     def relative_to(x)
-      @ulps*x.ulp
+      n = x.class.Num(@ulps)
+      x.ulp*n
     end
     def relative_to_many(mode, *xs)
       xs.map{|x| relative_to(x)}.send(mode)
