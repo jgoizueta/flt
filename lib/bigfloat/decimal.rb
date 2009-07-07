@@ -1366,6 +1366,7 @@ end
 
 # Decimal constructor. See Decimal#new for the parameters.
 # If a Decimal is passed a reference to it is returned (no new object is created).
+module_function
 def Decimal(*args)
   Decimal.Num(*args)
 end

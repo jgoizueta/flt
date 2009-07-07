@@ -125,7 +125,7 @@ module BigFloat
     # Is x nearly zero? (zero within tolerance); if a second argument y is specified:
     # is x nearly zero? compared to y?
     def zero?(x, y=nil)
-      x.zero? || x.abs < value(y) # value(y || x)
+      x.zero? || x.abs < value(y || x)
     end
 
     # Returns true if the argument is approximately an integer
@@ -499,6 +499,7 @@ module BigFloat
     include BigEpsilonMixin
   end
 
+  module_function
   # Tolerance constructor.
   #
   # The first parameter is the value (magnitude) of the tolerance, and is optional for some tolerances.

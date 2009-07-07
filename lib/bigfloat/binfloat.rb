@@ -399,6 +399,7 @@ class BinFloat < Num
 
 end
 
+module_function
 def BinFloat(*args)
   BinFloat.Num(*args)
 end
