@@ -1348,7 +1348,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         # note that here we return 1 for 0
         i.to_s.length
       else
-        (Math.log10(i)+1).floor
+        (::Math.log10(i)+1).floor
       end
     end
     NUMBER_OF_DIGITS_MAX_VALID_LOG = 10**(Float::DIG-1)
