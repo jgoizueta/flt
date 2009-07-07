@@ -315,7 +315,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       if self.zero?
         return context.exception(InvalidOperation, '0 ** 0')
       else
-        return Decimal(1)
+        return Num(1)
       end
     end
 
@@ -338,18 +338,18 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
     # 0**(+ve or Inf)= 0; 0**(-ve or -Inf) = Infinity
     if _self.zero?
-      return (other.sign == +1) ? Decimal(result_sign, 0, 0) : Decimal.infinity(result_sign)
+      return (other.sign == +1) ? Num(result_sign, 0, 0) : num_class.infinity(result_sign)
     end
 
     # Inf**(+ve or Inf) = Inf; Inf**(-ve or -Inf) = 0
     if _self.infinite?
-      return (other.sign == +1) ? Decimal.infinity(result_sign) : Decimal(result_sign, 0, 0)
+      return (other.sign == +1) ? num_class.infinity(result_sign) : Num(result_sign, 0, 0)
     end
 
     # 1**other = 1, but the choice of exponent and the flags
     # depend on the exponent of self, and on whether other is a
     # positive integer, a negative integer, or neither
-    if _self == Decimal(1)
+    if _self == Num(1)
       return _self if context.exact?
       if other.integral?
         # exp = max(self._exp*max(int(other), 0),
@@ -375,7 +375,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         exp = 1-context.precision
       end
 
-      return Decimal(result_sign, Decimal.int_radix_power(-exp), exp)
+      return Num(result_sign, Decimal.int_radix_power(-exp), exp)
     end
 
     # compute adjusted exponent of self
@@ -385,7 +385,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # self ** -infinity is infinity if self < 1, 0 if self > 1
     if other.infinite?
       if (other.sign == +1) == (self_adj < 0)
-        return Decimal(result_sign, 0, 0)
+        return Num(result_sign, 0, 0)
       else
         return Decimal.infinity(result_sign)
       end
@@ -405,14 +405,14 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       # self > 1 and other +ve, or self < 1 and other -ve
       # possibility of overflow
       if bound >= _number_of_digits(context.emax)
-        ans = Decimal(result_sign, 1, context.emax+1)
+        ans = Num(result_sign, 1, context.emax+1)
       end
     else
       # self > 1 and other -ve, or self < 1 and other +ve
       # possibility of underflow to 0
       etiny = context.etiny
       if bound >= _number_of_digits(-etiny)
-        ans = Decimal(result_sign, 1, etiny-1)
+        ans = Num(result_sign, 1, etiny-1)
       end
     end
 
@@ -429,7 +429,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       end
       ans = _self._power_exact(other, test_precision)
       if !ans.nil? && (result_sign == -1)
-        ans = Decimal(-1, ans.coefficient, ans.exponent)
+        ans = Num(-1, ans.coefficient, ans.exponent)
       end
     end
 
@@ -456,7 +456,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         break if (coeff % (5*10**(_number_of_digits(coeff)-p-1))) != 0
         extra += 3
       end
-      ans = Decimal(result_sign, coeff, exp)
+      ans = Num(result_sign, coeff, exp)
     end
 
     # the specification says that for non-integer other we need to
@@ -469,7 +469,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       # pad with zeros up to length context.precision+1 if necessary
       if ans.number_of_digits <= context.precision
         expdiff = context.precision+1 - ans.number_of_digits
-        ans = Decimal(ans.sign, Decimal.int_mult_radix_power(ans.coefficient, expdiff), ans.exponent-expdiff)
+        ans = Num(ans.sign, Decimal.int_mult_radix_power(ans.coefficient, expdiff), ans.exponent-expdiff)
       end
       context.exception Underflow if ans.adjusted_exponent < context.emin
     end
@@ -499,7 +499,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # log10(10**n) = n
     if digits.first == 1 && digits[1..-1].all?{|d| d==0}
       # answer may need rounding
-      ans = Decimal(self.exponent + digits.size - 1)
+      ans = Num(self.exponent + digits.size - 1)
       return ans if context.exact?
     else
       # result is irrational, so necessarily inexact
@@ -518,7 +518,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         break if (coeff % (5*10**(_number_of_digits(coeff.abs)-p-1)))!=0
         places += 3
       end
-      ans = Decimal(coeff<0 ? -1 : +1, coeff.abs, -places)
+      ans = Num(coeff<0 ? -1 : +1, coeff.abs, -places)
     end
 
     Decimal.context(context, :rounding=>:half_even) do |local_context|
@@ -540,10 +540,10 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     return Decimal.zero if self.infinite? && (self.sign == -1)
 
     # exp(0) = 1
-    return Decimal(1) if self.zero?
+    return Num(1) if self.zero?
 
     # exp(Infinity) = Infinity
-    return Decimal(self) if self.infinite?
+    return Num(self) if self.infinite?
 
     # the result is now guaranteed to be inexact (the true
     # mathematical result is transcendental). There's no need to
@@ -560,16 +560,16 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # larger exponent the result either overflows or underflows.
     if self.sign == +1 and adj > _number_of_digits((context.emax+1)*3)
       # overflow
-      ans = Decimal(+1, 1, context.emax+1)
+      ans = Num(+1, 1, context.emax+1)
     elsif self.sign == -1 and adj > _number_of_digits((-context.etiny+1)*3)
       # underflow to 0
-      ans = Decimal(+1, 1, context.etiny-1)
+      ans = Num(+1, 1, context.etiny-1)
     elsif self.sign == +1 and adj < -p
       # p+1 digits; final round will raise correct flags
-      ans = Decimal(+1, Decimal.int_radix_power(p)+1, -p)
+      ans = Num(+1, Decimal.int_radix_power(p)+1, -p)
     elsif self.sign == -1 and adj < -p-1
       # p+1 digits; final round will raise correct flags
-      ans = Decimal(+1, Decimal.int_radix_power(p+1)-1, -p-1)
+      ans = Num(+1, Decimal.int_radix_power(p+1)-1, -p-1)
     else
       # general case
       c = self.coefficient
@@ -586,7 +586,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         break if (coeff % (5*10**(_number_of_digits(coeff)-p-1)))!=0
         extra += 3
       end
-      ans = Decimal(+1, coeff, exp)
+      ans = Num(+1, coeff, exp)
     end
 
     # at this stage, ans should round correctly with *any*
@@ -614,7 +614,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     return Decimal.infinity if self.infinite? && self.sign == +1
 
     # ln(1.0) == 0.0
-    return Decimal.zero if self == Decimal(1)
+    return Decimal.zero if self == Num(1)
 
     # ln(negative) raises InvalidOperation
     return context.exception(InvalidOperation, 'ln of a negative value') if self.sign==-1
@@ -636,7 +636,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       break if (coeff % (5*10**(_number_of_digits(coeff.abs)-p-1))) != 0
       places += 3
     end
-    ans = Decimal((coeff<0) ? -1 : +1, coeff.abs, -places)
+    ans = Num((coeff<0) ? -1 : +1, coeff.abs, -places)
 
     Decimal.context(context, :rounding=>:half_even) do |local_context|
       ans = ans._fix(local_context)
@@ -696,7 +696,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     end
     base = (base**other.coefficient) % modulo
 
-    Decimal(sign, base, 0)
+    Num(sign, base, 0)
   end
 
   # Attempt to compute self**other exactly
@@ -788,7 +788,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       else
         zeros = 0
       end
-      return Decimal(+1, Decimal.int_radix_power(zeros), exponent-zeros)
+      return Num(+1, Decimal.int_radix_power(zeros), exponent-zeros)
     end
 
     # case where y is negative: xc must be either a power
@@ -844,7 +844,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
       return nil if xc >= Decimal.int_radix_power(p)
       xe = -e-xe
-      return Decimal(+1, xc, xe)
+      return Num(+1, xc, xe)
 
     end
 
@@ -905,7 +905,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     else
       zeros = 0
     end
-    return Decimal(+1, Decimal.int_mult_radix_power(xc, zeros), xe-zeros)
+    return Num(+1, Decimal.int_mult_radix_power(xc, zeros), xe-zeros)
   end
 
   # Compute a lower bound for the adjusted exponent of self.log10()

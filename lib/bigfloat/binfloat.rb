@@ -79,7 +79,7 @@ class BinFloat < Num
               else
                 sign = +1
               end
-              BinFloat(sign, coeff, exp)
+              Num(sign, coeff, exp)
             end
           }
         )
@@ -260,7 +260,7 @@ class BinFloat < Num
     elsif zero?
       Decimal.zero(self.sign)
     else
-      Decimal(@sign*@coeff)*Decimal(2)**@exp
+      BigFloat.Decimal(@sign*@coeff)*BigFloat.Decimal(2)**@exp
     end
   end
 
@@ -278,7 +278,7 @@ class BinFloat < Num
       Decimal.zero(self.sign)
     else
       context = define_context(binfloat_context)
-      Decimal(format(context, :base=>10, :all_digits=>false, :any_rounding=>any_rounding))
+      BigFloat.Decimal(format(context, :base=>10, :all_digits=>false, :any_rounding=>any_rounding))
     end
   end
 
