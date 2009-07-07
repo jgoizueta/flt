@@ -351,18 +351,26 @@ module BigFloat
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
-          num_class.new(+1, v.coefficient, v.exponent+exp)
+          num_class.Num(+1, v.coefficient, v.exponent+exp)
         elsif @radix==10
           # assert x.class==BinFloat
-          raise "Decimal tolerance with BinFloat not yet supported"
+          # TODO: optimize (implement log10, power for BinFloat)
+          exp = xs.map do |x|
+            x = x.to_decimal_exact.normalize
+            exp = x.adjusted_exponent
+            exp -= 1 if x.coefficient == x.class.context.minimum_normalized_coefficient # if :low mode
+            exp -= FloatingTolerance.ref_adjusted_exp
+            exp
+          end.send(mode)
+          num_class.from_decimal(BigFloat.Decimal(+1, 1, exp)*v.to_decimal_exact)
         else
-          # assert x.class==Decimal && @radix==2
+          # assert num_class==Decimal && @radix==2
           exp = xs.map do |x|
             exp = (x.ln/Decimal(2).ln).ceil.to_i - 1 # (x.ln/Decimal(2).ln).floor+1 - 1 if :high mode
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
-          v*Decimal(2)**exp
+          v*num_class.Num(2)**exp
         end
       when Float
         if @radix == :native || @radix == Float.context.radix
