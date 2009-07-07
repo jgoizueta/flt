@@ -56,11 +56,14 @@ class TestDefineConversions < Test::Unit::TestCase
     end
 
     assert_raise(TypeError) { Decimal('0') == BigDecimal.new('0') }
-    assert_not_equal BigDecimal.new('0'), Decimal('0')
-    assert_not_equal BigDecimal.new('1.2345'), Decimal('1.2345')
-    assert_not_equal BigDecimal.new('-1.2345'), Decimal('-1.2345')
-    assert_not_equal BigDecimal.new('1.2345'), Decimal('0.0012345000E3')
-    assert_raise(TypeError) { BigDecimal.new('7')+Decimal('0.1') }
+    unless Num.ancestors.include?(Numeric)
+      # BigDecimal#eql? is weird
+      assert_not_equal BigDecimal.new('0'), Decimal('0')
+      assert_not_equal BigDecimal.new('1.2345'), Decimal('1.2345')
+      assert_not_equal BigDecimal.new('-1.2345'), Decimal('-1.2345')
+      assert_not_equal BigDecimal.new('1.2345'), Decimal('0.0012345000E3')
+      assert_raise(TypeError) { BigDecimal.new('7')+Decimal('0.1') }
+    end
     assert_raise(TypeError) { Decimal('7')+BigDecimal.new('0.1') }
     assert_raise(TypeError) { Decimal(BigDecimal.new('1.1')) }
 
