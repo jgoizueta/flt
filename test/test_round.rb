@@ -43,6 +43,11 @@ class TestRound < Test::Unit::TestCase
     assert_equal 100, Decimal('100.99999').truncate
     assert_equal(-100, Decimal('-100.99999').truncate)
 
+    assert_equal(10,  Decimal('9.99999').round(:rounding=>:half_up))
+    assert_equal(1,  Decimal('0.999999').round(:rounding=>:half_up))
+    assert_equal(0,  Decimal('0.0999999').round(:rounding=>:half_up))
+    assert_equal(1,  Decimal('0.0999999').round(:rounding=>:up))
+
   end
 
 

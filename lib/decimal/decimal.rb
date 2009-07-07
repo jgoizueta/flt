@@ -2554,7 +2554,12 @@ class Decimal
       prec = adjusted_exponent + 1
       as_int = true
     end
-    result = plus(:rounding=>r, :precision=>prec)
+    dg = number_of_digits-prec
+    changed = _round(r, dg)
+    coeff = Decimal.int_div_radix_power(@coeff, dg)
+    exp = @exp + dg
+    coeff += 1 if changed==1
+    result = Decimal(@sign, coeff, exp)
     return as_int ? result.to_i : result
   end
 
