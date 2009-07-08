@@ -14,11 +14,11 @@ class TestMultithreading < Test::Unit::TestCase
       threads << Thread.new(prec) do |p|
         n = 10000/(p/3)
         n_fails = 0
-        Decimal.local_context do
-          Decimal.context.precision = p
+        DecNum.local_context do
+          DecNum.context.precision = p
           n.times do
-            t = (Decimal(1)/Decimal(3)).to_s
-            n_fails += 1 if (t.size!=(p+2)) || (Decimal.context.precision!=p)
+            t = (DecNum(1)/DecNum(3)).to_s
+            n_fails += 1 if (t.size!=(p+2)) || (DecNum.context.precision!=p)
           end
         end
         Thread.current[:n_fails] = n_fails

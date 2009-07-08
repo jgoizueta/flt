@@ -1,6 +1,6 @@
 require 'decimal'
 
-D = Decimal
+D = DecNum
 def D(*args)
-  Decimal(*args)
+  DecNum(*args)
 end

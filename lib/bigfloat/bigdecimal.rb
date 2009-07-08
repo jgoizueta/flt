@@ -1,4 +1,4 @@
-# This adds some extensions to BigDecimal for (limited) compatibility with BigFloat types
+# This adds some extensions to BigDecimal for (limited) compatibility with Flt types
 
 require 'bigdecimal'
 require 'bigdecimal/math'
@@ -32,7 +32,7 @@ class BigDecimal
       10
     end
 
-    # This provides an common interface (with BigFloat classes) to radix, etc.
+    # This provides an common interface (with Flt classes) to radix, etc.
     def context
       self
     end

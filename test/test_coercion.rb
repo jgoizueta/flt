@@ -8,15 +8,15 @@ class TestCoercion < Test::Unit::TestCase
   end
 
   def test_coerce
-    assert_equal Decimal('7.1'), Decimal('0.1') + 7
-    assert_equal Decimal('7.1'), 7 + Decimal('0.1')
-    assert_equal Decimal('14'), Decimal(7) * 2
-    assert_equal Decimal('14'), 2 * Decimal(7)
+    assert_equal DecNum('7.1'), DecNum('0.1') + 7
+    assert_equal DecNum('7.1'), 7 + DecNum('0.1')
+    assert_equal DecNum('14'), DecNum(7) * 2
+    assert_equal DecNum('14'), 2 * DecNum(7)
 
-    assert_equal Decimal('7.1'), Decimal(7) + Rational(1,10)
-    assert_equal Decimal('7.1'), Rational(1,10) + Decimal(7)
-    assert_equal Decimal('1.4'), Decimal(7) * Rational(2,10)
-    assert_equal Decimal('1.4'), Rational(2,10) * Decimal(7)
+    assert_equal DecNum('7.1'), DecNum(7) + Rational(1,10)
+    assert_equal DecNum('7.1'), Rational(1,10) + DecNum(7)
+    assert_equal DecNum('1.4'), DecNum(7) * Rational(2,10)
+    assert_equal DecNum('1.4'), Rational(2,10) * DecNum(7)
   end
 
 end

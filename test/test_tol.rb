@@ -8,19 +8,19 @@ class TestTolerance < Test::Unit::TestCase
     initialize_context
     float_emulation_context
 
-    Decimal.context.define_conversion_from(Float) do |x, dec_context|
+    DecNum.context.define_conversion_from(Float) do |x, dec_context|
       BinFloat.context(:rounding=>dec_context.rounding) do |bin_context|
         BinFloat(x).to_decimal
       end
     end
 
-    Decimal.context.define_conversion_from(BinFloat) do |x, dec_context|
+    DecNum.context.define_conversion_from(BinFloat) do |x, dec_context|
       BinFloat.context(:rounding=>dec_context.rounding) do |bin_context|
         x.to_decimal
       end
     end
 
-    BinFloat.context.define_conversion_from(Decimal) do |x, bin_context|
+    BinFloat.context.define_conversion_from(DecNum) do |x, bin_context|
       BinFloat(x.to_s)
     end
 
@@ -33,17 +33,17 @@ class TestTolerance < Test::Unit::TestCase
     assert_equal 100, tol.value(1.5)
     assert_equal 100, tol.value(1.0E10)
     assert_equal 100, tol.value(-1.0E10)
-    assert_equal 100, tol.value(Decimal('1.0'))
-    assert_equal 100, tol.value(Decimal('1.5'))
-    assert_equal 100, tol.value(Decimal('1.0E10'))
-    assert_equal 100, tol.value(Decimal('-1.0E10'))
+    assert_equal 100, tol.value(DecNum('1.0'))
+    assert_equal 100, tol.value(DecNum('1.5'))
+    assert_equal 100, tol.value(DecNum('1.0E10'))
+    assert_equal 100, tol.value(DecNum('-1.0E10'))
     assert tol.eq?(11234.0, 11280.0)
     assert tol.eq?(11234.0, 11135.0)
     assert tol.eq?(-11234.0, -11280.0)
-    assert tol.eq?(Decimal('11234.0'), Decimal('11280.0'))
-    assert tol.eq?(Decimal('11234.0'), Decimal('11135.0'))
-    assert tol.eq?(Decimal('-11234.0'), Decimal('-11280.0'))
-    assert tol.eq?(Decimal('-11234.0'), Decimal('-11135.0'))
+    assert tol.eq?(DecNum('11234.0'), DecNum('11280.0'))
+    assert tol.eq?(DecNum('11234.0'), DecNum('11135.0'))
+    assert tol.eq?(DecNum('-11234.0'), DecNum('-11280.0'))
+    assert tol.eq?(DecNum('-11234.0'), DecNum('-11135.0'))
     assert !tol.eq?(11234.0, -11280.0)
     assert !tol.eq?(-11234.0, 11280.0)
     assert !tol.eq?(11234.0, 11335.0)
@@ -58,10 +58,10 @@ class TestTolerance < Test::Unit::TestCase
     assert_equal 150, tol.value(1.5)
     assert_equal 1E12, tol.value(1.0E10)
     assert_equal 1E12, tol.value(-1.0E10)
-    assert_equal 100, tol.value(Decimal('1.0'))
-    assert_equal 150, tol.value(Decimal('1.5'))
-    assert_equal 1E12, tol.value(Decimal('1.0E10'))
-    assert_equal 1E12, tol.value(Decimal('-1.0E10'))
+    assert_equal 100, tol.value(DecNum('1.0'))
+    assert_equal 150, tol.value(DecNum('1.5'))
+    assert_equal 1E12, tol.value(DecNum('1.0E10'))
+    assert_equal 1E12, tol.value(DecNum('-1.0E10'))
 
   end
 
@@ -72,30 +72,30 @@ class TestTolerance < Test::Unit::TestCase
     assert_equal 200, tol.value(1.5)
     assert_equal 100*2.0**34, tol.value(1.0E10)
     assert_equal 100*2.0**34, tol.value(-1.0E10)
-    assert_equal 100, tol.value(Decimal('1.0'))
-    assert_equal 1000, tol.value(Decimal('1.5'))
-    assert_equal 1E12, tol.value(Decimal('1.0E10'))
-    assert_equal 1E12, tol.value(Decimal('-1.0E10'))
+    assert_equal 100, tol.value(DecNum('1.0'))
+    assert_equal 1000, tol.value(DecNum('1.5'))
+    assert_equal 1E12, tol.value(DecNum('1.0E10'))
+    assert_equal 1E12, tol.value(DecNum('-1.0E10'))
 
   end
 
   def test_significant_decimals
     t = SigDecimalsTolerance.new(4)
 
-    assert t.eq?(Decimal('1.2345678'), Decimal('1.235'))
-    assert t.eq?(Decimal('12345678'), Decimal('12350000'))
-    assert !t.eq?(Decimal('1.2345678'), Decimal('1.234'))
+    assert t.eq?(DecNum('1.2345678'), DecNum('1.235'))
+    assert t.eq?(DecNum('12345678'), DecNum('12350000'))
+    assert !t.eq?(DecNum('1.2345678'), DecNum('1.234'))
 
   end
 
   def test_ulps
-    Decimal.context.precision = 4
+    DecNum.context.precision = 4
     t = UlpsTolerance.new(2)
 
-    assert t.eq?(Decimal('1.2345678'), Decimal('1.236'))
-    assert !t.eq?(Decimal('1.2345678'), Decimal('1.237'))
-    assert t.eq?(Decimal('12345678'), Decimal('12360000'))
-    assert !t.eq?(Decimal('12345678'), Decimal('12370000'))
+    assert t.eq?(DecNum('1.2345678'), DecNum('1.236'))
+    assert !t.eq?(DecNum('1.2345678'), DecNum('1.237'))
+    assert t.eq?(DecNum('12345678'), DecNum('12360000'))
+    assert !t.eq?(DecNum('12345678'), DecNum('12370000'))
 
   end
 

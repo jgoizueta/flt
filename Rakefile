@@ -19,12 +19,12 @@ PROJ.name = 'bigfloat'
 PROJ.description = "Arbitray-Precision Floating-Point"
 PROJ.authors = 'Javier Goizueta'
 PROJ.email = 'javier@goizueta.info'
-PROJ.version = BigFloat::VERSION::STRING
+PROJ.version = Flt::VERSION::STRING
 PROJ.rubyforge.name = 'ruby-decimal'
 PROJ.url = "http://#{PROJ.rubyforge.name}.rubyforge.org"
 PROJ.rdoc.opts = [
   "--main", "README.txt",
-  '--title', 'Ruby Decimal Documentation',
+  '--title', 'Ruby DecNum Documentation',
   "--opname", "index.html",
   "--line-numbers",
   "--inline-source"

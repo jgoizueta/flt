@@ -11,136 +11,136 @@ class TestExact < Test::Unit::TestCase
 
   def test_exact_no_traps
 
-    Decimal.context.exact = true
-    Decimal.context.traps[Decimal::Inexact] = false
+    DecNum.context.exact = true
+    DecNum.context.traps[DecNum::Inexact] = false
 
-    assert_equal Decimal("9"*100+"E-50"), Decimal('1E50')-Decimal('1E-50')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(2),Decimal(6)/Decimal(3)
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('1.5'),Decimal(6)/Decimal(4)
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('15241578780673678546105778281054720515622620750190521'), Decimal('123456789123456789123456789')*Decimal('123456789123456789123456789')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(2), Decimal('4').sqrt
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(4), Decimal('16').sqrt
-    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal DecNum("9"*100+"E-50"), DecNum('1E50')-DecNum('1E-50')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(2),DecNum(6)/DecNum(3)
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('1.5'),DecNum(6)/DecNum(4)
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('15241578780673678546105778281054720515622620750190521'), DecNum('123456789123456789123456789')*DecNum('123456789123456789123456789')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(2), DecNum('4').sqrt
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(4), DecNum('16').sqrt
+    assert !DecNum.context.flags[DecNum::Inexact]
 
-    assert_equal Decimal('42398.78077199232'), Decimal('1.23456')*Decimal('34343.232222')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('12.369885'), Decimal('210.288045')/Decimal('17')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('25'),Decimal('125')/Decimal('5')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('12345678900000000000.1234567890'),Decimal('1234567890E10')+Decimal('1234567890E-10')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('39304'),Decimal('34').power(Decimal(3))
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('39.304'),Decimal('3.4').power(Decimal(3))
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('4'),Decimal('16').power(Decimal('0.5'))
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('4'),Decimal('10000.0').log10
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('-5'),Decimal('0.00001').log10
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal.infinity, Decimal.infinity.exp
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal.zero, Decimal.infinity(-1).exp
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(1), Decimal(0).exp
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal.infinity(-1), Decimal(0).ln
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal.infinity, Decimal.infinity.ln
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(0), Decimal(1).ln
-    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal DecNum('42398.78077199232'), DecNum('1.23456')*DecNum('34343.232222')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('12.369885'), DecNum('210.288045')/DecNum('17')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('25'),DecNum('125')/DecNum('5')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('12345678900000000000.1234567890'),DecNum('1234567890E10')+DecNum('1234567890E-10')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('39304'),DecNum('34').power(DecNum(3))
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('39.304'),DecNum('3.4').power(DecNum(3))
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('4'),DecNum('16').power(DecNum('0.5'))
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('4'),DecNum('10000.0').log10
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('-5'),DecNum('0.00001').log10
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum.infinity, DecNum.infinity.exp
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum.zero, DecNum.infinity(-1).exp
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(1), DecNum(0).exp
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum.infinity(-1), DecNum(0).ln
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum.infinity, DecNum.infinity.ln
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(0), DecNum(1).ln
+    assert !DecNum.context.flags[DecNum::Inexact]
 
 
-    assert((Decimal(1)/Decimal(3)).nan?)
-    assert Decimal.context.flags[Decimal::Inexact]
-    Decimal.context.flags[Decimal::Inexact] = false
-    assert((Decimal(18).power(Decimal('0.5'))).nan?)
-    assert Decimal.context.flags[Decimal::Inexact]
-    Decimal.context.flags[Decimal::Inexact] = false
-    assert((Decimal(18).power(Decimal('1.5'))).nan?)
-    assert Decimal.context.flags[Decimal::Inexact]
-    Decimal.context.flags[Decimal::Inexact] = false
-    assert Decimal(18).log10.nan?
-    assert Decimal.context.flags[Decimal::Inexact]
-    Decimal.context.flags[Decimal::Inexact] = false
-    assert Decimal(1).exp.nan?
-    assert Decimal.context.flags[Decimal::Inexact]
-    Decimal.context.flags[Decimal::Inexact] = false
-    assert Decimal('-1.2').exp.nan?
-    assert Decimal.context.flags[Decimal::Inexact]
-    Decimal.context.flags[Decimal::Inexact] = false
-    assert Decimal('1.1').ln.nan?
-    assert Decimal.context.flags[Decimal::Inexact]
-    Decimal.context.flags[Decimal::Inexact] = false
+    assert((DecNum(1)/DecNum(3)).nan?)
+    assert DecNum.context.flags[DecNum::Inexact]
+    DecNum.context.flags[DecNum::Inexact] = false
+    assert((DecNum(18).power(DecNum('0.5'))).nan?)
+    assert DecNum.context.flags[DecNum::Inexact]
+    DecNum.context.flags[DecNum::Inexact] = false
+    assert((DecNum(18).power(DecNum('1.5'))).nan?)
+    assert DecNum.context.flags[DecNum::Inexact]
+    DecNum.context.flags[DecNum::Inexact] = false
+    assert DecNum(18).log10.nan?
+    assert DecNum.context.flags[DecNum::Inexact]
+    DecNum.context.flags[DecNum::Inexact] = false
+    assert DecNum(1).exp.nan?
+    assert DecNum.context.flags[DecNum::Inexact]
+    DecNum.context.flags[DecNum::Inexact] = false
+    assert DecNum('-1.2').exp.nan?
+    assert DecNum.context.flags[DecNum::Inexact]
+    DecNum.context.flags[DecNum::Inexact] = false
+    assert DecNum('1.1').ln.nan?
+    assert DecNum.context.flags[DecNum::Inexact]
+    DecNum.context.flags[DecNum::Inexact] = false
 
   end
 
   def test_exact_traps
 
-    Decimal.context.exact = true
+    DecNum.context.exact = true
 
-    assert_nothing_raised(Decimal::Inexact){ Decimal(6)/Decimal(4) }
+    assert_nothing_raised(DecNum::Inexact){ DecNum(6)/DecNum(4) }
 
-    assert_equal Decimal("9"*100+"E-50"), Decimal('1E50')-Decimal('1E-50')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(2),Decimal(6)/Decimal(3)
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('1.5'),Decimal(6)/Decimal(4)
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('15241578780673678546105778281054720515622620750190521'), Decimal('123456789123456789123456789')*Decimal('123456789123456789123456789')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(2), Decimal('4').sqrt
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(4), Decimal('16').sqrt
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal.infinity, Decimal.infinity.exp
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal.zero, Decimal.infinity(-1).exp
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(1), Decimal(0).exp
-    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal DecNum("9"*100+"E-50"), DecNum('1E50')-DecNum('1E-50')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(2),DecNum(6)/DecNum(3)
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('1.5'),DecNum(6)/DecNum(4)
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('15241578780673678546105778281054720515622620750190521'), DecNum('123456789123456789123456789')*DecNum('123456789123456789123456789')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(2), DecNum('4').sqrt
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(4), DecNum('16').sqrt
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum.infinity, DecNum.infinity.exp
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum.zero, DecNum.infinity(-1).exp
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(1), DecNum(0).exp
+    assert !DecNum.context.flags[DecNum::Inexact]
 
-    assert_equal Decimal('42398.78077199232'), Decimal('1.23456')*Decimal('34343.232222')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('12.369885'), Decimal('210.288045')/Decimal('17')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('25'),Decimal('125')/Decimal('5')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('12345678900000000000.1234567890'),Decimal('1234567890E10')+Decimal('1234567890E-10')
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('39304'),Decimal('34').power(Decimal(3))
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('39.304'),Decimal('3.4').power(Decimal(3))
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('4'),Decimal('16').power(Decimal('0.5'))
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('4'),Decimal('10000.0').log10
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal('-5'),Decimal('0.00001').log10
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal.infinity(-1), Decimal(0).ln
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal.infinity, Decimal.infinity.ln
-    assert !Decimal.context.flags[Decimal::Inexact]
-    assert_equal Decimal(0), Decimal(1).ln
-    assert !Decimal.context.flags[Decimal::Inexact]
+    assert_equal DecNum('42398.78077199232'), DecNum('1.23456')*DecNum('34343.232222')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('12.369885'), DecNum('210.288045')/DecNum('17')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('25'),DecNum('125')/DecNum('5')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('12345678900000000000.1234567890'),DecNum('1234567890E10')+DecNum('1234567890E-10')
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('39304'),DecNum('34').power(DecNum(3))
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('39.304'),DecNum('3.4').power(DecNum(3))
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('4'),DecNum('16').power(DecNum('0.5'))
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('4'),DecNum('10000.0').log10
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum('-5'),DecNum('0.00001').log10
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum.infinity(-1), DecNum(0).ln
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum.infinity, DecNum.infinity.ln
+    assert !DecNum.context.flags[DecNum::Inexact]
+    assert_equal DecNum(0), DecNum(1).ln
+    assert !DecNum.context.flags[DecNum::Inexact]
 
-    assert_raise(Decimal::Inexact){ Decimal(2).sqrt }
-    assert_raise(Decimal::Inexact){ Decimal(1)/Decimal(3) }
-    assert_raise(Decimal::Inexact){ Decimal(18).power(Decimal('0.5')) }
-    assert_raise(Decimal::Inexact){ Decimal(18).power(Decimal('1.5')) }
-    assert_raise(Decimal::Inexact){ Decimal(18).log10 }
-    assert_raise(Decimal::Inexact){ Decimal(1).exp }
-    assert_raise(Decimal::Inexact){ Decimal('1.2').exp }
-    assert_raise(Decimal::Inexact){ Decimal('1.2').ln }
+    assert_raise(DecNum::Inexact){ DecNum(2).sqrt }
+    assert_raise(DecNum::Inexact){ DecNum(1)/DecNum(3) }
+    assert_raise(DecNum::Inexact){ DecNum(18).power(DecNum('0.5')) }
+    assert_raise(DecNum::Inexact){ DecNum(18).power(DecNum('1.5')) }
+    assert_raise(DecNum::Inexact){ DecNum(18).log10 }
+    assert_raise(DecNum::Inexact){ DecNum(1).exp }
+    assert_raise(DecNum::Inexact){ DecNum('1.2').exp }
+    assert_raise(DecNum::Inexact){ DecNum('1.2').ln }
 
   end
 

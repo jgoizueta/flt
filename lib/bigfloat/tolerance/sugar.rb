@@ -11,7 +11,7 @@
 
 require 'bigfloat/tolerance'
 
-module BigFloat
+module Flt
   def Tolerance.define_sugar(value_class, *tol_classes) #:nodoc:
     tol_classes.each do |tol_class|
       suffix = tol_class.to_s.split('::').last.
@@ -24,7 +24,7 @@ module BigFloat
   end
 end
 
-BigFloat::Tolerance.define_sugar Integer,
+Flt::Tolerance.define_sugar Integer,
   AbsoluteTolerance,
   RelativeTolerance, PercentTolerance, PermilleTolerance,
   FloatingTolerance, UlpsTolerance,
@@ -33,23 +33,14 @@ BigFloat::Tolerance.define_sugar Integer,
   EpsilonTolerance, AbsEpsilonTolerance, FltEpsilonTolerance,
   BigEpsilonTolerance, AbsBigEpsilonTolerance, FltBigEpsilonTolerance
 
-BigFloat::Tolerance.define_sugar String,
+Flt::Tolerance.define_sugar String,
   AbsoluteTolerance,
   RelativeTolerance, PercentTolerance, PermilleTolerance,
   FloatingTolerance, UlpsTolerance,
   EpsilonTolerance, AbsEpsilonTolerance, FltEpsilonTolerance,
   BigEpsilonTolerance, AbsBigEpsilonTolerance, FltBigEpsilonTolerance
 
-BigFloat::Tolerance.define_sugar Float,
-  AbsoluteTolerance,
-  RelativeTolerance, PercentTolerance, PermilleTolerance,
-  FloatingTolerance, UlpsTolerance,
-  SigDecimalsTolerance, DecimalsTolerance,
-  SigBitsTolerance,
-  EpsilonTolerance, AbsEpsilonTolerance, FltEpsilonTolerance,
-  BigEpsilonTolerance, AbsBigEpsilonTolerance, FltBigEpsilonTolerance
-
-BigFloat::Tolerance.define_sugar Rational,
+Flt::Tolerance.define_sugar Float,
   AbsoluteTolerance,
   RelativeTolerance, PercentTolerance, PermilleTolerance,
   FloatingTolerance, UlpsTolerance,
@@ -58,7 +49,7 @@ BigFloat::Tolerance.define_sugar Rational,
   EpsilonTolerance, AbsEpsilonTolerance, FltEpsilonTolerance,
   BigEpsilonTolerance, AbsBigEpsilonTolerance, FltBigEpsilonTolerance
 
-BigFloat::Tolerance.define_sugar BigFloat::Decimal,
+Flt::Tolerance.define_sugar Rational,
   AbsoluteTolerance,
   RelativeTolerance, PercentTolerance, PermilleTolerance,
   FloatingTolerance, UlpsTolerance,
@@ -67,7 +58,16 @@ BigFloat::Tolerance.define_sugar BigFloat::Decimal,
   EpsilonTolerance, AbsEpsilonTolerance, FltEpsilonTolerance,
   BigEpsilonTolerance, AbsBigEpsilonTolerance, FltBigEpsilonTolerance
 
-BigFloat::Tolerance.define_sugar BigFloat::BinFloat,
+Flt::Tolerance.define_sugar Flt::DecNum,
+  AbsoluteTolerance,
+  RelativeTolerance, PercentTolerance, PermilleTolerance,
+  FloatingTolerance, UlpsTolerance,
+  SigDecimalsTolerance, DecimalsTolerance,
+  SigBitsTolerance,
+  EpsilonTolerance, AbsEpsilonTolerance, FltEpsilonTolerance,
+  BigEpsilonTolerance, AbsBigEpsilonTolerance, FltBigEpsilonTolerance
+
+Flt::Tolerance.define_sugar Flt::BinFloat,
   AbsoluteTolerance,
   RelativeTolerance, PercentTolerance, PermilleTolerance,
   FloatingTolerance, UlpsTolerance,

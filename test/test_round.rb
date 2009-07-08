@@ -11,42 +11,42 @@ class TestRound < Test::Unit::TestCase
 
   def test_round
 
-    assert_equal(101,  Decimal('100.5').round)
-    assert Decimal('100.5').round.kind_of?(Integer)
-    assert_equal 100, Decimal('100.4999999999').round
-    assert_equal(-101, Decimal('-100.5').round)
-    assert_equal(-100, Decimal('-100.4999999999').round)
+    assert_equal(101,  DecNum('100.5').round)
+    assert DecNum('100.5').round.kind_of?(Integer)
+    assert_equal 100, DecNum('100.4999999999').round
+    assert_equal(-101, DecNum('-100.5').round)
+    assert_equal(-100, DecNum('-100.4999999999').round)
 
-    assert_equal 101, Decimal('100.5').round(:places=>0)
-    assert Decimal('100.5').round(:places=>0).kind_of?(Decimal)
-    assert_equal 101, Decimal('100.5').round(0)
-    assert Decimal('100.5').round(0).kind_of?(Decimal)
+    assert_equal 101, DecNum('100.5').round(:places=>0)
+    assert DecNum('100.5').round(:places=>0).kind_of?(DecNum)
+    assert_equal 101, DecNum('100.5').round(0)
+    assert DecNum('100.5').round(0).kind_of?(DecNum)
 
-    assert_equal Decimal('123.12'), Decimal('123.123').round(2)
-    assert_equal Decimal('123'), Decimal('123.123').round(0)
-    assert_equal Decimal('120'), Decimal('123.123').round(-1)
-    assert_equal Decimal('120'), Decimal('123.123').round(:precision=>2)
-    assert_equal Decimal('123.12'), Decimal('123.123').round(:precision=>5)
+    assert_equal DecNum('123.12'), DecNum('123.123').round(2)
+    assert_equal DecNum('123'), DecNum('123.123').round(0)
+    assert_equal DecNum('120'), DecNum('123.123').round(-1)
+    assert_equal DecNum('120'), DecNum('123.123').round(:precision=>2)
+    assert_equal DecNum('123.12'), DecNum('123.123').round(:precision=>5)
 
-    assert_equal 100, Decimal('100.5').round(:rounding=>:half_even)
-    assert_equal 101, Decimal('100.5000001').round(:rounding=>:half_even)
-    assert_equal 102, Decimal('101.5').round(:rounding=>:half_even)
-    assert_equal 101, Decimal('101.4999999999').round(:rounding=>:half_even)
+    assert_equal 100, DecNum('100.5').round(:rounding=>:half_even)
+    assert_equal 101, DecNum('100.5000001').round(:rounding=>:half_even)
+    assert_equal 102, DecNum('101.5').round(:rounding=>:half_even)
+    assert_equal 101, DecNum('101.4999999999').round(:rounding=>:half_even)
 
-    assert_equal 101, Decimal('100.0001').ceil
-    assert_equal(-100, Decimal('-100.0001').ceil)
-    assert_equal(-100, Decimal('-100.9999').ceil)
-    assert_equal 100, Decimal('100.9999').floor
-    assert_equal(-101, Decimal('-100.9999').floor)
-    assert_equal(-101, Decimal('-100.0001').floor)
+    assert_equal 101, DecNum('100.0001').ceil
+    assert_equal(-100, DecNum('-100.0001').ceil)
+    assert_equal(-100, DecNum('-100.9999').ceil)
+    assert_equal 100, DecNum('100.9999').floor
+    assert_equal(-101, DecNum('-100.9999').floor)
+    assert_equal(-101, DecNum('-100.0001').floor)
 
-    assert_equal 100, Decimal('100.99999').truncate
-    assert_equal(-100, Decimal('-100.99999').truncate)
+    assert_equal 100, DecNum('100.99999').truncate
+    assert_equal(-100, DecNum('-100.99999').truncate)
 
-    assert_equal(10,  Decimal('9.99999').round(:rounding=>:half_up))
-    assert_equal(1,  Decimal('0.999999').round(:rounding=>:half_up))
-    assert_equal(0,  Decimal('0.0999999').round(:rounding=>:half_up))
-    assert_equal(1,  Decimal('0.0999999').round(:rounding=>:up))
+    assert_equal(10,  DecNum('9.99999').round(:rounding=>:half_up))
+    assert_equal(1,  DecNum('0.999999').round(:rounding=>:half_up))
+    assert_equal(0,  DecNum('0.0999999').round(:rounding=>:half_up))
+    assert_equal(1,  DecNum('0.0999999').round(:rounding=>:up))
 
   end
 
@@ -90,7 +90,7 @@ class TestRound < Test::Unit::TestCase
   end
 
   def test_round_detection
-    [Decimal, BinFloat].each do |type|
+    [DecNum, BinFloat].each do |type|
       [:half_even, :half_up, :half_down, :down, :up, :floor, :ceiling, :up05].each do |rounding|
         type.context(:rounding=>rounding) do
           next if type==BinFloat && rounding==:up05

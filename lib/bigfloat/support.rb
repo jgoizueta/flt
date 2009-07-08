@@ -1,4 +1,4 @@
-module BigFloat
+module Flt
   module Support
     # This class assigns bit-values to a set of symbols
     # so they can be used as flags and stored as an integer.
@@ -728,4 +728,4 @@ module BigFloat
 
 
 
-end # BigFloat
+end # Flt

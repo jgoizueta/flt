@@ -1,4 +1,4 @@
-# Tolerance for floating-point types (Float, BigFloat::BinFloat, BigFloat::Decimal)
+# Tolerance for floating-point types (Float, Flt::BinFloat, Flt::DecNum)
 #
 # Tolerance can be used to allow for a tolerance in floating-point comparisons.
 #
@@ -6,12 +6,12 @@
 # it will be used with; The actual tolerance value will be compute for a particular reference value:
 #
 #   tol = Tolerance(3, :decimals)
-#   puts tol.value(Decimal('10.0')).inspect
+#   puts tol.value(DecNum('10.0')).inspect
 #   puts tol.value(10.0).inspect
 #   puts tol.value.inspect
 #
 #   tol = Tolerance(:epsilon)
-#   puts tol.value(Decimal('10.0')).inspect
+#   puts tol.value(DecNum('10.0')).inspect
 #   puts tol.value(10.0).inspect
 #   puts tol.value.inspect
 #
@@ -79,7 +79,7 @@
 #
 #   tol = Tolerance(1, :ulps)
 #   puts tol.eq?(3.3433, 3.3433.next)
-#   puts tol.eq?(Decimal('1.1'), Decimal('1.1').next)
+#   puts tol.eq?(DecNum('1.1'), DecNum('1.1').next)
 #
 #   tol = Tolerance(1, :percent)
 #   puts tol.equal_to?(3.14159, Math::PI)
@@ -88,7 +88,7 @@
 require 'bigfloat'
 require 'bigfloat/float'
 
-module BigFloat
+module Flt
 
   # The Tolerance class is a base class for all tolerances.
   #
@@ -341,7 +341,7 @@ module BigFloat
       v = cast_value(num_class)
 
       case xs.first
-      when BigFloat::Num
+      when Flt::Num
         # TODO: handle special values
         if @radix == :native || @radix == num_class.radix
           exp = xs.map do |x|
@@ -364,11 +364,11 @@ module BigFloat
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
-          num_class.from_decimal(BigFloat.Decimal(+1, 1, exp)*v.to_decimal_exact)
+          num_class.from_decimal(Flt.DecNum(+1, 1, exp)*v.to_decimal_exact)
         else
-          # assert num_class==Decimal && @radix==2
+          # assert num_class==DecNum && @radix==2
           exp = xs.map do |x|
-            exp = (x.ln/Decimal(2).ln).ceil.to_i - 1 # (x.ln/Decimal(2).ln).floor+1 - 1 if :high mode
+            exp = (x.ln/DecNum(2).ln).ceil.to_i - 1 # (x.ln/DecNum(2).ln).floor+1 - 1 if :high mode
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
@@ -406,7 +406,7 @@ module BigFloat
           # assert num_class==BigDecimal && @radix==2
           prec = 10
           exp = xs.map do |x|
-            exp = (BigFloat::Decimal(x.to_s).ln/BigFloat::Decimal(2).ln).ceil - 1 # ... if :high mode
+            exp = (Flt::DecNum(x.to_s).ln/Flt::DecNum(2).ln).ceil - 1 # ... if :high mode
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
@@ -549,8 +549,8 @@ module BigFloat
       value = args.shift
     end
     cls_name = (args.shift || :absolute).to_s.gsub(/(^|_)(.)/){$2.upcase} + "Tolerance"
-    BigFloat.const_get(cls_name).new(value, *args)
+    Flt.const_get(cls_name).new(value, *args)
   end
 
-end # BigFloat
+end # Flt
 

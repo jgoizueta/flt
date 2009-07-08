@@ -1,6 +1,6 @@
 require 'bigfloat/num'
 
-module BigFloat
+module Flt
 
 class BinFloat < Num
 
@@ -184,7 +184,7 @@ class BinFloat < Num
   # Convert to a text literal in the specified base (10 by default).
   #
   # If the output base is 2, the rendered value is the exact value of the BinFloat;
-  # showing also trailing zeros, just as for Decimal.
+  # showing also trailing zeros, just as for DecNum.
   #
   # With bases different from 2, like the default 10, the BinFloat number is treated
   # as an approximation with a precision of number_of_digits. The conversioin renders
@@ -245,22 +245,22 @@ class BinFloat < Num
     end
   end
 
-  # BinFloat - Decimal conversions
+  # BinFloat - DecNum conversions
 
   # Exact conversion: preserve BinFloat value.
-  # The current Decimal.context determines the valid range and the precision
+  # The current DecNum.context determines the valid range and the precision
   #(if not :exact the result will be rounded)
   def to_decimal_exact()
     if special?
       if nan?
-        Decimal.nan
+        DecNum.nan
       else # infinite?
-        Decimal.infinite(self.sign)
+        DecNum.infinite(self.sign)
       end
     elsif zero?
-      Decimal.zero(self.sign)
+      DecNum.zero(self.sign)
     else
-      BigFloat.Decimal(@sign*@coeff)*BigFloat.Decimal(2)**@exp
+      Flt.DecNum(@sign*@coeff)*Flt.DecNum(2)**@exp
     end
   end
 
@@ -270,15 +270,15 @@ class BinFloat < Num
   def to_decimal(binfloat_context=nil, any_rounding=false)
     if special?
       if nan?
-        Decimal.nan
+        DecNum.nan
       else # infinite?
-        Decimal.infinite(self.sign)
+        DecNum.infinite(self.sign)
       end
     elsif zero?
-      Decimal.zero(self.sign)
+      DecNum.zero(self.sign)
     else
       context = define_context(binfloat_context)
-      BigFloat.Decimal(format(context, :base=>10, :all_digits=>false, :any_rounding=>any_rounding))
+      Flt.DecNum(format(context, :base=>10, :all_digits=>false, :any_rounding=>any_rounding))
     end
   end
 
@@ -289,9 +289,9 @@ class BinFloat < Num
     to_decimal(binfloat_context, true)
   end
 
-  # Convert Decimal to BinFloat
+  # Convert DecNum to BinFloat
   def BinFloat.from_decimal(x, binfloat_context=nil)
-    BigFloat.BinFloat(x.to_s, binfloat_context)
+    Flt.BinFloat(x.to_s, binfloat_context)
   end
 
   # For BinFloat the generic Num#ulp() is normalized
@@ -365,7 +365,7 @@ class BinFloat < Num
     exp = dec_pos - n_ds
     leftdigits = dec_pos
 
-    # TODO: DRY (this code is duplicated in Decimal#to_s)
+    # TODO: DRY (this code is duplicated in DecNum#to_s)
     if exp<=0 && leftdigits>-6
       dotplace = leftdigits
     elsif !eng
@@ -405,4 +405,4 @@ def BinFloat(*args)
 end
 
 
-end # BigFloat
+end # Flt

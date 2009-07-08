@@ -1,14 +1,14 @@
 require 'bigfloat/num'
 
-module BigFloat
+module Flt
 
-# Decimal arbitrary precision floating point number.
-# This implementation of Decimal is based on the Decimal module of Python,
+# DecNum arbitrary precision floating point number.
+# This implementation of DecNum is based on the DecNum module of Python,
 # written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
-class Decimal < Num # TODO: rename to Dec or DecNum ?
+class DecNum < Num # TODO: rename to Dec or DecNum ?
 
   class << self
-    # Numerical base of Decimal.
+    # Numerical base of DecNum.
     def radix
       10
     end
@@ -32,7 +32,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
   end
 
   # The context defines the arithmetic context: rounding mode, precision,...
-  # Decimal.context is the current (thread-local) context.
+  # DecNum.context is the current (thread-local) context.
   class Context < Num::ContextBase
 
     # If an options hash is passed, the options are
@@ -55,12 +55,12 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # * :capitals : (true or false) to use capitals in text representations
     # * :clamp : (true or false) enables clamping
     #
-    # See also the context constructor method Decimal.Context().
+    # See also the context constructor method DecNum.Context().
     def initialize(*options)
-      super(Decimal, *options)
+      super(DecNum, *options)
     end
 
-    # Power. See Decimal#power()
+    # Power. See DecNum#power()
     def power(x,y,modulo=nil)
       _convert(x).power(y,modulo,self)
     end
@@ -83,7 +83,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
   end
 
   # the DefaultContext is the base for new contexts; it can be changed.
-  DefaultContext = Decimal::Context.new(
+  DefaultContext = DecNum::Context.new(
                              :exact=>false, :precision=>28, :rounding=>:half_even,
                              :emin=> -999999999, :emax=>+999999999,
                              :flags=>[],
@@ -92,23 +92,23 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
                              :capitals=>true,
                              :clamp=>true)
 
-  BasicContext = Decimal::Context.new(DefaultContext,
+  BasicContext = DecNum::Context.new(DefaultContext,
                              :precision=>9, :rounding=>:half_up,
                              :traps=>[DivisionByZero, Overflow, InvalidOperation, Clamped, Underflow],
                              :flags=>[])
 
-  ExtendedContext = Decimal::Context.new(DefaultContext,
+  ExtendedContext = DecNum::Context.new(DefaultContext,
                              :precision=>9, :rounding=>:half_even,
                              :traps=>[], :flags=>[], :clamp=>false)
 
   #--
-  # =Notes on the representation of Decimal numbers.
+  # =Notes on the representation of DecNum numbers.
   #
   #   @sign is +1 for plus and -1 for minus
   #   @coeff is the integral significand stored as an integer (so leading zeros cannot be kept)
   #   @exp is the exponent to be applied to @coeff as an integer or one of :inf, :nan, :snan for special values
   #
-  # The Python Decimal representation has these slots:
+  # The Python DecNum representation has these slots:
   #   _sign is 1 for minus, 0 for plus
   #   _int is the integral significand as a string of digits (leading zeroes are not kept)
   #   _exp is the exponent as an integer or 'F' for infinity, 'n' for NaN , 'N' for sNaN
@@ -120,7 +120,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
   #
   # =Exponent values
   #
-  # In GDAS (General Decimal Arithmetic Specification) numbers are represented by an unnormalized integral
+  # In GDAS (General DecNum Arithmetic Specification) numbers are represented by an unnormalized integral
   # significand and an exponent (also called 'scale'.)
   #
   # The reduce operation (originally called 'normalize') removes trailing 0s and increments the exponent if necessary;
@@ -129,7 +129,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
   # A classical floating-point normalize opration would remove leading 0s and decrement the exponent instead,
   # rescaling to the minimum exponent theat maintains the significand value under some conventional limit (1 or the radix).
   #
-  # The logb and adjusted operations return the exponent that applies to the most significand digit (logb as a Decimal
+  # The logb and adjusted operations return the exponent that applies to the most significand digit (logb as a DecNum
   # and adjusted as an integer.) This is the normalized scientific exponent.
   #
   # The most common normalized exponent is the normalized integral exponent for a fixed number of precision digits.
@@ -167,18 +167,18 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
   # the exponent limits in the contexts.
   # etiny = emin-precision+1 and etop=emax-precision+1 are the limits of the internal exponent.
   # Note that for significands with less than precision digits we can use exponents greater than etop
-  # without causing overflow: +Decimal(+1,1,emax) == Decimal(+1,K,etop) where K=10**(precision-1)
+  # without causing overflow: +DecNum(+1,1,emax) == DecNum(+1,K,etop) where K=10**(precision-1)
   #
   # =Interoperatibility with other numeric types
   #
-  # For some numeric types implicit conversion to Decimal is defined through these methods:
-  # * Decimal#coerce() is used when a Decimal is the right hand of an operator
+  # For some numeric types implicit conversion to DecNum is defined through these methods:
+  # * DecNum#coerce() is used when a DecNum is the right hand of an operator
   #   and the left hand is another numeric type
-  # * Decimal#_bin_op() used internally to define binary operators and use the Ruby coerce protocol:
-  #   if the right-hand operand is of known type it is converted with Decimal; otherwise use coerce
-  # * _convert() converts known types to Decimal with Decimal() or raises an exception.
-  # * Decimal() casts known types and text representations of numbers to Decimal using the constructor.
-  # * Decimal#initialize performs the actual type conversion
+  # * DecNum#_bin_op() used internally to define binary operators and use the Ruby coerce protocol:
+  #   if the right-hand operand is of known type it is converted with DecNum; otherwise use coerce
+  # * _convert() converts known types to DecNum with DecNum() or raises an exception.
+  # * DecNum() casts known types and text representations of numbers to DecNum using the constructor.
+  # * DecNum#initialize performs the actual type conversion
   #
   # The known or 'coercible' types are initially Integer and Rational, but this can be extended to
   # other types using define_conversion_from() in a Context object.
@@ -188,14 +188,14 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
   # * A String containing a text representation of the number
   # * An Integer
   # * A Rational
-  # * Another Decimal value.
+  # * Another DecNum value.
   # * A sign, coefficient and exponent (either as separate arguments, as an array or as a Hash with symbolic keys).
-  #   This is the internal representation of Decimal, as returned by Decimal#split.
+  #   This is the internal representation of DecNum, as returned by DecNum#split.
   #   The sign is +1 for plus and -1 for minus; the coefficient and exponent are
   #   integers, except for special values which are defined by :inf, :nan or :snan for the exponent.
   # An optional Context can be passed as the last argument to override the current context; also a hash can be passed
   # to override specific context parameters.
-  # The Decimal() admits the same parameters and can be used as a shortcut for Decimal creation.
+  # The DecNum() admits the same parameters and can be used as a shortcut for DecNum creation.
   def initialize(*args)
     super(*args)
   end
@@ -213,7 +213,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     if [true,false].include?(args.first)
       eng = args.shift
     end
-    if args.first.is_a?(Decimal::Context)
+    if args.first.is_a?(DecNum::Context)
       context = args.shift
     end
     # admit also :eng to specify the eng mode
@@ -304,7 +304,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
     return self.power_modulo(other, modulo, context) if modulo
 
-    context = Decimal.define_context(context)
+    context = DecNum.define_context(context)
     other = _convert(other)
 
     ans = _check_nans(context, other)
@@ -375,7 +375,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         exp = 1-context.precision
       end
 
-      return Num(result_sign, Decimal.int_radix_power(-exp), exp)
+      return Num(result_sign, DecNum.int_radix_power(-exp), exp)
     end
 
     # compute adjusted exponent of self
@@ -387,7 +387,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       if (other.sign == +1) == (self_adj < 0)
         return Num(result_sign, 0, 0)
       else
-        return Decimal.infinity(result_sign)
+        return DecNum.infinity(result_sign)
       end
     end
 
@@ -452,7 +452,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       coeff, exp = nil, nil
       loop do
         coeff, exp = _dpower(xc, xe, yc, ye, p+extra)
-        #break if (coeff % Decimal.int_mult_radix_power(5,coeff.to_s.length-p-1)) != 0
+        #break if (coeff % DecNum.int_mult_radix_power(5,coeff.to_s.length-p-1)) != 0
         break if (coeff % (5*10**(_number_of_digits(coeff)-p-1))) != 0
         extra += 3
       end
@@ -469,7 +469,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       # pad with zeros up to length context.precision+1 if necessary
       if ans.number_of_digits <= context.precision
         expdiff = context.precision+1 - ans.number_of_digits
-        ans = Num(ans.sign, Decimal.int_mult_radix_power(ans.coefficient, expdiff), ans.exponent-expdiff)
+        ans = Num(ans.sign, DecNum.int_mult_radix_power(ans.coefficient, expdiff), ans.exponent-expdiff)
       end
       context.exception Underflow if ans.adjusted_exponent < context.emin
     end
@@ -480,17 +480,17 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
   # Returns the base 10 logarithm
   def log10(context=nil)
-    context = Decimal.define_context(context)
+    context = DecNum.define_context(context)
 
     # log10(NaN) = NaN
     ans = _check_nans(context)
     return ans if ans
 
     # log10(0.0) == -Infinity
-    return Decimal.infinity(-1) if self.zero?
+    return DecNum.infinity(-1) if self.zero?
 
     # log10(Infinity) = Infinity
-    return Decimal.infinity if self.infinite? && self.sign == +1
+    return DecNum.infinity if self.infinite? && self.sign == +1
 
     # log10(negative or -Infinity) raises InvalidOperation
     return context.exception(InvalidOperation, 'log10 of a negative value') if self.sign == -1
@@ -521,7 +521,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       ans = Num(coeff<0 ? -1 : +1, coeff.abs, -places)
     end
 
-    Decimal.context(context, :rounding=>:half_even) do |local_context|
+    DecNum.context(context, :rounding=>:half_even) do |local_context|
       ans = ans._fix(local_context)
       context.flags = local_context.flags
     end
@@ -530,14 +530,14 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
   # Exponential function
   def exp(context=nil)
-    context = Decimal.define_context(context)
+    context = DecNum.define_context(context)
 
     # exp(NaN) = NaN
     ans = _check_nans(context)
     return ans if ans
 
     # exp(-Infinity) = 0
-    return Decimal.zero if self.infinite? && (self.sign == -1)
+    return DecNum.zero if self.infinite? && (self.sign == -1)
 
     # exp(0) = 1
     return Num(1) if self.zero?
@@ -566,10 +566,10 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       ans = Num(+1, 1, context.etiny-1)
     elsif self.sign == +1 and adj < -p
       # p+1 digits; final round will raise correct flags
-      ans = Num(+1, Decimal.int_radix_power(p)+1, -p)
+      ans = Num(+1, DecNum.int_radix_power(p)+1, -p)
     elsif self.sign == -1 and adj < -p-1
       # p+1 digits; final round will raise correct flags
-      ans = Num(+1, Decimal.int_radix_power(p+1)-1, -p-1)
+      ans = Num(+1, DecNum.int_radix_power(p+1)-1, -p-1)
     else
       # general case
       c = self.coefficient
@@ -591,7 +591,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
     # at this stage, ans should round correctly with *any*
     # rounding mode, not just with ROUND_HALF_EVEN
-    Decimal.context(context, :rounding=>:half_even) do |local_context|
+    DecNum.context(context, :rounding=>:half_even) do |local_context|
       ans = ans._fix(local_context)
       context.flags = local_context.flags
     end
@@ -601,20 +601,20 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
   # Returns the natural (base e) logarithm
   def ln(context=nil)
-    context = Decimal.define_context(context)
+    context = DecNum.define_context(context)
 
     # ln(NaN) = NaN
     ans = _check_nans(context)
     return ans if ans
 
     # ln(0.0) == -Infinity
-    return Decimal.infinity(-1) if self.zero?
+    return DecNum.infinity(-1) if self.zero?
 
     # ln(Infinity) = Infinity
-    return Decimal.infinity if self.infinite? && self.sign == +1
+    return DecNum.infinity if self.infinite? && self.sign == +1
 
     # ln(1.0) == 0.0
-    return Decimal.zero if self == Num(1)
+    return DecNum.zero if self == Num(1)
 
     # ln(negative) raises InvalidOperation
     return context.exception(InvalidOperation, 'ln of a negative value') if self.sign==-1
@@ -638,7 +638,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     end
     ans = Num((coeff<0) ? -1 : +1, coeff.abs, -places)
 
-    Decimal.context(context, :rounding=>:half_even) do |local_context|
+    DecNum.context(context, :rounding=>:half_even) do |local_context|
       ans = ans._fix(local_context)
       context.flags = local_context.flags
     end
@@ -653,7 +653,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
   # This is equivalent to Python's 3-argument version of pow()
   def _power_modulo(other, modulo, context=nil)
 
-    context = Decimal.define_context(context)
+    context = DecNum.define_context(context)
     other = _convert(other)
     modulo = _convert(third)
 
@@ -689,10 +689,10 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     sign = other.even? ? +1 : -1
     modulo = modulo.to_i.abs
 
-    base = (self.coefficient % modulo * (Decimal.int_radix_power(self.exponent) % modulo)) % modulo
+    base = (self.coefficient % modulo * (DecNum.int_radix_power(self.exponent) % modulo)) % modulo
 
     other.exponent.times do
-      base = (base**Decimal.radix) % modulo
+      base = (base**DecNum.radix) % modulo
     end
     base = (base**other.coefficient) % modulo
 
@@ -759,15 +759,15 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
     xc = self.coefficient
     xe = self.exponent
-    while (xc % Decimal.radix) == 0
-      xc /= Decimal.radix
+    while (xc % DecNum.radix) == 0
+      xc /= DecNum.radix
       xe += 1
     end
 
     yc = other.coefficient
     ye = other.exponent
-    while (yc % Decimal.radix) == 0
-      yc /= Decimal.radix
+    while (yc % DecNum.radix) == 0
+      yc /= DecNum.radix
       ye += 1
     end
 
@@ -775,9 +775,9 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     # required to be an integer
     if xc == 1
       if ye >= 0
-        exponent = xe*yc*Decimal.int_radix_power(ye)
+        exponent = xe*yc*DecNum.int_radix_power(ye)
       else
-        exponent, remainder = (xe*yc).divmod(Decimal.int_radix_power(-ye))
+        exponent, remainder = (xe*yc).divmod(DecNum.int_radix_power(-ye))
         return nil if remainder!=0
       end
       exponent = -exponent if other.sign == -1
@@ -788,7 +788,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       else
         zeros = 0
       end
-      return Num(+1, Decimal.int_radix_power(zeros), exponent-zeros)
+      return Num(+1, DecNum.int_radix_power(zeros), exponent-zeros)
     end
 
     # case where y is negative: xc must be either a power
@@ -802,11 +802,11 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         e = _nbits(xc)-1
         # find e*y and xe*y; both must be integers
         if ye >= 0
-          y_as_int = yc*Decimal.int_radix_power(ye)
+          y_as_int = yc*DecNum.int_radix_power(ye)
           e = e*y_as_int
           xe = xe*y_as_int
         else
-          ten_pow = Decimal.int_radix_power(-ye)
+          ten_pow = DecNum.int_radix_power(-ye)
           e, remainder = (e*yc).divmod(ten_pow)
           return nil if remainder!=0
           xe, remainder = (xe*yc).divmod(ten_pow)
@@ -826,11 +826,11 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
           e -= 1
         end
         if ye >= 0
-          y_as_integer = Decimal.int_mult_radix_power(yc,ye)
+          y_as_integer = DecNum.int_mult_radix_power(yc,ye)
           e = e*y_as_integer
           xe = xe*y_as_integer
         else
-          ten_pow = Decimal.int_radix_power(-ye)
+          ten_pow = DecNum.int_radix_power(-ye)
           e, remainder = (e*yc).divmod(ten_pow)
           return nil if remainder
           xe, remainder = (xe*yc).divmod(ten_pow)
@@ -842,7 +842,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
         return nil
       end
 
-      return nil if xc >= Decimal.int_radix_power(p)
+      return nil if xc >= DecNum.int_radix_power(p)
       xe = -e-xe
       return Num(+1, xc, xe)
 
@@ -855,7 +855,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
       return nil if (xe != 0) and (_number_of_digits((yc*xe).abs) <= -ye)
       xc_bits = _nbits(xc)
       return nil if (xc != 1) and (_number_of_digits(yc.abs*xc_bits) <= -ye)
-      m, n = yc, Decimal.int_radix_power(-ye)
+      m, n = yc, DecNum.int_radix_power(-ye)
       while ((m % 2) == 0) && ((n % 2) == 0)
         m /= 2
         n /= 2
@@ -905,7 +905,7 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     else
       zeros = 0
     end
-    return Num(+1, Decimal.int_mult_radix_power(xc, zeros), xe-zeros)
+    return Num(+1, DecNum.int_mult_radix_power(xc, zeros), xe-zeros)
   end
 
   # Compute a lower bound for the adjusted exponent of self.log10()
@@ -929,12 +929,12 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
     e = self.exponent
     if adj == 0
       # 1 < self < 10
-      num = (c - Decimal.int_radix_power(-e))
+      num = (c - DecNum.int_radix_power(-e))
       den = (231*c)
       return _number_of_digits(num) - _number_of_digits(den) - ((num < den) ? 1 : 0) + 2
     end
     # adj == -1, 0.1 <= self < 1
-    num = (Decimal.int_radix_power(-e)-c)
+    num = (DecNum.int_radix_power(-e)-c)
     return _number_of_digits(num.to_i) + e - ((num < 231) ? 1 : 0) - 1
   end
 
@@ -1355,20 +1355,20 @@ class Decimal < Num # TODO: rename to Dec or DecNum ?
 
   end # AuxiliarFunctions
 
-  # This is for using auxiliar functions from Decimal instance method
+  # This is for using auxiliar functions from DecNum instance method
   # without the "AuxiliarFunctions." prefix
   include AuxiliarFunctions
-  # If we need to use them from Decimal class methods, we can avoid
+  # If we need to use them from DecNum class methods, we can avoid
   # the use of the prefix with:
   # extend AuxiliarFunctions
 
 end
 
-# Decimal constructor. See Decimal#new for the parameters.
-# If a Decimal is passed a reference to it is returned (no new object is created).
+# DecNum constructor. See DecNum#new for the parameters.
+# If a DecNum is passed a reference to it is returned (no new object is created).
 module_function
-def Decimal(*args)
-  Decimal.Num(*args)
+def DecNum(*args)
+  DecNum.Num(*args)
 end
 
-end # BigFloat
+end # Flt

@@ -1,4 +1,4 @@
-module BigFloat
+module Flt
   module VERSION #:nodoc:
     MAJOR = 0
     MINOR = 1

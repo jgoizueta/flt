@@ -1,10 +1,10 @@
 require 'bigfloat/decimal'
 
-module BigFloat
-  class Decimal
+module Flt
+  class DecNum
     module Math
 
-      extend BigFloat # to access constructor methods Decimal
+      extend Flt # to access constructor methods DecNum
 
       module_function
 
@@ -12,9 +12,9 @@ module BigFloat
 
       # Pi
       def pi(decimals=nil)
-        three = Decimal(3)
+        three = DecNum(3)
         lasts, t, s, n, na, d, da = 0, three, 3, 1, 0, 0, 24
-        Decimal.context(:precision=>decimals) do |local_context|
+        DecNum.context(:precision=>decimals) do |local_context|
           local_context.precision += 2 # extra digits for intermediate steps
           while s != lasts
             lasts = s
@@ -30,7 +30,7 @@ module BigFloat
       # Cosine of angle in radians
       def cos(x)
         i, lasts, s, fact, num, sign = 0, 0, 1, 1, 1, 1
-        Decimal.context do |local_context|
+        DecNum.context do |local_context|
           local_context.precision += 2 # extra digits for intermediate steps
           while s != lasts
             lasts = s
@@ -47,7 +47,7 @@ module BigFloat
       # Sine of angle in radians
       def sin(x)
         i, lasts, s, fact, num, sign = 1, 0, x, 1, x, 1
-        Decimal.context do |local_context|
+        DecNum.context do |local_context|
           local_context.precision += 2 # extra digits for intermediate steps
           while s != lasts
             lasts = s
@@ -62,5 +62,5 @@ module BigFloat
       end
 
     end # Math
-  end # Decimal
-end # BigFloat
+  end # DecNum
+end # Flt

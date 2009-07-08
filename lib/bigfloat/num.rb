@@ -7,9 +7,9 @@ require 'rational'
 require 'monitor'
 require 'ostruct'
 
-module BigFloat
+module Flt
 
-# TODO: update documentation; check rdoc results for clarity given the new Num/Decimal/BinFloat structure
+# TODO: update documentation; check rdoc results for clarity given the new Num/DecNum/BinFloat structure
 # TODO: Burger and Dybvig formatting algorithms: add formatting options
 # TODO: for BinFloat#to_s consider using the context precision as a minimum and/or adding an exact mode
 # TODO: for BinFloat(String) with non exact precision, use context precision only if no exact conversion is possible
@@ -17,12 +17,8 @@ module BigFloat
 #       * don't support variant ulps; always use Muller's ulp
 #       * use an options hash for the kind of ulp parameter
 #       * keep the kind of ulp in the context
-# TODO: Rename classes:
-#         - BigFloat -> Flt
-#         - Decimal  -> Flt::Dec Flt::Decimal Flt::DecNum Flt::Dcml ?
-#         - BinFloat -> Flt::Bin Flt::Binary  Flt::BinNum Flt::Bnry ?
 
-class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
+class Num < Numeric
 
   extend Support # allows use of unqualified FlagValues(), Flags(), etc.
   include Support::AuxiliarFunctions # make auxiliar functions available unqualified to instance menthods
@@ -274,7 +270,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
                           Rounded, Subnormal, DivisionImpossible, ConversionSyntax)
 
   def self.Flags(*values)
-    BigFloat::Support::Flags(EXCEPTIONS,*values)
+    Flt::Support::Flags(EXCEPTIONS,*values)
   end
 
   class ContextBase
@@ -298,7 +294,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     # * :capitals : (true or false) to use capitals in text representations
     # * :clamp : (true or false) enables clamping
     #
-    # See also the context constructor method Decimal.Context().
+    # See also the context constructor method DecNum.Context().
     def initialize(num_class, *options)
       @num_class = num_class
 
@@ -452,14 +448,14 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
       @exact
     end
 
-    # Alters the contexts by assigning options from a Hash. See Decimal#new() for the valid options.
+    # Alters the contexts by assigning options from a Hash. See DecNum#new() for the valid options.
     def assign(options)
       if options
         @rounding = options[:rounding] unless options[:rounding].nil?
         @precision = options[:precision] unless options[:precision].nil?
-        @traps = Decimal::Flags(options[:traps]) unless options[:traps].nil?
-        @flags = Decimal::Flags(options[:flags]) unless options[:flags].nil?
-        @ignored_flags = Decimal::Flags(options[:ignored_flags]) unless options[:ignored_flags].nil?
+        @traps = DecNum::Flags(options[:traps]) unless options[:traps].nil?
+        @flags = DecNum::Flags(options[:flags]) unless options[:flags].nil?
+        @ignored_flags = DecNum::Flags(options[:ignored_flags]) unless options[:ignored_flags].nil?
         if elimit=options[:elimit]
           @emin, @emax = [elimit, 1-elimit].sort
         end
@@ -576,7 +572,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
       _convert(x).normalize(self)
     end
 
-    # Adjusted exponent of x returned as a Decimal value.
+    # Adjusted exponent of x returned as a DecNum value.
     def logb(x)
       _convert(x).logb(self)
     end
@@ -645,23 +641,23 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
       _convert(x).divmod(y,self)
     end
 
-    # General Decimal Arithmetic Specification integer division: (x/y).truncate
+    # General DecNum Arithmetic Specification integer division: (x/y).truncate
     def divide_int(x,y)
       _convert(x).divide_int(y,self)
     end
 
-    # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
+    # General DecNum Arithmetic Specification remainder: x - y*divide_int(x,y)
     def remainder(x,y)
       _convert(x).remainder(y,self)
     end
 
-    # General Decimal Arithmetic Specification remainder-near
+    # General DecNum Arithmetic Specification remainder-near
     #  x - y*round_half_even(x/y)
     def remainder_near(x,y)
       _convert(x).remainder_near(y,self)
     end
 
-    # General Decimal Arithmetic Specification integer division and remainder:
+    # General DecNum Arithmetic Specification integer division and remainder:
     #  (x/y).truncate, x - y*(x/y).truncate
     def divrem(x,y)
       _convert(x).divrem(y,self)
@@ -674,7 +670,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
       _convert(x).fma(y,z,self)
     end
 
-    # Compares like <=> but returns a Decimal value.
+    # Compares like <=> but returns a DecNum value.
     # * -1 if x < y
     # * 0 if x == b
     # * +1 if x > y
@@ -721,7 +717,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
 
     # Rounds to a nearby integer.
     #
-    # See also: Decimal#to_integral_value(), which does exactly the same as
+    # See also: DecNum#to_integral_value(), which does exactly the same as
     # this method except that it doesn't raise Inexact or Rounded.
     def to_integral_exact(x)
       _convert(x).to_integral_exact(self)
@@ -729,7 +725,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
 
     # Rounds to a nearby integerwithout raising inexact, rounded.
     #
-    # See also: Decimal#to_integral_exact(), which does exactly the same as
+    # See also: DecNum#to_integral_exact(), which does exactly the same as
     # this method except that it may raise Inexact or Rounded.
     def to_integral_value(x)
       _convert(x).to_integral_value(self)
@@ -763,7 +759,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
       _convert(x).ulp(self, mode)
     end
 
-    # Some singular Decimal values that depend on the context
+    # Some singular DecNum values that depend on the context
 
     # Maximum finite number
     def maximum_finite(sign=+1)
@@ -793,8 +789,8 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
       Num(sign, 1, etiny)
     end
 
-    # This is the difference between 1 and the smallest Decimal
-    # value greater than 1: (Decimal(1).next_plus - Decimal(1))
+    # This is the difference between 1 and the smallest DecNum
+    # value greater than 1: (DecNum(1).next_plus - DecNum(1))
     def epsilon(sign=+1)
       return exception(InvalidOperation, "Exact context epsilon") if exact?
       Num(sign, 1, 1-precision)
@@ -873,17 +869,17 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
       end
     end
 
-    # Internal use: array of numeric types that be coerced to Decimal.
+    # Internal use: array of numeric types that be coerced to DecNum.
     def coercible_types
       @coercible_type_handlers.keys
     end
 
-    # Internal use: array of numeric types that be coerced to Decimal, including Decimal
+    # Internal use: array of numeric types that be coerced to DecNum, including DecNum
     def coercible_types_or_num
       [num_class] + coercible_types
     end
 
-    # Internally used to convert numeric types to Decimal (or to an array [sign,coefficient,exponent])
+    # Internally used to convert numeric types to DecNum (or to an array [sign,coefficient,exponent])
     def _coerce(x)
       c = x.class
       while c!=Object && (h=@coercible_type_handlers[c]).nil?
@@ -896,23 +892,23 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
       end
     end
 
-    # Define a numerical conversion from type to Decimal.
+    # Define a numerical conversion from type to DecNum.
     # The block that defines the conversion has two parameters: the value to be converted and the context and
-    # must return either a Decimal or [sign,coefficient,exponent]
+    # must return either a DecNum or [sign,coefficient,exponent]
     def define_conversion_from(type, &blk)
       @coercible_type_handlers[type] = blk
     end
 
-    # Define a numerical conversion from Decimal to type as an instance method of Decimal
+    # Define a numerical conversion from DecNum to type as an instance method of DecNum
     def define_conversion_to(type, &blk)
       @conversions[type] = blk
     end
 
-    # Convert a Decimal x to other numerical type
+    # Convert a DecNum x to other numerical type
     def convert_to(type, x)
       converter = @conversions[type]
       if converter.nil?
-        raise TypeError, "Undefined conversion from Decimal to #{type}."
+        raise TypeError, "Undefined conversion from DecNum to #{type}."
       elsif converter.is_a?(Symbol)
         x.send converter
       else
@@ -1006,9 +1002,9 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
   private :define_context
 
   # The current context (thread-local).
-  # If arguments are passed they are interpreted as in Decimal.define_context() to change
+  # If arguments are passed they are interpreted as in DecNum.define_context() to change
   # the current context.
-  # If a block is given, this method is a synonym for Decimal.local_context().
+  # If a block is given, this method is a synonym for DecNum.local_context().
   def self.context(*args, &blk)
     if blk
       # setup a local context
@@ -1021,8 +1017,8 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     else
       # change the current context
       # TODO: consider doing self._context = ... here
-      # so we would have Decimal.context = c that assigns a duplicate of c
-      # and Decimal.context c to set alias c
+      # so we would have DecNum.context = c that assigns a duplicate of c
+      # and DecNum.context c to set alias c
       self.context = define_context(*args)
     end
   end
@@ -1040,13 +1036,13 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     keep = self.context # use this so _context is initialized if necessary
     self.context = define_context(*args) # this dups the assigned context
     result = yield _context
-    # TODO: consider the convenience of copying the flags from Decimal.context to keep
+    # TODO: consider the convenience of copying the flags from DecNum.context to keep
     # This way a local context does not affect the settings of the previous context,
     # but flags are transferred.
     # (this could be done always or be controlled by some option)
-    #   keep.flags = Decimal.context.flags
+    #   keep.flags = DecNum.context.flags
     # Another alternative to consider: logically or the flags:
-    #   keep.flags ||= Decimal.context.flags # (this requires implementing || in Flags)
+    #   keep.flags ||= DecNum.context.flags # (this requires implementing || in Flags)
     self._context = keep
     result
   end
@@ -1056,10 +1052,10 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     protected
     def _context #:nodoc:
       # TODO: memoize the variable id
-      Thread.current["BigFloat::#{self}.context"]
+      Thread.current["Flt::#{self}.context"]
     end
     def _context=(c) #:nodoc:
-      Thread.current["BigFloat::#{self}.context"] = c
+      Thread.current["Flt::#{self}.context"] = c
     end
   end
 
@@ -1142,7 +1138,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
         end
         m = _parser(arg)
         if m.nil?
-          @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for Decimal: #{arg.inspect}").split
+          @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for DecNum: #{arg.inspect}").split
           return
         end
         @sign =  (m.sign == '-') ? -1 : +1
@@ -1164,7 +1160,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
           if num_class.radix != 10
             # convert coeff*10**exp to coeff'*radix**exp'
             # coeff, exp = num_class.decimal_to_radix(coeff, exp, context)
-            # Unlike definition of a Decimal by a text literal, when a text (decimal) literal is converted
+            # Unlike definition of a DecNum by a text literal, when a text (decimal) literal is converted
             # to a BinFloat rounding is performed as dictated by the context, unlike exact precision is
             # requested. To avoid rounding without exact mode, the number should be constructed by
             # givin the sign, coefficient and exponent.
@@ -1178,7 +1174,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
                 end
               end
               # TODO: for exact rounding, use BurgerDybvig.float_to_digits (to convert base 10 to base 2)
-              # generating the minimum number of digits for the input precision (convert input to Decimal first)
+              # generating the minimum number of digits for the input precision (convert input to DecNum first)
               # then check for an exact result.
               ans, exact = Support::Clinger.algM(context, coeff, exp, rounding, 10)
               context.exception(Inexact,"Inexact decimal to radix #{num_class.radix} conversion") if !exact
@@ -1747,7 +1743,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     result
   end
 
-  # General Decimal Arithmetic Specification integer division and remainder:
+  # General DecNum Arithmetic Specification integer division and remainder:
   #  (x/y).truncate, x - y*(x/y).truncate
   def divrem(other, context=nil)
     context = define_context(context)
@@ -1815,7 +1811,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
   end
 
 
-  # General Decimal Arithmetic Specification integer division: (x/y).truncate
+  # General DecNum Arithmetic Specification integer division: (x/y).truncate
   def divide_int(other, context=nil)
     context = define_context(context)
     other = _convert(other)
@@ -1889,7 +1885,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     return self._divide_floor(other, context).last._fix(context)
   end
 
-  # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
+  # General DecNum Arithmetic Specification remainder: x - y*divide_int(x,y)
   def remainder(other, context=nil)
     context = define_context(context)
     other = _convert(other)
@@ -1912,7 +1908,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     return self._divide_truncate(other, context).last._fix(context)
   end
 
-  # General Decimal Arithmetic Specification remainder-near:
+  # General DecNum Arithmetic Specification remainder-near:
   #  x - y*round_half_even(x/y)
   def remainder_near(other, context=nil)
     context = define_context(context)
@@ -2131,14 +2127,14 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
       # The ulp here is context.maximum_finite - context.maximum_finite.next_minus
       return Num(+1, 1, context.etop)
     elsif self.zero? || self.adjusted_exponent <= context.emin
-      # This is the ulp value for self.abs <= context.minimum_normal*Decimal.context
-      # Here we use it for self.abs < context.minimum_normal*Decimal.context;
+      # This is the ulp value for self.abs <= context.minimum_normal*DecNum.context
+      # Here we use it for self.abs < context.minimum_normal*DecNum.context;
       #  because of the simple exponent check; the remaining cases are handled below.
       return context.minimum_nonzero
     else
       # The next can compute the ulp value for the values that
       #   self.abs > context.minimum_normal && self.abs <= context.maximum_finite
-      # The cases self.abs < context.minimum_normal*Decimal.context have been handled above.
+      # The cases self.abs < context.minimum_normal*DecNum.context have been handled above.
 
       # assert self.normal? && self.abs>context.minimum_nonzero
       norm = self.normalize
@@ -2236,7 +2232,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     reduce.split == other.reduce.split
   end
 
-  # Compares like <=> but returns a Decimal value.
+  # Compares like <=> but returns a DecNum value.
   def compare(other, context=nil)
 
     other = _convert(other)
@@ -2259,7 +2255,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     end
   end
 
-  # Synonym for Decimal#adjusted_exponent()
+  # Synonym for DecNum#adjusted_exponent()
   def scientific_exponent
     adjusted_exponent
   end
@@ -2486,7 +2482,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
   #   digit to be rounded (exponent == -places)
   # * :precision or :significan_digits is the number of digits
   # * :power 10^exponent, value of the digit to be rounded,
-  #   should be passed as a type convertible to Decimal.
+  #   should be passed as a type convertible to DecNum.
   # * :index 0-based index of the digit to be rounded
   # * :rindex right 0-based index of the digit to be rounded
   #
@@ -2511,7 +2507,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
     elsif v=(opt[:exponent])
       prec = adjusted_exponent + 1 - v
     elsif v=(opt[:power])
-      prec = adjusted_exponent + 1 - Decimal(v).adjusted_exponent
+      prec = adjusted_exponent + 1 - DecNum(v).adjusted_exponent
     elsif v=(opt[:index])
       prec = i+1
     elsif v=(opt[:rindex])
@@ -2530,21 +2526,21 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
   end
 
   # General ceiling operation (as for Float) with same options for precision
-  # as Decimal#round()
+  # as DecNum#round()
   def ceil(opt={})
     opt[:rounding] = :ceiling
     round opt
   end
 
   # General floor operation (as for Float) with same options for precision
-  # as Decimal#round()
+  # as DecNum#round()
   def floor(opt={})
     opt[:rounding] = :floor
     round opt
   end
 
   # General truncate operation (as for Float) with same options for precision
-  # as Decimal#round()
+  # as DecNum#round()
   def truncate(opt={})
     opt[:rounding] = :down
     round opt
@@ -2791,7 +2787,7 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
 
       if number_of_digits > max_payload_len
           payload = payload.to_s[-max_payload_len..-1].to_i
-          return Decimal([@sign, payload, @exp])
+          return DecNum([@sign, payload, @exp])
       end
     end
     Num(self)
@@ -2997,4 +2993,4 @@ class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
 
 end
 
-end # BigFloat
+end # Flt

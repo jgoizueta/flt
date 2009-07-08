@@ -10,7 +10,7 @@
 == 0.2.1 2009-06-23
 
 * Bug fixes:
-  - Decimal#inspect was always producing debug information; now it uses $DEBUG
+  - DecNum#inspect was always producing debug information; now it uses $DEBUG
   - Raising some exceptions caused error, because too many parameters were being
     passed to the exception's base class initializer.
 
@@ -20,11 +20,11 @@
   - maximum_finite, minimum_normal, minimum_nonzero value decimal constructors
   - epsilon, strict_epsilon, half_epsilon
   - setting context exponent limits with elimit
-  - require decimal/shortcut to use D for Decimal
+  - require decimal/shortcut to use D for DecNum
 
 == 0.3.0 2009-
 
 * Bug fixes:
-  - Decimal#normal? was incorrect for special values and zero
+  - DecNum#normal? was incorrect for special values and zero
 
 * New functionality:

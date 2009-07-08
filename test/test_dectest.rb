@@ -138,7 +138,7 @@ class TestBasic < Test::Unit::TestCase
               valstemp = lhs[2..-1]
               rhs = sides.last.strip.split
               ans = rhs.first
-              flags = rhs[1..-1].map{|f| Decimal.class_eval(FLAG_NAMES[f.downcase].to_s)}.compact
+              flags = rhs[1..-1].map{|f| DecNum.class_eval(FLAG_NAMES[f.downcase].to_s)}.compact
 
               next unless valstemp.grep(/#/).empty?
 
@@ -150,24 +150,24 @@ class TestBasic < Test::Unit::TestCase
                 msg = "  Test #{id}: #{funct}(#{valstemp.join(',')}) = #{ans}"
                 #File.open('dectests.txt','a'){|f| f.puts msg}
                 expected = result = result_flags = nil
-                Decimal.local_context do |context|
+                DecNum.local_context do |context|
                   context.flags.clear!
                   exact_input = !['apply','to_sci_string', 'to_eng_string'].include?(funct)
                   if exact_input
                     p = context.precision
                     context.exact = true
                   end
-                  valstemp.map!{|v| Decimal(unquote(v))}
+                  valstemp.map!{|v| DecNum(unquote(v))}
                   context.precision = p if exact_input
                   result = context.send(funct, *valstemp)
                   result_flags = context.flags.dup
                   expected = unquote(ans)
                   context.exact = true
-                  expected = Decimal(expected) unless result.is_a?(String)
+                  expected = DecNum(expected) unless result.is_a?(String)
                 end
                 result = 1 if result==true
                 result = 0 if result==false
-                expected_flags = Decimal::Flags(*flags)
+                expected_flags = DecNum::Flags(*flags)
                 if ans!='?'
                   assert_equal expected.to_s, result.to_s, msg
                 end
@@ -192,13 +192,13 @@ class TestBasic < Test::Unit::TestCase
               else
                 case funct
                   when 'rounding','precision'
-                    Decimal.context.send "#{funct}=", value
+                    DecNum.context.send "#{funct}=", value
                   when 'maxexponent'
-                    Decimal.context.emax = value
+                    DecNum.context.emax = value
                   when 'minexponent'
-                    Decimal.context.emin = value
+                    DecNum.context.emin = value
                   when 'clamp'
-                    Decimal.context.clamp = (value==0 ? false : true)
+                    DecNum.context.clamp = (value==0 ? false : true)
                 end
               end
             end

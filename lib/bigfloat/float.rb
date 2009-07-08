@@ -102,12 +102,12 @@ class Float
      neighbours[1]
   end
 
-  # Synonym of next, named in the style of Decimal (GDA)
+  # Synonym of next, named in the style of DecNum (GDA)
   def next_plus
     self.next
   end
 
-  # Synonym of prev, named in the style of Decimal (GDA)
+  # Synonym of prev, named in the style of DecNum (GDA)
   def next_minus
     self.prev
   end
@@ -251,7 +251,7 @@ class Float
       (sign < 0) ? -1.0/0.0 : 1.0/0.0
     end
 
-    # This provides an common interface (with BigFloat classes) to precision, rounding, etc.
+    # This provides an common interface (with Flt classes) to precision, rounding, etc.
     def context
       self
     end
@@ -354,7 +354,7 @@ class Float
 
     # detect actual rounding mode
     def rounding
-      BigFloat::Support.detect_float_rounding
+      Flt::Support.detect_float_rounding
     end
 
     def emin

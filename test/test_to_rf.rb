@@ -18,7 +18,7 @@ class TestToRF < Test::Unit::TestCase
       [ '-0.200', -2, 10 ]
     ].each do |n, num, den|
       r = Rational(num,den)
-      d = Decimal(n)
+      d = DecNum(n)
       assert d.to_r.is_a?(Rational)
       assert_equal r, d.to_r
     end
@@ -27,7 +27,7 @@ class TestToRF < Test::Unit::TestCase
   def test_to_f
     ['0.1', '-0.1', '0.0', '1234567.1234567', '-1234567.1234567', '1.234E7', '1.234E-7'].each do |n|
       f = Float(n)
-      d = Decimal(n)
+      d = DecNum(n)
       assert d.to_f.is_a?(Float)
       assert_equal f, d.to_f
     end

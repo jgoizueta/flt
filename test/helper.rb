@@ -1,9 +1,9 @@
 require 'test/unit'
 require File.dirname(__FILE__) + '/../lib/bigfloat'
-include BigFloat
+include Flt
 
 def initialize_context
-  Decimal.context = Decimal::ExtendedContext
+  DecNum.context = DecNum::ExtendedContext
   BinFloat.context = BinFloat::ExtendedContext
 end
 
