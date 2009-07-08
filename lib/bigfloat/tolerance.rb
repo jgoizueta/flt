@@ -389,6 +389,19 @@ module BigFloat
           end.send(mode)
           v*10.0**exp
         end
+      when BigDecimal
+        if @radix == :native || @radix == 10
+          exp = xs.map do |x|
+            sign,digits,base,exp = x.split
+            exp -= 1
+            exp -= 1 if digits=="1" # if :low mode
+            exp -= FloatingTolerance.ref_adjusted_exp
+            exp
+          end.send(mode)
+          sign, digits, base, vexp = v.split
+          BigDecimal.new("0.#{digits}E#{vexp+exp}")
+        else
+        end
       end
     end
 

@@ -18,14 +18,9 @@ module BigFloat
 #       * use an options hash for the kind of ulp parameter
 #       * keep the kind of ulp in the context
 # TODO: Rename classes:
-#       * Names such as BigFloat, APFloat, are not accurate since this module also includes
-#         extensions to Float.
-#       * Decide whether to use same module for Float-Formats & this (Num etc.)
-#       * Use symmetrical naming? (Decimal/Binary DecNum/BinNum ...) or asymmetrical (Decimal/BinFloat...)
-#       * Names to be considered:
-#         - BigFloat: FltPnt, APFloat, FP, Flt, ...
-#         - Decimal:  DecFloat, Dec, DecNum, BigDec, ...
-#         - BinFloat: Binary, Bin, BinNum, APFloat, MPFloat, BigFloat, ...
+#         - BigFloat -> Flt
+#         - Decimal  -> Flt::Dec Flt::Decimal Flt::DecNum Flt::Dcml ?
+#         - BinFloat -> Flt::Bin Flt::Binary  Flt::BinNum Flt::Bnry ?
 
 class Num < Numeric # APFloat (arbitrary precision float) MPFloat ...
 

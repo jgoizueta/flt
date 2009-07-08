@@ -11,6 +11,7 @@ lib/bigfloat/decimal.rb
 lib/bigfloat/decimal/math.rb
 lib/bigfloat/binfloat.rb
 lib/bigfloat/float.rb
+lib/bigfloat/bigdecimal.rb
 lib/bigfloat/tolerance.rb
 lib/bigfloat/tolerance/sugar.rb
 lib/bigfloat/d.rb
