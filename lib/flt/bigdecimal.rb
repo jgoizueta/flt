@@ -1,5 +1,6 @@
 # This adds some extensions to BigDecimal for (limited) compatibility with Flt types
 
+require 'flt'
 require 'bigdecimal'
 require 'bigdecimal/math'
 

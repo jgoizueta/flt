@@ -1,8 +1,8 @@
-require 'bigfloat/num'
+require 'flt/num'
 
 module Flt
 
-class BinFloat < Num
+class BinNum < Num
 
   class << self
     # Numerical base.
@@ -29,11 +29,11 @@ class BinFloat < Num
   end
 
   # The context defines the arithmetic context: rounding mode, precision,...
-  # BinFloat.context is the current (thread-local) context.
+  # BinNum.context is the current (thread-local) context.
   class Context < Num::ContextBase
 
     def initialize(*options)
-      super(BinFloat, *options)
+      super(BinNum, *options)
     end
 
     # The special values are normalized for binary floats: this keeps the context precision in the values
@@ -55,20 +55,20 @@ class BinFloat < Num
 
     end
 
-  end # BinFloat::Context
+  end # BinNum::Context
 
-  class <<self # BinFloat class methods
+  class <<self # BinNum class methods
 
     def base_coercible_types
       unless defined? @base_coercible_types
         @base_coercible_types = super.merge(
           Float=>lambda{|x, context|
             if x.nan?
-              BinFloat.nan
+              BinNum.nan
             elsif x.infinite?
-              BinFloat.infinity(x<0 ? -1 : +1)
+              BinNum.infinity(x<0 ? -1 : +1)
             elsif x.zero?
-              BinFloat.zero((x.to_s[0,1].strip=="-") ? -1 : +1)
+              BinNum.zero((x.to_s[0,1].strip=="-") ? -1 : +1)
             else
               coeff, exp = Math.frexp(x)
               coeff = Math.ldexp(coeff, Float::MANT_DIG).to_i
@@ -90,7 +90,7 @@ class BinFloat < Num
   end
 
   # the DefaultContext is the base for new contexts; it can be changed.
-  # DefaultContext = BinFloat::Context.new(
+  # DefaultContext = BinNum::Context.new(
   #                            :precision=>113,
   #                            :emin=> -16382, :emax=>+16383,
   #                            :rounding=>:half_even,
@@ -99,7 +99,7 @@ class BinFloat < Num
   #                            :ignored_flags=>[],
   #                            :capitals=>true,
   #                            :clamp=>true)
-  DefaultContext = BinFloat::Context.new(
+  DefaultContext = BinNum::Context.new(
                              :exact=>false, :precision=>53, :rounding=>:half_even,
                              :emin=> -1025, :emax=>+1023,                             :flags=>[],
                              :traps=>[DivisionByZero, Overflow, InvalidOperation],
@@ -107,10 +107,10 @@ class BinFloat < Num
                              :capitals=>true,
                              :clamp=>true)
 
-  ExtendedContext = BinFloat::Context.new(DefaultContext,
+  ExtendedContext = BinNum::Context.new(DefaultContext,
                              :traps=>[], :flags=>[], :clamp=>false)
 
-  IEEEHalfContext = BinFloat::Context.new(
+  IEEEHalfContext = BinNum::Context.new(
                             :precision=>1,
                             :emin=> -14, :emax=>+15,
                             :rounding=>:half_even,
@@ -120,7 +120,7 @@ class BinFloat < Num
                             :capitals=>true,
                             :clamp=>true)
 
-  IEEESingleContext = BinFloat::Context.new(
+  IEEESingleContext = BinNum::Context.new(
                             :precision=>24,
                             :emin=> -126, :emax=>+127,
                             :rounding=>:half_even,
@@ -130,7 +130,7 @@ class BinFloat < Num
                             :capitals=>true,
                             :clamp=>true)
 
-  IEEEDoubleContext = BinFloat::Context.new(
+  IEEEDoubleContext = BinNum::Context.new(
                             :precision=>53,
                             :emin=> -1022, :emax=>+1023,
                             :rounding=>:half_even,
@@ -140,7 +140,7 @@ class BinFloat < Num
                             :capitals=>true,
                             :clamp=>true)
 
-  IEEEQuadContext = BinFloat::Context.new(
+  IEEEQuadContext = BinNum::Context.new(
                             :precision=>113,
                             :emin=> -16382, :emax=>+16383,
                             :rounding=>:half_even,
@@ -150,7 +150,7 @@ class BinFloat < Num
                             :capitals=>true,
                             :clamp=>true)
 
-  IEEEExtendedContext = BinFloat::Context.new(
+  IEEEExtendedContext = BinNum::Context.new(
                             :precision=>64,
                             :emin=> -16382, :emax=>+16383,
                             :rounding=>:half_even,
@@ -161,7 +161,7 @@ class BinFloat < Num
                             :clamp=>true)
 
   if Float::RADIX==2
-    FloatContext = BinFloat::Context.new(
+    FloatContext = BinNum::Context.new(
                                :precision=>Float::MANT_DIG,
                                :rounding=>Support::AuxiliarFunctions.detect_float_rounding,
                                :emin=>Float::MIN_EXP-1, :emax=>Float::MAX_EXP+1,
@@ -183,18 +183,18 @@ class BinFloat < Num
 
   # Convert to a text literal in the specified base (10 by default).
   #
-  # If the output base is 2, the rendered value is the exact value of the BinFloat;
+  # If the output base is 2, the rendered value is the exact value of the BinNum;
   # showing also trailing zeros, just as for DecNum.
   #
-  # With bases different from 2, like the default 10, the BinFloat number is treated
+  # With bases different from 2, like the default 10, the BinNum number is treated
   # as an approximation with a precision of number_of_digits. The conversioin renders
   # that aproximation in other base without introducing additional precision.
   #
   # The resulting text numeral is such that it has as few digits as possible while
-  # preserving the original while if converted back to BinFloat with
+  # preserving the original while if converted back to BinNum with
   # the same context precision that the original number had (number_of_digits).
   #
-  # To render teh exact value of the BinFloat in decimal this can be used instead:
+  # To render teh exact value of the BinNum in decimal this can be used instead:
   #   x.to_decimal_exact.to_s
   #
   # Options:
@@ -217,7 +217,7 @@ class BinFloat < Num
     if [true,false].include?(args.first)
       eng = args.shift
     end
-    if args.first.is_a?(BinFloat::Context)
+    if args.first.is_a?(BinNum::Context)
       context = args.shift
     end
     # admit also :eng to specify the eng mode
@@ -225,7 +225,7 @@ class BinFloat < Num
       eng = true
       args.shift
     end
-    raise TypeError, "Invalid arguments to BinFloat#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
+    raise TypeError, "Invalid arguments to BinNum#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
     # an admit arguments through a final parameters Hash
     options = args.first || {}
     context = options.delete(:context) if options.has_key?(:context)
@@ -245,9 +245,9 @@ class BinFloat < Num
     end
   end
 
-  # BinFloat - DecNum conversions
+  # BinNum - DecNum conversions
 
-  # Exact conversion: preserve BinFloat value.
+  # Exact conversion: preserve BinNum value.
   # The current DecNum.context determines the valid range and the precision
   #(if not :exact the result will be rounded)
   def to_decimal_exact()
@@ -264,8 +264,8 @@ class BinFloat < Num
     end
   end
 
-  # Convert to decimal so that if the decimal is converted to a BinFloat of the same precision
-  # and with same rounding (i.e. BinFloat.from_decimal(x, context)) the value of the BinFloat
+  # Convert to decimal so that if the decimal is converted to a BinNum of the same precision
+  # and with same rounding (i.e. BinNum.from_decimal(x, context)) the value of the BinNum
   # is preserved, but use as few decimal digits as possible.
   def to_decimal(binfloat_context=nil, any_rounding=false)
     if special?
@@ -282,19 +282,19 @@ class BinFloat < Num
     end
   end
 
-  # Convert to decimal so that if the decimal is converted to a BinFloat of the same precision
-  # and with any rounding the value of the BinFloat is preserved, but use as few decimal digits
+  # Convert to decimal so that if the decimal is converted to a BinNum of the same precision
+  # and with any rounding the value of the BinNum is preserved, but use as few decimal digits
   # as possible.
   def to_decimal_any_rounding(binfloat_context=nil)
     to_decimal(binfloat_context, true)
   end
 
-  # Convert DecNum to BinFloat
-  def BinFloat.from_decimal(x, binfloat_context=nil)
-    Flt.BinFloat(x.to_s, binfloat_context)
+  # Convert DecNum to BinNum
+  def BinNum.from_decimal(x, binfloat_context=nil)
+    Flt.BinNum(x.to_s, binfloat_context)
   end
 
-  # For BinFloat the generic Num#ulp() is normalized
+  # For BinNum the generic Num#ulp() is normalized
   def ulp(context=nil, mode=:low)
     super(context, mode).normalize(context)
   end
@@ -302,7 +302,7 @@ class BinFloat < Num
   private
 
   # Convert to a text literal in the specified base. If the result is
-  # converted to BinFloat with the specified context rounding and the
+  # converted to BinNum with the specified context rounding and the
   # same precision that self has (self.number_of_digits), the same
   # number will be produced.
   #
@@ -323,7 +323,7 @@ class BinFloat < Num
   # as an approximation with x.number_of_digits precision and showing that
   # inexact value in decimal without introducing additional precision.
   # If the exact value of the number expressed in decimal is desired (we consider
-  # the BinFloat an exact number), this can be done with BinFloat.to_decimal_exact(x).to_s
+  # the BinNum an exact number), this can be done with BinNum.to_decimal_exact(x).to_s
   def format(binfloat_context, options={})
     output_radix = options[:base] || 10
     all_digits = options[:all_digits]
@@ -400,8 +400,8 @@ class BinFloat < Num
 end
 
 module_function
-def BinFloat(*args)
-  BinFloat.Num(*args)
+def BinNum(*args)
+  BinNum.Num(*args)
 end
 
 

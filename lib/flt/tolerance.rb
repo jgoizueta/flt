@@ -1,4 +1,4 @@
-# Tolerance for floating-point types (Float, Flt::BinFloat, Flt::DecNum)
+# Tolerance for floating-point types (Float, Flt::BinNum, Flt::DecNum)
 #
 # Tolerance can be used to allow for a tolerance in floating-point comparisons.
 #
@@ -85,8 +85,8 @@
 #   puts tol.equal_to?(3.14159, Math::PI)
 #
 
-require 'bigfloat'
-require 'bigfloat/float'
+require 'flt'
+require 'flt/float'
 
 module Flt
 
@@ -355,8 +355,8 @@ module Flt
           r = r.normalize if num_class.radix == 2
           r
         elsif @radix==10
-          # assert x.class==BinFloat
-          # TODO: optimize (implement log10, power for BinFloat)
+          # assert x.class==BinNum
+          # TODO: optimize (implement log10, power for BinNum)
           exp = xs.map do |x|
             x = x.to_decimal_exact.normalize
             exp = x.adjusted_exponent

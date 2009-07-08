@@ -90,10 +90,10 @@ class TestRound < Test::Unit::TestCase
   end
 
   def test_round_detection
-    [DecNum, BinFloat].each do |type|
+    [DecNum, BinNum].each do |type|
       [:half_even, :half_up, :half_down, :down, :up, :floor, :ceiling, :up05].each do |rounding|
         type.context(:rounding=>rounding) do
-          next if type==BinFloat && rounding==:up05
+          next if type==BinNum && rounding==:up05
           assert_equal rounding, detect_rounding(type)
         end
       end

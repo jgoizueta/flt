@@ -1,5 +1,5 @@
 # Native Ruby Float extemsions
-# Here we add some of the methods available in BinFloat to Float.
+# Here we add some of the methods available in BinNum to Float.
 #
 # The set of constants with Float metadata is also augmented.
 # The built-in contantas are:

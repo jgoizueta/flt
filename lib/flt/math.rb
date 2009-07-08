@@ -1,4 +1,4 @@
-require 'bigfloat/decimal'
+require 'flt/dec_num'
 
 module Flt
   class DecNum
@@ -14,7 +14,7 @@ module Flt
       def pi(decimals=nil)
         three = DecNum(3)
         lasts, t, s, n, na, d, da = 0, three, 3, 1, 0, 0, 24
-        DecNum.context(:precision=>decimals) do |local_context|
+        Flt::DecNum.context(:precision=>decimals) do |local_context|
           local_context.precision += 2 # extra digits for intermediate steps
           while s != lasts
             lasts = s

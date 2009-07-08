@@ -1,8 +1,10 @@
 = Notes on this branch:
 
 This is an experiment to define an arbitrary-precision, arbitrary-radix floating point
-number class and derive DecNum from it. Thus, we can define an arbitrary-precision
-binary floating point class and keep things DRY (share code with DecNum.)
+number class and derive DecNum (the new version of Decimal) from it.
+Thus, we can define an arbitrary-precision binary floating point class and keep things DRY
+(share code with DecNum.) This libray now includes also extension to Float and BigDecimal
+and Tolerance (a floating-point tolerances system).
 
 An binary floating point class would have different applications from DecNum (its
 error propoerties would be different). It could also be used to add precise arithmetic
@@ -15,7 +17,7 @@ be more confusing?) are worth to have a binary floating point type.
 = Introduction
 
 DecNum is a standards-compliant arbitrary precision decimal floating-point type for Ruby.
-It is based on the Python DecNum class.
+It is based on the Python Decimal class.
 
 The current implementation is written completely in Ruby, so it is rather slow.
 The intentention is to experiment with this pure-ruby implementation to
@@ -29,16 +31,16 @@ The code is at http://github.com/jgoizueta/ruby-decimal/
 
 == Standars compliance.
 
-DecNum pretends to be conformant to the General DecNum Arithmetic Specification
+DecNum pretends to be conformant to the General Decimal Arithmetic Specification
 and the revised IEEE 754 standard (IEEE 754-2008).
 
 = Examples of use
 
 To install the library use gem from the command line: (you may not need +sudo+)
-  sudo gem install ruby-decimal
+  sudo gem install flt
 
 Then require the library in your code (if it fails you may need to <tt>require 'rubygems'</tt> first)
-  require 'bigfloat'
+  require 'flt'
   include Flt
 
 Now we can use the DecNum class simply like this:
@@ -327,11 +329,11 @@ Note that the conversion we've defined depends on the context precision:
 A different approach for Float to DecNum conversion is to find the shortest (fewer digits) DecNum
 that rounds to the Float with the binary precision that the Float has.
 We will assume that the DecNum to Float conversion done with the rounding mode of the DecNum context.
-The BinFloat class has a method to perform this kind of conversion, so we will use it.
+The BinNum class has a method to perform this kind of conversion, so we will use it.
 
   DecNum.context.define_conversion_from(Float) do |x, dec_context|
-    BinFloat.context(:rounding=>dec_context.rounding) do |bin_context|
-      BinFloat(x).to_decimal
+    BinNum.context(:rounding=>dec_context.rounding) do |bin_context|
+      BinNum(x).to_decimal
     end
   end
 
@@ -345,12 +347,12 @@ decimal literal, care must be taken:
 
   puts DecNum(0.10000000000000001)                 # -> 0.1
 
-The BinFloat also a instance method +to_decimal_exact+ to perform the previous 'exact' conversion, that
+The BinNum also a instance method +to_decimal_exact+ to perform the previous 'exact' conversion, that
 could have be written:
 
   DecNum.context.define_conversion_from(Float) do |x, context|
     DecNum.context(context) do
-      BinFloat(x).to_decimal_exact
+      BinNum(x).to_decimal_exact
     end
   end
 
@@ -358,7 +360,7 @@ could have be written:
 
 The use of DecNum can be made less verbose by requiring:
 
-  require 'bigfloat/d'
+  require 'flt/d'
 
 This file defines +D+ as a synonym for +DecNum+:
 
@@ -392,12 +394,12 @@ Note that in the definition of ulps we use exct.ulp. If we had use aprx.ulp DecN
 would seem to be a better approximation to DecNum(1) than DecNum(10).next_minus. (Admittedly,
 such bad approximations should not be common.)
 
-== BinFloat Input/Output
+== BinNum Input/Output
 
-BinFloat can be defined with a decimal string literal and converted to one with to_s, as DecNum,
+BinNum can be defined with a decimal string literal and converted to one with to_s, as DecNum,
 but in this case these are inexact operations subject to some specific precision limits.
 
-On input, e.g. BinFloat('0.1'), the context precision is used to define the precision of the result,
+On input, e.g. BinNum('0.1'), the context precision is used to define the precision of the result,
 i.e. the produced number is rounded to the context precision, unlike DecNum.
 
 On output the number's precision (number_of_digits) is used, so that the output converts back to
@@ -406,7 +408,7 @@ the same number if the same precision is used; the context is ignored.
 If we define a number with the sign-coefficient-exponent constructor, the context precision is ignored
 as with DecNum. The next produces a number with just 1-bit of precision:
 
-  x = BinFloat(+1, 1, -3)
+  x = BinNum(+1, 1, -3)
   puts x.number_of_digits                          # -> 1
 
 Now, if we convert it to a decimal string, the internal precision (1 bit) is used, so it contains little
@@ -414,12 +416,12 @@ information:
 
   puts x                                           # -> 0.1
 
-Let's convert that output back to another BinFloat. Note that the new number will be rendered
+Let's convert that output back to another BinNum. Note that the new number will be rendered
 exactly as the original number in decimal, but has been defined with the context precision, so:
 
-  y = BinFloat(x.to_s)
+  y = BinNum(x.to_s)
   puts y                                           # -> 0.1
-  puts BinFloat(x.to_s) == x                       # -> false
+  puts BinNum(x.to_s) == x                       # -> false
   puts y.number_of_digits                          # -> 53
 
 Both numbers are not equal. If we show them in binary with to_s(:base=>2) no conversion is needed
@@ -431,7 +433,7 @@ and the exact values are shown and we see the difference:
 If we wanted to convert back the decimal value to the original value we had to use the original
 precision for the conversion:
 
-  y = BinFloat(x.to_s, :precision=>x.number_of_digits)
+  y = BinNum(x.to_s, :precision=>x.number_of_digits)
   puts x == y                                      # -> true
 
 Note also that if we normalize a value we will change it's precision to that of the context:
@@ -475,7 +477,7 @@ Which can also be abbreviated:
   DecNum.context(:precision=>3) { puts DecNum(1)/DecNum(3) }
 
 This allows in general to write simpler code; e.g. this is an exponential function, adapted from the
-'recipes' in Python's DecNum:
+'recipes' in Python's Decimal:
     def exp(x, c=nil)
       i, lasts, s, fact, num = 0, 0, 1, 1, 1
       DecNum.context(c) do |context|

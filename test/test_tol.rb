@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/helper.rb'
-require File.dirname(__FILE__) + '/../lib/bigfloat/tolerance'
+require File.dirname(__FILE__) + '/../lib/flt/tolerance'
 
 class TestTolerance < Test::Unit::TestCase
 
@@ -9,19 +9,19 @@ class TestTolerance < Test::Unit::TestCase
     float_emulation_context
 
     DecNum.context.define_conversion_from(Float) do |x, dec_context|
-      BinFloat.context(:rounding=>dec_context.rounding) do |bin_context|
-        BinFloat(x).to_decimal
+      BinNum.context(:rounding=>dec_context.rounding) do |bin_context|
+        BinNum(x).to_decimal
       end
     end
 
-    DecNum.context.define_conversion_from(BinFloat) do |x, dec_context|
-      BinFloat.context(:rounding=>dec_context.rounding) do |bin_context|
+    DecNum.context.define_conversion_from(BinNum) do |x, dec_context|
+      BinNum.context(:rounding=>dec_context.rounding) do |bin_context|
         x.to_decimal
       end
     end
 
-    BinFloat.context.define_conversion_from(DecNum) do |x, bin_context|
-      BinFloat(x.to_s)
+    BinNum.context.define_conversion_from(DecNum) do |x, bin_context|
+      BinNum(x.to_s)
     end
 
   end

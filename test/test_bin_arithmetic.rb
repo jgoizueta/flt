@@ -15,7 +15,7 @@ class TestBinArithmetic < Test::Unit::TestCase
       x = random_float
       y = random_float
       z = x + y
-      assert_equal z, (BinFloat(x)+BinFloat(y)).to_f
+      assert_equal z, (BinNum(x)+BinNum(y)).to_f
     end
   end
 
@@ -26,7 +26,7 @@ class TestBinArithmetic < Test::Unit::TestCase
       x = random_float
       y = random_float
       z = x - y
-      assert_equal z, (BinFloat(x)-BinFloat(y)).to_f
+      assert_equal z, (BinNum(x)-BinNum(y)).to_f
     end
   end
 
@@ -37,7 +37,7 @@ class TestBinArithmetic < Test::Unit::TestCase
       x = random_float
       y = random_float
       z = x * y
-      assert_equal z, (BinFloat(x)*BinFloat(y)).to_f
+      assert_equal z, (BinNum(x)*BinNum(y)).to_f
     end
   end
 
@@ -49,13 +49,13 @@ class TestBinArithmetic < Test::Unit::TestCase
       y = random_float
       # next if y.abs < Float::EPSILON*x.abs
       z = x / y
-      if z != (BinFloat(x)/BinFloat(y)).to_f
+      if z != (BinNum(x)/BinNum(y)).to_f
         puts "x=#{float_split(x).inspect}"
         puts "y=#{float_split(y).inspect}"
         puts "z=#{float_split(z).inspect}"
-        puts "->#{(BinFloat(x)/BinFloat(y)).split.inspect}"
+        puts "->#{(BinNum(x)/BinNum(y)).split.inspect}"
       end
-      assert_equal z, (BinFloat(x)/BinFloat(y)).to_f
+      assert_equal z, (BinNum(x)/BinNum(y)).to_f
     end
   end
 
@@ -65,7 +65,7 @@ class TestBinArithmetic < Test::Unit::TestCase
     1000.times do
       x = random_float.abs
       z = Math.sqrt(x)
-      assert_equal z, BinFloat(x).sqrt.to_f
+      assert_equal z, BinNum(x).sqrt.to_f
     end
   end
 

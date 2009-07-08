@@ -9,7 +9,7 @@
 #    1.epsilon_tolerance # == Tolerance(:epsilon) == EpsilonTolerance.new()
 #
 
-require 'bigfloat/tolerance'
+require 'flt/tolerance'
 
 module Flt
   def Tolerance.define_sugar(value_class, *tol_classes) #:nodoc:
@@ -67,7 +67,7 @@ Flt::Tolerance.define_sugar Flt::DecNum,
   EpsilonTolerance, AbsEpsilonTolerance, FltEpsilonTolerance,
   BigEpsilonTolerance, AbsBigEpsilonTolerance, FltBigEpsilonTolerance
 
-Flt::Tolerance.define_sugar Flt::BinFloat,
+Flt::Tolerance.define_sugar Flt::BinNum,
   AbsoluteTolerance,
   RelativeTolerance, PercentTolerance, PermilleTolerance,
   FloatingTolerance, UlpsTolerance,

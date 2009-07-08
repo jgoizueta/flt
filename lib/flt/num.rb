@@ -1,5 +1,5 @@
-require 'bigfloat/support'
-require 'bigfloat/version'
+require 'flt/support'
+require 'flt/version'
 
 require 'bigdecimal'
 require 'forwardable'
@@ -9,10 +9,10 @@ require 'ostruct'
 
 module Flt
 
-# TODO: update documentation; check rdoc results for clarity given the new Num/DecNum/BinFloat structure
+# TODO: update documentation; check rdoc results for clarity given the new Flt, Num/DecNum/BinNum structure
 # TODO: Burger and Dybvig formatting algorithms: add formatting options
-# TODO: for BinFloat#to_s consider using the context precision as a minimum and/or adding an exact mode
-# TODO: for BinFloat(String) with non exact precision, use context precision only if no exact conversion is possible
+# TODO: for BinNum#to_s consider using the context precision as a minimum and/or adding an exact mode
+# TODO: for BinNum(String) with non exact precision, use context precision only if no exact conversion is possible
 # TODO: selecting the kind of ulp is awkward; consider one of these options:
 #       * don't support variant ulps; always use Muller's ulp
 #       * use an options hash for the kind of ulp parameter
@@ -1161,7 +1161,7 @@ class Num < Numeric
             # convert coeff*10**exp to coeff'*radix**exp'
             # coeff, exp = num_class.decimal_to_radix(coeff, exp, context)
             # Unlike definition of a DecNum by a text literal, when a text (decimal) literal is converted
-            # to a BinFloat rounding is performed as dictated by the context, unlike exact precision is
+            # to a BinNum rounding is performed as dictated by the context, unlike exact precision is
             # requested. To avoid rounding without exact mode, the number should be constructed by
             # givin the sign, coefficient and exponent.
             if (10%num_class.radix) == 0

@@ -10,13 +10,13 @@ rescue LoadError
 end
 
 ensure_in_path 'lib'
-require 'bigfloat/version'
+require 'flt/version'
 
 task :default => 'spec:run'
 
 
-PROJ.name = 'bigfloat'
-PROJ.description = "Arbitray-Precision Floating-Point"
+PROJ.name = 'flt'
+PROJ.description = "Floating Point Numbers"
 PROJ.authors = 'Javier Goizueta'
 PROJ.email = 'javier@goizueta.info'
 PROJ.version = Flt::VERSION::STRING
@@ -24,7 +24,7 @@ PROJ.rubyforge.name = 'ruby-decimal'
 PROJ.url = "http://#{PROJ.rubyforge.name}.rubyforge.org"
 PROJ.rdoc.opts = [
   "--main", "README.txt",
-  '--title', 'Ruby DecNum Documentation',
+  '--title', 'Ruby Flt Documentation',
   "--opname", "index.html",
   "--line-numbers",
   "--inline-source"

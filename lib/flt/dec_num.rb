@@ -1,11 +1,11 @@
-require 'bigfloat/num'
+require 'flt/num'
 
 module Flt
 
 # DecNum arbitrary precision floating point number.
-# This implementation of DecNum is based on the DecNum module of Python,
+# This implementation of DecNum is based on the Decimal module of Python,
 # written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
-class DecNum < Num # TODO: rename to Dec or DecNum ?
+class DecNum < Num
 
   class << self
     # Numerical base of DecNum.
@@ -108,7 +108,7 @@ class DecNum < Num # TODO: rename to Dec or DecNum ?
   #   @coeff is the integral significand stored as an integer (so leading zeros cannot be kept)
   #   @exp is the exponent to be applied to @coeff as an integer or one of :inf, :nan, :snan for special values
   #
-  # The Python DecNum representation has these slots:
+  # The Python Decimal representation has these slots:
   #   _sign is 1 for minus, 0 for plus
   #   _int is the integral significand as a string of digits (leading zeroes are not kept)
   #   _exp is the exponent as an integer or 'F' for infinity, 'n' for NaN , 'N' for sNaN
@@ -120,7 +120,7 @@ class DecNum < Num # TODO: rename to Dec or DecNum ?
   #
   # =Exponent values
   #
-  # In GDAS (General DecNum Arithmetic Specification) numbers are represented by an unnormalized integral
+  # In GDAS (General Decimal Arithmetic Specification) numbers are represented by an unnormalized integral
   # significand and an exponent (also called 'scale'.)
   #
   # The reduce operation (originally called 'normalize') removes trailing 0s and increments the exponent if necessary;
@@ -221,7 +221,7 @@ class DecNum < Num # TODO: rename to Dec or DecNum ?
       eng = true
       args.shift
     end
-    raise TypeError, "Invalid arguments to BinFloat#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
+    raise TypeError, "Invalid arguments to BinNum#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
     # an admit arguments through a final parameters Hash
     options = args.first || {}
     context = options[:context] if options[:context]

@@ -171,7 +171,7 @@ require 'rubygems'
 $:.unshift File.dirname(__FILE__) + '/lib'
 
 
-require File.dirname(__FILE__) + '/lib/bigfloat'
+require File.dirname(__FILE__) + '/lib/flt'
 
 
 puts expand_text(File.read(ARGV.shift),"[")

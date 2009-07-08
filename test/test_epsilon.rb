@@ -14,9 +14,9 @@ class TestEpsilon < Test::Unit::TestCase
   end
 
   def test_epsilon_bin
-    eps = BinFloat.context.epsilon
-    assert_equal((BinFloat(1).next_plus - BinFloat(1)), eps)
-    assert_equal BinFloat(1,1,1-BinFloat.context.precision), eps
+    eps = BinNum.context.epsilon
+    assert_equal((BinNum(1).next_plus - BinNum(1)), eps)
+    assert_equal BinNum(1,1,1-BinNum.context.precision), eps
   end
 
   def test_strict_epsilon
@@ -33,13 +33,13 @@ class TestEpsilon < Test::Unit::TestCase
 
   def test_strict_epsilon_bin
     [:up, :ceiling, :down, :floor, :half_up, :half_down, :half_even].each do |rounding|
-      BinFloat.context.rounding = rounding
-      eps = BinFloat.context.strict_epsilon
-      eps_1 = BinFloat(1)+eps
+      BinNum.context.rounding = rounding
+      eps = BinNum.context.strict_epsilon
+      eps_1 = BinNum(1)+eps
       r = eps.next_minus
-      r_1 = BinFloat(1)+r
-      assert((eps_1 > BinFloat(1)) && (r_1 == BinFloat(1)), "Test strict binary epsilon for rounding #{rounding}")
-      assert_equal(((BinFloat(1)+eps)-BinFloat(1)), BinFloat.context.epsilon)
+      r_1 = BinNum(1)+r
+      assert((eps_1 > BinNum(1)) && (r_1 == BinNum(1)), "Test strict binary epsilon for rounding #{rounding}")
+      assert_equal(((BinNum(1)+eps)-BinNum(1)), BinNum.context.epsilon)
     end
   end
 
@@ -48,7 +48,7 @@ class TestEpsilon < Test::Unit::TestCase
   end
 
   def test_half_epsilon_bin
-    assert_equal BinFloat.context.epsilon/2, BinFloat.context.half_epsilon
+    assert_equal BinNum.context.epsilon/2, BinNum.context.half_epsilon
   end
 
 

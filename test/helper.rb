@@ -1,23 +1,23 @@
 require 'test/unit'
-require File.dirname(__FILE__) + '/../lib/bigfloat'
+require File.dirname(__FILE__) + '/../lib/flt'
 include Flt
 
 def initialize_context
   DecNum.context = DecNum::ExtendedContext
-  BinFloat.context = BinFloat::ExtendedContext
+  BinNum.context = BinNum::ExtendedContext
 end
 
 def float_emulation_context
-  raise "BinFloat tests require that Float is binary" unless Float::RADIX==2
-  BinFloat.context = BinFloat::FloatContext
-  BinFloat.context.clamp = false
-  BinFloat.context.traps.clear!
-  BinFloat.context.flags.clear!
+  raise "BinNum tests require that Float is binary" unless Float::RADIX==2
+  BinNum.context = BinNum::FloatContext
+  BinNum.context.clamp = false
+  BinNum.context.traps.clear!
+  BinNum.context.flags.clear!
   #
-  # BinFloat.context.precision = Float::MANT_DIG
-  # BinFloat.context.emin = Float::MIN_EXP-1
-  # BinFloat.context.emax = Float::MAX_EXP-1
-  # BinFloat.context.rounding = :half_even
+  # BinNum.context.precision = Float::MANT_DIG
+  # BinNum.context.emin = Float::MIN_EXP-1
+  # BinNum.context.emax = Float::MAX_EXP-1
+  # BinNum.context.rounding = :half_even
 end
 
 def random_integer(min, max)
