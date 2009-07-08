@@ -531,10 +531,10 @@ module Flt
       end
 
       def scale(r,s,m_p,m_m,k,_B,low_ok ,high_ok,v)
-        return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # testing
+        # return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # testing
         return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if v==0
         # TODO: estimate using v's arithmetic, not Float
-        est = (logB(_B,v)-1E-10).ceil.to_i
+        est = estimate_log(_B, v)
         if est>=0
           fixup(r,s*exptt(_B,est),m_p,m_m,est,_B,low_ok,high_ok)
         else
@@ -653,8 +653,49 @@ module Flt
         _B**k # TODO: memoize computed values or use table for common bases and exponents
       end
 
+      def estimate_log(b, v)
+        # TODO: memoization of 1/logB based on b and v's type
+        case v
+        when DecNum
+          l = nil
+          DecNum.context(:precision=>11) do
+            case b
+            when 10
+              l = v.abs.log10
+            else
+              l = v.abs.ln/Flt.DecNum(b).ln
+            end
+          end
+          l -= Flt.DecNum(+1,1,-10)
+          l.ceil
+        else
+          # TODO: handle the case of a BinFloat > Float::MAX
+          l = nil
+          case b
+          when 10
+            l = Math.log10(v.abs.to_f)
+          else
+            l = Math.log(v.abs.to_f)/Math.log(b)
+          end
+          l -= 1E-10
+          l.ceil
+        end
+      end
+
       def logB(_B, x)
-        Math.log(x)/Math.log(_B) # TODO: memoize 1/log(_B)
+        case x
+        when DecNum
+          DecNum.context(:precision=>15) do
+            case _B
+            when 10
+              x.log10
+            else
+              x.ln/DecNum(_B).ln
+            end
+          end
+        else
+          Math.log(x.to_f)/Math.log(_B) # TODO: memoize 1/log(_B)
+        end
       end
 
     end # BurgerDybvig
