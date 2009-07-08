@@ -351,7 +351,9 @@ module BigFloat
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
-          num_class.Num(+1, v.coefficient, v.exponent+exp)
+          r = num_class.Num(+1, v.coefficient, v.exponent+exp)
+          r = r.normalize if num_class.radix == 2
+          r
         elsif @radix==10
           # assert x.class==BinFloat
           # TODO: optimize (implement log10, power for BinFloat)
@@ -401,6 +403,14 @@ module BigFloat
           sign, digits, base, vexp = v.split
           BigDecimal.new("0.#{digits}E#{vexp+exp}")
         else
+          # assert num_class==BigDecimal && @radix==2
+          prec = 10
+          exp = xs.map do |x|
+            exp = (BigFloat::Decimal(x.to_s).ln/BigFloat::Decimal(2).ln).ceil - 1 # ... if :high mode
+            exp -= FloatingTolerance.ref_adjusted_exp
+            exp
+          end.send(mode)
+          num_class.Num(v)*num_class.Num(2)**exp
         end
       end
     end
