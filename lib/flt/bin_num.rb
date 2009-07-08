@@ -28,10 +28,16 @@ class BinNum < Num
     end
   end
 
+  # This is the Context class for Flt::BinNum.
+  #
   # The context defines the arithmetic context: rounding mode, precision,...
-  # BinNum.context is the current (thread-local) context.
+  #
+  # BinNum.context is the current (thread-local) context for DecNum numbers.
   class Context < Num::ContextBase
 
+    # See Flt::Num::ContextBase#new() for the valid options
+    #
+    # See also the context constructor method Flt::Num.Context().
     def initialize(*options)
       super(BinNum, *options)
     end
@@ -173,6 +179,27 @@ class BinNum < Num
   end
 
 
+  # A BinNum value can be defined by:
+  # * A String containing a decimal text representation of the number
+  # * An Integer
+  # * A Rational
+  # * A Float
+  # * Another BinNum value.
+  # * A sign, coefficient and exponent (either as separate arguments, as an array or as a Hash with symbolic keys).
+  #   This is the internal representation of DecNum, as returned by DecNum#split.
+  #   The sign is +1 for plus and -1 for minus; the coefficient and exponent are
+  #   integers, except for special values which are defined by :inf, :nan or :snan for the exponent.
+  # * Any other type for which custom conversion is defined in the context.
+  #
+  # An optional Context can be passed as the last argument to override the current context; also a hash can be passed
+  # to override specific context parameters.
+  #
+  # Except for custome defined conversions and text (String) input, BinNums are constructed with the precision
+  # specified by the input parameters (i.e. with the exact value specified by the parameters)
+  # and the context precision is ignored. If the BinNum is defined by a decimal text numeral, it is converted
+  # to a binary BinNum using the context precision.
+  #
+  # The Flt.BinNum() constructor admits the same parameters and can be used as a shortcut for DecNum creation.
   def initialize(*args)
     super(*args)
   end
@@ -245,11 +272,10 @@ class BinNum < Num
     end
   end
 
-  # BinNum - DecNum conversions
-
-  # Exact conversion: preserve BinNum value.
+  # Exact BinNum to DecNum conversion: preserve BinNum value.
+  #
   # The current DecNum.context determines the valid range and the precision
-  #(if not :exact the result will be rounded)
+  # (if its is not :exact the result will be rounded)
   def to_decimal_exact()
     if special?
       if nan?
@@ -264,6 +290,8 @@ class BinNum < Num
     end
   end
 
+  # Approximate BinNum to DecNum conversion.
+  #
   # Convert to decimal so that if the decimal is converted to a BinNum of the same precision
   # and with same rounding (i.e. BinNum.from_decimal(x, context)) the value of the BinNum
   # is preserved, but use as few decimal digits as possible.
@@ -282,6 +310,8 @@ class BinNum < Num
     end
   end
 
+  # Approximate BinNum to DecNum conversion apt for conversion back to BinNum with any rounding mode.
+  #
   # Convert to decimal so that if the decimal is converted to a BinNum of the same precision
   # and with any rounding the value of the BinNum is preserved, but use as few decimal digits
   # as possible.
@@ -289,12 +319,14 @@ class BinNum < Num
     to_decimal(binfloat_context, true)
   end
 
-  # Convert DecNum to BinNum
+  # DecNum to BinNum conversion.
   def BinNum.from_decimal(x, binfloat_context=nil)
     Flt.BinNum(x.to_s, binfloat_context)
   end
 
-  # For BinNum the generic Num#ulp() is normalized
+  # Unit in the last place: see Flt::Num#ulp()
+  #
+  # For BinNum the result is normalized
   def ulp(context=nil, mode=:low)
     super(context, mode).normalize(context)
   end

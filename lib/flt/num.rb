@@ -1,3 +1,99 @@
+# Base classes for floating-point numbers and contexts.
+
+#--
+# =Notes on the representation of Flt::Num numbers.
+#
+# @sign is +1 for plus and -1 for minus
+# @coeff is the integral significand stored as an integer (so leading zeros cannot be kept)
+# @exp is the exponent to be applied to @coeff as an integer or one of :inf, :nan, :snan for special values
+#
+# The original Python Decimal representation has these slots:
+# _sign is 1 for minus, 0 for plus
+# _int is the integral significand as a string of digits (leading zeroes are not kept)
+# _exp is the exponent as an integer or 'F' for infinity, 'n' for NaN , 'N' for sNaN
+# _is_especial is true for special values (infinity, NaN, sNaN)
+# An additional class _WorkRep is used in Python for non-special decimal values with:
+# sign
+# int (significand as an integer)
+# exp
+#
+# =Exponent values
+#
+# In GDAS (General Decimal Arithmetic Specification) numbers are represented by an unnormalized integral
+# significand and an exponent (also called 'scale'.)
+#
+# The reduce operation (originally called 'normalize') removes trailing 0s and increments the exponent if necessary;
+# the representation is rescaled to use the maximum exponent possible (while maintaining an integral significand.)
+#
+# A classical floating-point normalize opration would remove leading 0s and decrement the exponent instead,
+# rescaling to the minimum exponent theat maintains the significand value under some conventional limit (1 or the radix).
+#
+# The logb and adjusted operations return the exponent that applies to the most significand digit (logb as a Decimal
+# and adjusted as an integer.) This is the normalized scientific exponent.
+#
+# The most common normalized exponent is the normalized integral exponent for a fixed number of precision digits.
+#
+# The normalized fractional exponent is what BigDecima#exponent returns.
+#
+# ==Relations between exponent values
+#
+# The number of (kept) significand digits is s = a - e + 1
+# where a is the adjusted exponent and e is the internal exponent (the unnormalized integral exponent.)
+#
+# The number of significant digits (excluding leading and trailing zeroes) is sr = a - re + 1
+# where re is the internal exponent of the reduced value.
+#
+# The normalized integral exponent is e - (p - s) = a - p + 1
+# where p is the fixed precision.
+#
+# The normalized fractional exponent is e + s = a + 1
+#
+# ==Example: 0.01204
+#
+# * The integral significand is 120400 and the internal exponent that applies to it is e = -7
+# * The number of significand digits is s = 6
+# * The reduced representation is 1204 with internal exponent re = -5
+# * The number of significant digits sr = 4
+# * The adjusted exponent is a = -2 (the adjusted representation is 1.204 with exponent -2)
+# * Given a precision p = 8, the normalized integral representation is 12040000 with exponent -9
+# * The normalized fractional representation is 0.1204 with exponent -1
+#
+# ==Exponent limits
+#
+# The (integral) exponent e must be within this limits: etiny <= e <= etop
+# The adjusted exponent a must: emin <= a <= emax
+# emin, emax are the limite of the exponent shown in scientific notation and are use to defined
+# the exponent limits in the contexts.
+# etiny = emin-precision+1 and etop=emax-precision+1 are the limits of the internal exponent.
+# Note that for significands with less than precision digits we can use exponents greater than etop
+# without causing overflow: +Decimal(+1,1,emax) == Decimal(+1,K,etop) where K=10**(precision-1)
+#
+# =Interoperatibility with other numeric types
+#
+# For some numeric types implicit conversion to DecNum is defined through these methods:
+# * DecNum#coerce() is used when a Decimal is the right hand of an operator
+# and the left hand is another numeric type
+# * DecNum#_bin_op() used internally to define binary operators and use the Ruby coerce protocol:
+# if the right-hand operand is of known type it is converted with Decimal; otherwise use coerce
+# * _convert() converts known types to Decimal with Decimal() or raises an exception.
+# * DecNum() casts known types and text representations of numbers to Decimal using the constructor.
+# * DecNum#initialize performs the actual type conversion
+#
+# The known or 'coercible' types for DecNum are initially Integer and Rational, but this can be extended to
+# other types using define_conversion_from() in a Context object.
+#++
+
+#--
+# TODO: Burger and Dybvig formatting algorithms: add formatting options
+# TODO: for BinNum#to_s consider using the context precision as a minimum and/or adding an exact mode
+# TODO: for BinNum(String) with non exact precision, use context precision only if no exact conversion is possible
+# TODO: selecting the kind of ulp is awkward; consider one of these options:
+#       * don't support variant ulps; always use Muller's ulp
+#       * use an options hash for the kind of ulp parameter
+#       * keep the kind of ulp in the context
+# TODO: move the exception classes from Flt::Num to Flt ? move also Flt::Num::ContextBas to Flt ?
+#++
+
 require 'flt/support'
 require 'flt/version'
 
@@ -9,15 +105,11 @@ require 'ostruct'
 
 module Flt
 
-# TODO: update documentation; check rdoc results for clarity given the new Flt, Num/DecNum/BinNum structure
-# TODO: Burger and Dybvig formatting algorithms: add formatting options
-# TODO: for BinNum#to_s consider using the context precision as a minimum and/or adding an exact mode
-# TODO: for BinNum(String) with non exact precision, use context precision only if no exact conversion is possible
-# TODO: selecting the kind of ulp is awkward; consider one of these options:
-#       * don't support variant ulps; always use Muller's ulp
-#       * use an options hash for the kind of ulp parameter
-#       * keep the kind of ulp in the context
-
+# Generic radix arbitrary-precision, floating-point numbers. This is a base class for
+# floating point types of specific radix.
+#
+# The implementation of floating-point arithmetic is largely based on the Decimal module of Python,
+# written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
 class Num < Numeric
 
   extend Support # allows use of unqualified FlagValues(), Flags(), etc.
@@ -273,6 +365,10 @@ class Num < Numeric
     Flt::Support::Flags(EXCEPTIONS,*values)
   end
 
+  # Base class for Context classes.
+  #
+  # Derived classes will implement Floating-Point contexts for the specific
+  # floating-point types (DecNum, BinNum)
   class ContextBase
     # If an options hash is passed, the options are
     # applied to the default context; if a Context is passed as the first
@@ -294,7 +390,7 @@ class Num < Numeric
     # * :capitals : (true or false) to use capitals in text representations
     # * :clamp : (true or false) enables clamping
     #
-    # See also the context constructor method DecNum.Context().
+    # See also the context constructor method Flt::Num.Context().
     def initialize(num_class, *options)
       @num_class = num_class
 
@@ -316,10 +412,12 @@ class Num < Numeric
 
     end
 
+    # This gives access to the numeric class (Flt::Num-derived) this context is for.
     def num_class
       @num_class
     end
 
+    # Constructor for the associated numeric class
     def Num(*args)
       num_class.Num(*args)
     end
@@ -345,7 +443,6 @@ class Num < Numeric
     def int_div_radix_power(x,n)
       @num_class.int_div_radix_power(x,n)
     end
-
 
     attr_accessor :rounding, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp
 
@@ -641,23 +738,23 @@ class Num < Numeric
       _convert(x).divmod(y,self)
     end
 
-    # General DecNum Arithmetic Specification integer division: (x/y).truncate
+    # General Decimal Arithmetic Specification integer division: (x/y).truncate
     def divide_int(x,y)
       _convert(x).divide_int(y,self)
     end
 
-    # General DecNum Arithmetic Specification remainder: x - y*divide_int(x,y)
+    # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
     def remainder(x,y)
       _convert(x).remainder(y,self)
     end
 
-    # General DecNum Arithmetic Specification remainder-near
+    # General Decimal Arithmetic Specification remainder-near
     #  x - y*round_half_even(x/y)
     def remainder_near(x,y)
       _convert(x).remainder_near(y,self)
     end
 
-    # General DecNum Arithmetic Specification integer division and remainder:
+    # General Decimal Arithmetic Specification integer division and remainder:
     #  (x/y).truncate, x - y*(x/y).truncate
     def divrem(x,y)
       _convert(x).divrem(y,self)
@@ -945,12 +1042,14 @@ class Num < Numeric
 
   end
 
-
   # Context constructor; if an options hash is passed, the options are
   # applied to the default context; if a Context is passed as the first
   # argument, it is used as the base instead of the default context.
   #
-  # See Context#new() for the valid options
+  # Note that this method should be called on concrete floating point types such as
+  # Flt::DecNum and Flt::BinNum, and not in the abstract base class Flt::Num.
+  #
+  # See Flt::Num::ContextBase#new() for the valid options
   def self.Context(*args)
     case args.size
       when 0
@@ -982,7 +1081,7 @@ class Num < Numeric
   end
 
   # Define a context by passing either of:
-  # * A Context object
+  # * A Context object (of the same type)
   # * A hash of options (or nothing) to alter a copy of the current context.
   # * A Context object and a hash of options to alter a copy of it
   def self.define_context(*options)
@@ -1002,9 +1101,9 @@ class Num < Numeric
   private :define_context
 
   # The current context (thread-local).
-  # If arguments are passed they are interpreted as in DecNum.define_context() to change
+  # If arguments are passed they are interpreted as in Num.define_context() to change
   # the current context.
-  # If a block is given, this method is a synonym for DecNum.local_context().
+  # If a block is given, this method is a synonym for Num.local_context().
   def self.context(*args, &blk)
     if blk
       # setup a local context
@@ -1070,22 +1169,36 @@ class Num < Numeric
   end
 
   class << self
-    # A decimal number with value zero and the specified sign
+    # A floating-point number with value zero and the specified sign
     def zero(sign=+1)
       new [sign, 0, 0]
     end
 
-    # A decimal infinite number with the specified sign
+    # A floating-point infinite number with the specified sign
     def infinity(sign=+1)
       new [sign, 0, :inf]
     end
 
-    # A decimal NaN (not a number)
+    # A floating-point NaN (not a number)
     def nan()
       new [+1, nil, :nan]
     end
   end
 
+  # A floating point-number value can be defined by:
+  # * A String containing a text representation of the number
+  # * An Integer
+  # * A Rational
+  # * Another floating-point value of the same type.
+  # * A sign, coefficient and exponent (either as separate arguments, as an array or as a Hash with symbolic keys).
+  #   This is the internal representation of Num, as returned by Num#split.
+  #   The sign is +1 for plus and -1 for minus; the coefficient and exponent are
+  #   integers, except for special values which are defined by :inf, :nan or :snan for the exponent.
+  #
+  # An optional Context can be passed as the last argument to override the current context; also a hash can be passed
+  # to override specific context parameters.
+  #
+  # The Flt.DecNum() and Flt.BinNum() constructors admits the same parameters and can be used as a shortcut.
   def initialize(*args)
     context = nil
     if args.size>0 && (args.last.kind_of?(ContextBase) || args.last.nil?)
@@ -1743,7 +1856,7 @@ class Num < Numeric
     result
   end
 
-  # General DecNum Arithmetic Specification integer division and remainder:
+  # General Decimal Arithmetic Specification integer division and remainder:
   #  (x/y).truncate, x - y*(x/y).truncate
   def divrem(other, context=nil)
     context = define_context(context)
@@ -1811,7 +1924,7 @@ class Num < Numeric
   end
 
 
-  # General DecNum Arithmetic Specification integer division: (x/y).truncate
+  # General Decimal Arithmetic Specification integer division: (x/y).truncate
   def divide_int(other, context=nil)
     context = define_context(context)
     other = _convert(other)
@@ -1885,7 +1998,7 @@ class Num < Numeric
     return self._divide_floor(other, context).last._fix(context)
   end
 
-  # General DecNum Arithmetic Specification remainder: x - y*divide_int(x,y)
+  # General Decimal Arithmetic Specification remainder: x - y*divide_int(x,y)
   def remainder(other, context=nil)
     context = define_context(context)
     other = _convert(other)
@@ -1908,7 +2021,7 @@ class Num < Numeric
     return self._divide_truncate(other, context).last._fix(context)
   end
 
-  # General DecNum Arithmetic Specification remainder-near:
+  # General Decimal Arithmetic Specification remainder-near:
   #  x - y*round_half_even(x/y)
   def remainder_near(other, context=nil)
     context = define_context(context)
@@ -2526,21 +2639,21 @@ class Num < Numeric
   end
 
   # General ceiling operation (as for Float) with same options for precision
-  # as DecNum#round()
+  # as Flt::Num#round()
   def ceil(opt={})
     opt[:rounding] = :ceiling
     round opt
   end
 
   # General floor operation (as for Float) with same options for precision
-  # as DecNum#round()
+  # as Flt::Num#round()
   def floor(opt={})
     opt[:rounding] = :floor
     round opt
   end
 
   # General truncate operation (as for Float) with same options for precision
-  # as DecNum#round()
+  # as Flt::Num#round()
   def truncate(opt={})
     opt[:rounding] = :down
     round opt

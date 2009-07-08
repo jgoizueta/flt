@@ -6,7 +6,7 @@ Thus, we can define an arbitrary-precision binary floating point class and keep 
 (share code with DecNum.) This libray now includes also extension to Float and BigDecimal
 and Tolerance (a floating-point tolerances system).
 
-An binary floating point class would have different applications from DecNum (its
+A binary floating point class would have different applications from DecNum (its
 error propoerties would be different). It could also be used to add precise arithmetic
 to float-formats.
 
@@ -16,18 +16,35 @@ be more confusing?) are worth to have a binary floating point type.
 
 = Introduction
 
-DecNum is a standards-compliant arbitrary precision decimal floating-point type for Ruby.
-It is based on the Python Decimal class.
+This library provides arbitrary precision floating-point types for Ruby. All types and
+functions are within a namespace called +Flt+. Decimal and Binary floating point numbers
+are implemented in classes +Flt::DecNum+ and +Flt::BinNum+. These types are completely
+written in Ruby using the multiple precision native integers. The performance
+could be improved in the future by using a C extension based on the decNumber libray.
 
-The current implementation is written completely in Ruby, so it is rather slow.
-The intentention is to experiment with this pure-ruby implementation to
-define a nice feature-set and API for DecNum and have a good test suite for its
-specification. Then an efficient implementation could be written, for example
-by using a C extension wrapper around the decNumber library.
+The Flt::Tolerance classes and the Flt.Tolerance() constructor handle floating point
+tolerances defined in flexible ways.
+
+Some extensions to +Float+ and +Bigdecimal+ are available in the files
+flt/float.rb[link:files/lib/flt/float_rb.html] and
+flt/bigdecimal.rb[link:files/lib/flt/bigdecial_rb.html]
+that aid to the interchangeability of floating point types.
+
+This library is the successor of the ruby-decimal gem, that defined the Decimal class
+for decimal floating point; that class has been renamed to Flt::DecNum and support
+has been added for binary floating point and tolerances.
+
+FIXME: The a new flt project will probably be open in RubyForge, and a fork
+of the github repository.
 
 The documentation for this package is available at http://ruby-decimal.rubyforge.org/
 
 The code is at http://github.com/jgoizueta/ruby-decimal/
+
+= DecNum
+
+Flt::DecNum is a standards-compliant arbitrary precision decimal floating-point type for Ruby.
+It is based on the Python Decimal class.
 
 == Standars compliance.
 
@@ -37,6 +54,7 @@ and the revised IEEE 754 standard (IEEE 754-2008).
 = Examples of use
 
 To install the library use gem from the command line: (you may not need +sudo+)
+FIXME: The flt gem is not publicly available yet.
   sudo gem install flt
 
 Then require the library in your code (if it fails you may need to <tt>require 'rubygems'</tt> first)
@@ -443,7 +461,13 @@ Note also that if we normalize a value we will change it's precision to that of 
 
 == More Information
 
-Consult the documentation for the classes DecNum and DecNum::Context.
+* Decimal Floating point type: see the base Flt::Num class and the Flt::DecNum class
+* Binary Floating point type: see the base Flt::Num class and the Flt::BinNum class
+* Floating Point Contexts: see documentation for classes Flt::Num::ContextBase,
+  Flt::DecNum::Context and Flt::BinNum::Context
+* Floating Point Tolerance: see the flt/tolerance.rb[link:files/lib/flt/tolerance_rb.html] file
+  and the Flt::Tolerance class
+* Constructors: see Flt.DecNum(), Flt.BinNum() and Flt.Tolerance().
 
 = DecNum vs BigDecimal
 
@@ -504,6 +528,7 @@ EXPAND+
 
 = Roadmap
 
+* Version 0.2.0: First released version of the new flt gem.
 * Version 0.3.0: Implement the missing GDA functions:
   rotate, shift, trim, and, or, xor, invert,
   max, min, maxmag, minmag, comparetotal, comparetotmag

@@ -31,31 +31,15 @@ class DecNum < Num
     end
   end
 
+  # This is the Context class for Flt::DecNum.
+  #
   # The context defines the arithmetic context: rounding mode, precision,...
-  # DecNum.context is the current (thread-local) context.
+  #
+  # DecNum.context is the current (thread-local) context for DecNum numbers.
   class Context < Num::ContextBase
-
-    # If an options hash is passed, the options are
-    # applied to the default context; if a Context is passed as the first
-    # argument, it is used as the base instead of the default context.
+    # See Flt::Num::ContextBase#new() for the valid options
     #
-    # The valid options are:
-    # * :rounding : one of :half_even, :half_down, :half_up, :floor,
-    #   :ceiling, :down, :up, :up05
-    # * :precision : number of digits (or 0 for exact precision)
-    # * :exact : if true precision is ignored and Inexact conditions are trapped,
-    #            if :quiet it set exact precision but no trapping;
-    # * :traps : a Flags object with the exceptions to be trapped
-    # * :flags : a Flags object with the raised flags
-    # * :ignored_flags : a Flags object with the exceptions to be ignored
-    # * :emin, :emax : minimum and maximum adjusted exponents
-    # * :elimit : the exponent limits can also be defined by a single value;
-    #   if positive it is taken as emax and emin=1-emax; otherwiae it is
-    #   taken as emin and emax=1-emin. Such limits comply with IEEE 754-2008
-    # * :capitals : (true or false) to use capitals in text representations
-    # * :clamp : (true or false) enables clamping
-    #
-    # See also the context constructor method DecNum.Context().
+    # See also the context constructor method Flt::Num.Context().
     def initialize(*options)
       super(DecNum, *options)
     end
@@ -101,90 +85,7 @@ class DecNum < Num
                              :precision=>9, :rounding=>:half_even,
                              :traps=>[], :flags=>[], :clamp=>false)
 
-  #--
-  # =Notes on the representation of DecNum numbers.
-  #
-  #   @sign is +1 for plus and -1 for minus
-  #   @coeff is the integral significand stored as an integer (so leading zeros cannot be kept)
-  #   @exp is the exponent to be applied to @coeff as an integer or one of :inf, :nan, :snan for special values
-  #
-  # The Python Decimal representation has these slots:
-  #   _sign is 1 for minus, 0 for plus
-  #   _int is the integral significand as a string of digits (leading zeroes are not kept)
-  #   _exp is the exponent as an integer or 'F' for infinity, 'n' for NaN , 'N' for sNaN
-  #   _is_especial is true for special values (infinity, NaN, sNaN)
-  # An additional class _WorkRep is used in Python for non-special decimal values with:
-  #   sign
-  #   int (significand as an integer)
-  #   exp
-  #
-  # =Exponent values
-  #
-  # In GDAS (General Decimal Arithmetic Specification) numbers are represented by an unnormalized integral
-  # significand and an exponent (also called 'scale'.)
-  #
-  # The reduce operation (originally called 'normalize') removes trailing 0s and increments the exponent if necessary;
-  # the representation is rescaled to use the maximum exponent possible (while maintaining an integral significand.)
-  #
-  # A classical floating-point normalize opration would remove leading 0s and decrement the exponent instead,
-  # rescaling to the minimum exponent theat maintains the significand value under some conventional limit (1 or the radix).
-  #
-  # The logb and adjusted operations return the exponent that applies to the most significand digit (logb as a DecNum
-  # and adjusted as an integer.) This is the normalized scientific exponent.
-  #
-  # The most common normalized exponent is the normalized integral exponent for a fixed number of precision digits.
-  #
-  # The normalized fractional exponent is what BigDecima#exponent returns.
-  #
-  # ==Relations between exponent values
-  #
-  # The number of (kept) significand digits is s = a - e + 1
-  # where a is the adjusted exponent and e is the internal exponent (the unnormalized integral exponent.)
-  #
-  # The number of significant digits (excluding leading and trailing zeroes) is sr = a - re + 1
-  # where re is the internal exponent of the reduced value.
-  #
-  # The normalized integral exponent is e - (p - s) = a - p + 1
-  # where p is the fixed precision.
-  #
-  # The normalized fractional exponent is e + s = a + 1
-  #
-  # ==Example: 0.01204
-  #
-  # * The integral significand is 120400 and the internal exponent that applies to it is e = -7
-  # * The number of significand digits is s = 6
-  # * The reduced representation is 1204 with internal exponent re = -5
-  # * The number of significant digits sr = 4
-  # * The adjusted exponent is a = -2 (the adjusted representation is 1.204 with exponent -2)
-  # * Given a precision p = 8, the normalized integral representation is 12040000 with exponent -9
-  # * The normalized fractional representation is 0.1204 with exponent -1
-  #
-  # ==Exponent limits
-  #
-  # The (integral) exponent e must be within this limits: etiny <= e <= etop
-  # The adjusted exponent a must: emin <= a <= emax
-  # emin, emax are the limite of the exponent shown in scientific notation and are use to defined
-  # the exponent limits in the contexts.
-  # etiny = emin-precision+1 and etop=emax-precision+1 are the limits of the internal exponent.
-  # Note that for significands with less than precision digits we can use exponents greater than etop
-  # without causing overflow: +DecNum(+1,1,emax) == DecNum(+1,K,etop) where K=10**(precision-1)
-  #
-  # =Interoperatibility with other numeric types
-  #
-  # For some numeric types implicit conversion to DecNum is defined through these methods:
-  # * DecNum#coerce() is used when a DecNum is the right hand of an operator
-  #   and the left hand is another numeric type
-  # * DecNum#_bin_op() used internally to define binary operators and use the Ruby coerce protocol:
-  #   if the right-hand operand is of known type it is converted with DecNum; otherwise use coerce
-  # * _convert() converts known types to DecNum with DecNum() or raises an exception.
-  # * DecNum() casts known types and text representations of numbers to DecNum using the constructor.
-  # * DecNum#initialize performs the actual type conversion
-  #
-  # The known or 'coercible' types are initially Integer and Rational, but this can be extended to
-  # other types using define_conversion_from() in a Context object.
-  #++
-
-  # A decimal value can be defined by:
+  # A DecNum value can be defined by:
   # * A String containing a text representation of the number
   # * An Integer
   # * A Rational
@@ -193,9 +94,15 @@ class DecNum < Num
   #   This is the internal representation of DecNum, as returned by DecNum#split.
   #   The sign is +1 for plus and -1 for minus; the coefficient and exponent are
   #   integers, except for special values which are defined by :inf, :nan or :snan for the exponent.
+  # * Any other type for which custom conversion is defined in the context.
+  #
   # An optional Context can be passed as the last argument to override the current context; also a hash can be passed
   # to override specific context parameters.
-  # The DecNum() admits the same parameters and can be used as a shortcut for DecNum creation.
+  #
+  # Except for custom defined conversions, DecNums are constructed with the precision specified by the
+  # input parameters (i.e. with the exact value specified by the parameters) and the context precision is ignored.
+  #
+  # The Flt.DecNum() constructor admits the same parameters and can be used as a shortcut for DecNum creation.
   def initialize(*args)
     super(*args)
   end
