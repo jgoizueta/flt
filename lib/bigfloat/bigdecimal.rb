@@ -1,6 +1,7 @@
 # This adds some extensions to BigDecimal for (limited) compatibility with BigFloat types
 
-# require 'bigdecimal'
+require 'bigdecimal'
+require 'bigdecimal/math'
 
 class BigDecimal
 
@@ -54,6 +55,10 @@ class BigDecimal
       exp = self.exponent - (prec-1)
       BigDecimal.new "1E#{exp}"
     end
+  end
+
+  module Math
+    extend BigMath
   end
 
 end
