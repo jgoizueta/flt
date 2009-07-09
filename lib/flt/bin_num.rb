@@ -208,59 +208,6 @@ class BinNum < Num
     @coeff.is_a?(Integer) ? _nbits(@coeff) : 0
   end
 
-  # Convert to a text literal in the specified base (10 by default).
-  #
-  # If the output base is 2, the rendered value is the exact value of the BinNum;
-  # showing also trailing zeros, just as for DecNum.
-  #
-  # With bases different from 2, like the default 10, the BinNum number is treated
-  # as an approximation with a precision of number_of_digits. The conversioin renders
-  # that aproximation in other base without introducing additional precision.
-  #
-  # The resulting text numeral is such that it has as few digits as possible while
-  # preserving the original while if converted back to BinNum with
-  # the same context precision that the original number had (number_of_digits).
-  #
-  # To render teh exact value of the BinNum in decimal this can be used instead:
-  #   x.to_decimal_exact.to_s
-  #
-  # Options:
-  # :base output base, 10 by default
-  #
-  # :any_rounding if true he text literal will have enough digits to be
-  # converted back to self in any rounding mode. Otherwise only enough
-  # digits for conversion in the rounding mode specified by the context
-  # are produced.
-  #
-  # :all_digits if true all significant digits are shown. A digit
-  # is considered as significant here if when used on input, cannot
-  # arbitrarily change its value and preserve the parsed value of the
-  # floating point number.
-  def to_s(*args)
-    eng=false
-    context=nil
-
-    # admit legacy arguments eng, context in that order
-    if [true,false].include?(args.first)
-      eng = args.shift
-    end
-    if args.first.is_a?(BinNum::Context)
-      context = args.shift
-    end
-    # admit also :eng to specify the eng mode
-    if args.first == :eng
-      eng = true
-      args.shift
-    end
-    raise TypeError, "Invalid arguments to BinNum#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
-    # an admit arguments through a final parameters Hash
-    options = args.first || {}
-    context = options.delete(:context) if options.has_key?(:context)
-    eng = options.delete(:eng) if options.has_key?(:eng)
-
-    format(context, options.merge(:eng=>eng))
-  end
-
   # Specific to_f conversion TODO: check if it represents an optimization
   if Float::RADIX==2
     def to_f
