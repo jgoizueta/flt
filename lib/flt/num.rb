@@ -3281,7 +3281,7 @@ class Num < Numeric
         BinNum
       else
         class_name = "Base#{base}Num"
-        unless const_defined?(class_name)
+        unless Flt.const_defined?(class_name)
           cls = Flt.const_set class_name, Class.new(Num) {
             def initialize(*args)
               super(*args)
