@@ -2986,6 +2986,102 @@ class Num < Numeric
 
   end
 
+  # Convert to a text literal in the specified base. If the result is
+  # converted to BinNum with the specified context rounding and the
+  # same precision that self has (self.number_of_digits), the same
+  # number will be produced.
+  #
+  # Options:
+  # :base output base, 10 by default
+  #
+  # :any_rounding if true he text literal will have enough digits to be
+  # converted back to self in any rounding mode. Otherwise only enough
+  # digits for conversion in the rounding mode specified by the context
+  # are produced.
+  #
+  # :all_digits if true all significant digits are shown. A digit
+  # is considere as significant here if when used on input, cannot
+  # arbitrarily change its value and preserve the parsed value of the
+  # floating point number.
+  #
+  # Note that when :base=>10 (the default) we're regarding the binary number x
+  # as an approximation with x.number_of_digits precision and showing that
+  # inexact value in decimal without introducing additional precision.
+  # If the exact value of the number expressed in decimal is desired (we consider
+  # the BinNum an exact number), this can be done with BinNum.to_decimal_exact(x).to_s
+  def format(binfloat_context, options={})
+    output_radix = options[:base] || 10
+    all_digits = options[:all_digits]
+    any_rounding = options[:any_rounding]
+    eng = options[:eng]
+
+    sgn = sign<0 ? '-' : ''
+    if special?
+      if @exp==:inf
+        return "#{sgn}Infinity"
+      elsif @exp==:nan
+        return "#{sgn}NaN#{@coeff}"
+      else # exp==:snan
+        return "#{sgn}sNaN#{@coeff}"
+      end
+    end
+
+    context = define_context(binfloat_context)
+    inexact = true
+    rounding = context.rounding unless any_rounding
+    if @sign == -1
+      if rounding == :ceiling
+        rounding = :floor
+      elsif rounding == :floor
+        rounding = :ceiling
+      end
+    end
+    x = self.abs # .to_f
+
+    p = self.number_of_digits
+
+    dec_pos,round_needed,*digits = Support::BurgerDybvig.float_to_digits(x,@coeff,@exp,rounding,
+                                           context.etiny,p,num_class.radix,output_radix, all_digits)
+    dec_pos, digits = Support::BurgerDybvig.adjust(dec_pos, round_needed, digits, output_radix)
+
+    ds = digits.map{|d| d.to_s(output_radix)}.join
+    sgn = ((sign==-1) ? '-' : '')
+    n_ds = ds.size
+    exp = dec_pos - n_ds
+    leftdigits = dec_pos
+
+    # TODO: DRY (this code is duplicated in DecNum#to_s)
+    if exp<=0 && leftdigits>-6
+      dotplace = leftdigits
+    elsif !eng
+      dotplace = 1
+    elsif @coeff==0
+      dotplace = (leftdigits+1)%3 - 1
+    else
+      dotplace = (leftdigits-1)%3 + 1
+    end
+
+    if dotplace <=0
+      intpart = '0'
+      fracpart = '.' + '0'*(-dotplace) + ds
+    elsif dotplace >= n_ds
+      intpart = ds + '0'*(dotplace - n_ds)
+      fracpart = ''
+    else
+      intpart = ds[0...dotplace]
+      fracpart = '.' + ds[dotplace..-1]
+    end
+
+    if leftdigits == dotplace
+      e = ''
+    else
+      e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
+    end
+
+    sgn + intpart + fracpart + e
+
+  end
+
   # Auxiliar Methods
 
   # Round to i digits using the specified method
@@ -3104,6 +3200,25 @@ class Num < Numeric
   include AuxiliarFunctions
   extend AuxiliarFunctions
 
-end
+  # class <<self
+  #   def [](radix)
+  #     case radix
+  #     when 10
+  #       DecNum
+  #     when 2
+  #       BinNum
+  #     else
+  #       class_name = "Base#{radix}Num"
+  #       unless defined?(class_name)
+  #         Flt.const_set Class.new(Num) do
+  #
+  #         end
+  #       end
+  #       Flt.const_get class_name
+  #     end
+  #   end
+  # end
+
+end # Num
 
 end # Flt
