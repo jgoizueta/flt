@@ -3300,8 +3300,6 @@ class Num < Numeric
           default_digits = 10
           default_elimit = 100
 
-          puts "C: #{cls::Context.object_id}"
-
           cls.const_set :DefaultContext, cls::Context.new(
             :exact=>false, :precision=>default_digits, :rounding=>:half_even,
             :elimit=>default_elimit,
