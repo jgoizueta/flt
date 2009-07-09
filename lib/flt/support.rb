@@ -726,7 +726,7 @@ module Flt
         end
       end
       NBITS_BLOCK = 32
-      NBITS_LIMIT = Math.ldexp(1,Float::MANT_DIG)
+      NBITS_LIMIT = Math.ldexp(1,Float::MANT_DIG).to_i
 
       def detect_float_rounding
         x = x = Math::ldexp(1, Float::MANT_DIG+1) # 10000...00*Float::RADIX**2 == Float::RADIX**(Float::MANT_DIG+1)
