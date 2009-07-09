@@ -3268,6 +3268,58 @@ class Num < Numeric
   include AuxiliarFunctions
   extend AuxiliarFunctions
 
+  class <<self
+    # Num[base] can be use to obtain a floating-point numeric class with radix base, so that, for example,
+    # Num[2] is equivalent to BinNum and Num[10] to DecNum.
+    #
+    # If the base does not correspond to one of the predefined classes (DecNum, BinNum), a new class
+    # is dynamically generated.
+    def [](base)
+      case base
+      when 10
+        DecNum
+      when 2
+        BinNum
+      else
+        class_name = "Base#{base}Num"
+        unless const_defined?(class_name)
+          cls = Flt.const_set class_name, Class.new(Num) {
+            def initialize(*args)
+              super(*args)
+            end
+          }
+          meta_cls = class <<cls;self;end
+          meta_cls.send :define_method, :radix do
+            base
+          end
+
+          cls.const_set :Context, Class.new(Num::ContextBase)
+          cls::Context.send :define_method, :initialize do |*options|
+            super(cls, *options)
+          end
+
+          default_digits = 10
+          default_elimit = 100
+
+          puts "C: #{cls::Context.object_id}"
+
+          cls.const_set :DefaultContext, cls::Context.new(
+            :exact=>false, :precision=>default_digits, :rounding=>:half_even,
+            :elimit=>default_elimit,
+            :flags=>[],
+            :traps=>[DivisionByZero, Overflow, InvalidOperation],
+            :ignored_flags=>[],
+            :capitals=>true,
+            :clamp=>true
+          )
+
+        end
+        Flt.const_get class_name
+
+      end
+    end
+  end
+
 end # Num
 
 end # Flt
