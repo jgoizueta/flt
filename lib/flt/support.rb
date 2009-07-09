@@ -353,7 +353,7 @@ module Flt
         q = u.div v
         r = u-q*v
         v_r = v-r
-        z = context.num_class.new(+1,q,k)
+        z = context.Num(+1,q,k)
         exact = (r==0)
         if (round_mode == :down || round_mode == :floor)
           # z = z
@@ -379,6 +379,8 @@ module Flt
       # Given exact integers f and e, with f nonnegative, returns the floating-point number
       # closest to f * eb**e
       # (eb is the input radix)
+      #
+      # This is Clinger's \cd{AlgorithmM} modified to handle denormalized numbers and cope with overflow.
       def algM(context, f, e, round_mode, eb=10) # ceiling & floor must be swapped for negative numbers
         if e<0
          u,v,k = f,eb**(-e),0
