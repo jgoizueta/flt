@@ -421,7 +421,6 @@ class Num < Numeric
     def Num(*args)
       num_class.Num(*args)
     end
-    private :Num
 
     def radix
       @num_class.radix

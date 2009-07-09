@@ -103,12 +103,16 @@ class Float
   end
 
   # Synonym of next, named in the style of DecNum (GDA)
-  def next_plus
+  #
+  # The context parameters, which is not used, is for compatibility with Flt classes
+  def next_plus(context=nil)
     self.next
   end
 
   # Synonym of prev, named in the style of DecNum (GDA)
-  def next_minus
+  #
+  # The context parameters, which is not used, is for compatibility with Flt classes
+  def next_minus(context=nil)
     self.prev
   end
 
@@ -256,6 +260,16 @@ class Float
       self
     end
 
+    # This is for further compatibility with Flt classes; it allows Float.context to act
+    # more like a context.
+    def num_class
+      self
+    end
+
+    def int_radix_power(n)
+      1 << n
+    end
+
     # This is the difference between 1.0 and the smallest floating-point
     # value greater than 1.0, radix_power(1-significand_precision)
     #
@@ -350,6 +364,10 @@ class Float
 
     def precision
       MANT_DIG
+    end
+
+    def exact?
+      false
     end
 
     # detect actual rounding mode
