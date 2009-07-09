@@ -111,77 +111,6 @@ class DecNum < Num
     @coeff.is_a?(Integer) ? _number_of_digits(@coeff) : 0
   end
 
-  # Ruby-style to string conversion.
-  def to_s(*args)
-    eng=false
-    context=nil
-
-    # admit legacy arguments eng, context in that order
-    if [true,false].include?(args.first)
-      eng = args.shift
-    end
-    if args.first.is_a?(DecNum::Context)
-      context = args.shift
-    end
-    # admit also :eng to specify the eng mode
-    if args.first == :eng
-      eng = true
-      args.shift
-    end
-    raise TypeError, "Invalid arguments to BinNum#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
-    # an admit arguments through a final parameters Hash
-    options = args.first || {}
-    context = options[:context] if options[:context]
-    eng = options[:eng] if options.has_key?(:eng)
-
-    # (context || num_class.context).to_string(self)
-    context = define_context(context)
-    sgn = sign<0 ? '-' : ''
-    if special?
-      if @exp==:inf
-        "#{sgn}Infinity"
-      elsif @exp==:nan
-        "#{sgn}NaN#{@coeff}"
-      else # exp==:snan
-        "#{sgn}sNaN#{@coeff}"
-      end
-    else
-      ds = @coeff.to_s
-      n_ds = ds.size
-      exp = integral_exponent
-      leftdigits = exp + n_ds
-      if exp<=0 && leftdigits>-6
-        dotplace = leftdigits
-      elsif !eng
-        dotplace = 1
-      elsif @coeff==0
-        dotplace = (leftdigits+1)%3 - 1
-      else
-        dotplace = (leftdigits-1)%3 + 1
-      end
-
-      if dotplace <=0
-        intpart = '0'
-        fracpart = '.' + '0'*(-dotplace) + ds
-      elsif dotplace >= n_ds
-        intpart = ds + '0'*(dotplace - n_ds)
-        fracpart = ''
-      else
-        intpart = ds[0...dotplace]
-        fracpart = '.' + ds[dotplace..-1]
-      end
-
-      if leftdigits == dotplace
-        e = ''
-      else
-        e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
-      end
-
-      sgn + intpart + fracpart + e
-
-    end
-  end
-
   # Raises to the power of x, to modulo if given.
   #
   # With two arguments, compute self**other.  If self is negative then other
@@ -1268,6 +1197,51 @@ class DecNum < Num
   # If we need to use them from DecNum class methods, we can avoid
   # the use of the prefix with:
   # extend AuxiliarFunctions
+
+  # specific base 10 format
+  def format(context, options={})
+    base = options[:base] || 10
+    eng = options[:eng]
+    if special? || base!=10
+      super
+    else
+      context = define_context(context)
+      sgn = sign<0 ? '-' : ''
+      ds = @coeff.to_s
+      n_ds = ds.size
+      exp = integral_exponent
+      leftdigits = exp + n_ds
+      if exp<=0 && leftdigits>-6
+        dotplace = leftdigits
+      elsif !eng
+        dotplace = 1
+      elsif @coeff==0
+        dotplace = (leftdigits+1)%3 - 1
+      else
+        dotplace = (leftdigits-1)%3 + 1
+      end
+
+      if dotplace <=0
+        intpart = '0'
+        fracpart = '.' + '0'*(-dotplace) + ds
+      elsif dotplace >= n_ds
+        intpart = ds + '0'*(dotplace - n_ds)
+        fracpart = ''
+      else
+        intpart = ds[0...dotplace]
+        fracpart = '.' + ds[dotplace..-1]
+      end
+
+      if leftdigits == dotplace
+        e = ''
+      else
+        e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
+      end
+
+      sgn + intpart + fracpart + e
+
+    end
+  end
 
 end
 

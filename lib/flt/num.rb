@@ -1184,6 +1184,21 @@ class Num < Numeric
     end
   end
 
+
+  class <<self
+    def int_radix_power(n)
+      self.radix**n
+    end
+
+    def int_mult_radix_power(x,n)
+      x * self.radix**n
+    end
+
+    def int_div_radix_power(x,n)
+      x / self.radix**n
+    end
+  end
+
   # A floating point-number value can be defined by:
   # * A String containing a text representation of the number
   # * An Integer
@@ -2685,6 +2700,59 @@ class Num < Numeric
     return product.add(third, context)
   end
 
+  # Convert to a text literal in the specified base (10 by default).
+  #
+  # If the output base is the floating-point radix, the rendered value is the exact value of the number,
+  # showing trailing zeros up to the stored precision.
+  #
+  # With bases different from the radix, the floating-point number is treated
+  # as an approximation with a precision of number_of_digits. The conversion renders
+  # that aproximation in other base without introducing additional precision.
+  #
+  # The resulting text numeral is such that it has as few digits as possible while
+  # preserving the original while if converted back to the same type of floating-point value with
+  # the same context precision that the original number had (number_of_digits).
+  #
+  # To render the exact value of a BinNum x in decimal this can be used instead:
+  #   x.to_decimal_exact.to_s
+  #
+  # Options:
+  # :base output base, 10 by default
+  #
+  # :any_rounding if true he text literal will have enough digits to be
+  # converted back to self in any rounding mode. Otherwise only enough
+  # digits for conversion in the rounding mode specified by the context
+  # are produced.
+  #
+  # :all_digits if true all significant digits are shown. A digit
+  # is considered as significant here if when used on input, cannot
+  # arbitrarily change its value and preserve the parsed value of the
+  # floating point number.
+  def to_s(*args)
+    eng=false
+    context=nil
+
+    # admit legacy arguments eng, context in that order
+    if [true,false].include?(args.first)
+      eng = args.shift
+    end
+    if args.first.is_a?(Num::ContextBase)
+      context = args.shift
+    end
+    # admit also :eng to specify the eng mode
+    if args.first == :eng
+      eng = true
+      args.shift
+    end
+    raise TypeError, "Invalid arguments to #{num_class}#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
+    # an admit arguments through a final parameters Hash
+    options = args.first || {}
+    context = options.delete(:context) if options.has_key?(:context)
+    eng = options.delete(:eng) if options.has_key?(:eng)
+
+    format(context, options.merge(:eng=>eng))
+  end
+
   # Check if the number or other is NaN, signal if sNaN or return NaN;
   # return nil if none is NaN.
   def _check_nans(context=nil, other=nil)
@@ -2985,6 +3053,102 @@ class Num < Numeric
 
   end
 
+  # Convert to a text literal in the specified base. If the result is
+  # converted to BinNum with the specified context rounding and the
+  # same precision that self has (self.number_of_digits), the same
+  # number will be produced.
+  #
+  # Options:
+  # :base output base, 10 by default
+  #
+  # :any_rounding if true he text literal will have enough digits to be
+  # converted back to self in any rounding mode. Otherwise only enough
+  # digits for conversion in the rounding mode specified by the context
+  # are produced.
+  #
+  # :all_digits if true all significant digits are shown. A digit
+  # is considere as significant here if when used on input, cannot
+  # arbitrarily change its value and preserve the parsed value of the
+  # floating point number.
+  #
+  # Note that when :base=>10 (the default) we're regarding the binary number x
+  # as an approximation with x.number_of_digits precision and showing that
+  # inexact value in decimal without introducing additional precision.
+  # If the exact value of the number expressed in decimal is desired (we consider
+  # the BinNum an exact number), this can be done with BinNum.to_decimal_exact(x).to_s
+  def format(num_context, options={})
+    output_radix = options[:base] || 10
+    all_digits = options[:all_digits]
+    any_rounding = options[:any_rounding]
+    eng = options[:eng]
+
+    sgn = sign<0 ? '-' : ''
+    if special?
+      if @exp==:inf
+        return "#{sgn}Infinity"
+      elsif @exp==:nan
+        return "#{sgn}NaN#{@coeff}"
+      else # exp==:snan
+        return "#{sgn}sNaN#{@coeff}"
+      end
+    end
+
+    context = define_context(num_context)
+    inexact = true
+    rounding = context.rounding unless any_rounding
+    if @sign == -1
+      if rounding == :ceiling
+        rounding = :floor
+      elsif rounding == :floor
+        rounding = :ceiling
+      end
+    end
+    x = self.abs # .to_f
+
+    p = self.number_of_digits
+
+    dec_pos,round_needed,*digits = Support::BurgerDybvig.float_to_digits(x,@coeff,@exp,rounding,
+                                           context.etiny,p,num_class.radix,output_radix, all_digits)
+    dec_pos, digits = Support::BurgerDybvig.adjust(dec_pos, round_needed, digits, output_radix)
+
+    ds = digits.map{|d| d.to_s(output_radix)}.join
+    sgn = ((sign==-1) ? '-' : '')
+    n_ds = ds.size
+    exp = dec_pos - n_ds
+    leftdigits = dec_pos
+
+    # TODO: DRY (this code is duplicated in DecNum#to_s)
+    if exp<=0 && leftdigits>-6
+      dotplace = leftdigits
+    elsif !eng
+      dotplace = 1
+    elsif @coeff==0
+      dotplace = (leftdigits+1)%3 - 1
+    else
+      dotplace = (leftdigits-1)%3 + 1
+    end
+
+    if dotplace <=0
+      intpart = '0'
+      fracpart = '.' + '0'*(-dotplace) + ds
+    elsif dotplace >= n_ds
+      intpart = ds + '0'*(dotplace - n_ds)
+      fracpart = ''
+    else
+      intpart = ds[0...dotplace]
+      fracpart = '.' + ds[dotplace..-1]
+    end
+
+    if leftdigits == dotplace
+      e = ''
+    else
+      e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
+    end
+
+    sgn + intpart + fracpart + e
+
+  end
+
   # Auxiliar Methods
 
   # Round to i digits using the specified method
@@ -3103,6 +3267,58 @@ class Num < Numeric
   include AuxiliarFunctions
   extend AuxiliarFunctions
 
-end
+  class <<self
+    # Num[base] can be use to obtain a floating-point numeric class with radix base, so that, for example,
+    # Num[2] is equivalent to BinNum and Num[10] to DecNum.
+    #
+    # If the base does not correspond to one of the predefined classes (DecNum, BinNum), a new class
+    # is dynamically generated.
+    def [](base)
+      case base
+      when 10
+        DecNum
+      when 2
+        BinNum
+      else
+        class_name = "Base#{base}Num"
+        unless const_defined?(class_name)
+          cls = Flt.const_set class_name, Class.new(Num) {
+            def initialize(*args)
+              super(*args)
+            end
+          }
+          meta_cls = class <<cls;self;end
+          meta_cls.send :define_method, :radix do
+            base
+          end
+
+          cls.const_set :Context, Class.new(Num::ContextBase)
+          cls::Context.send :define_method, :initialize do |*options|
+            super(cls, *options)
+          end
+
+          default_digits = 10
+          default_elimit = 100
+
+          puts "C: #{cls::Context.object_id}"
+
+          cls.const_set :DefaultContext, cls::Context.new(
+            :exact=>false, :precision=>default_digits, :rounding=>:half_even,
+            :elimit=>default_elimit,
+            :flags=>[],
+            :traps=>[DivisionByZero, Overflow, InvalidOperation],
+            :ignored_flags=>[],
+            :capitals=>true,
+            :clamp=>true
+          )
+
+        end
+        Flt.const_get class_name
+
+      end
+    end
+  end
+
+end # Num
 
 end # Flt
