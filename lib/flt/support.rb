@@ -426,8 +426,298 @@ module Flt
     # After some testing, of the three different implementations in their
     # paper, the second seems to be more efficient in Ruby.
     #
-    # This algorithm formats arbitrary base floating pont numbers as decimal
+    # This algorithm formats arbitrary base floating point numbers as decimal
     # text literals.
+    #
+    # The variables used by the algorithm are stored in instance variables:
+    # @v - The number to be formatted = @f*@b**@e
+    # @b - The numberic base of the input floating-point representation of @v
+    # @f - The significand or characteristic (fraction)
+    # @e - The exponent
+    #
+    # Quotients of integers will be used to hold the magnitudes:
+    # @s is the denominator of all fractions
+    # @r numerator of @v: @v = @r/@s
+    # @m_m numerator of the distance from the rounding-range lower limit, l, to @v: @m_m/@s = (@v - l)
+    # @m_p numerator of the distance from @v to the rounding-range upper limit, u: @m_p/@s = (u - @v)
+    # @k scale factor that is applied to the quotients @r/@s, @m_m/@s and @m_p/@s to put the first
+    # significant digit right after the radix point.
+    #
+    # The rounding range of @v is the interval of values that round to @v under the runding-mode.
+    # If the rounding mode is one of the round-to-nearest variants (even, up, down), then
+    # it is (v- = (@v-@m_m)/@s, v+ = (@v+@m_)/2) whith the boundaries oper or closed as explained below.
+    # In this case:
+    #   @m_m/@s = (@v - v-) where v- = @v.next_minus is the lower adjacent to v floating point value
+    #   @m_p/@s = (v+ - @v) where v+ = @v.next_plus is the upper adjacent to v floating point value
+    # If the rounding is directed, then the rounding interval is either (v-, @v] or [@v, v+]
+    # @roundl is true if the lower limit of the rounding range is closed (i.e., if l rounds to @v)
+    # @roundh is true if the upper limit of the rounding range is closed (i.e., if u rounds to @v)
+    #
+    # @output_b is the output base
+    # @output_min_e is the output minimum exponent
+    # p is the input floating point precision
+    class BurgerDybvigT
+
+      def initialize(input_b, input_min_e, output_b)
+        @b = input_b
+        @min_e = input_min_e
+        @output_b = output_b
+        @round_up = nil
+      end
+
+      attr_reader :round_up
+
+      # This method converts v = f*b**e into a sequence of output_b-base digits,
+      # so that if the digits are converted back to a floating-point value
+      # of precision p (correctly rounded), the result is v.
+      # If round_mode is not nil, just enough digits to produce v using
+      # that rounding is used; otherwise enough digits to produce v with
+      # any rounding are delivered.
+      #
+      # If the +all+ parameter is true, all significant digits are generated,
+      # i.e. all digits that, if used on input, cannot arbitrarily change
+      # preserving the parsed value of the floating point number.
+      # This will be useful to generate a fixed number of digits or if
+      # as many digits as possible are required.
+      # In this case an additional logical value that tells if the last digit
+      # should be rounded-up.
+      def format(v, f, e, round_mode, all=false)
+        @minus = (v < 0)
+        @v = v.abs
+        @f = f.abs
+        @e = e
+        @round_mode = round_mode
+        @all_digits = all
+
+        # adjust the rounding mode to work only with positive numbers
+        if @minus
+          if @round_mode == :ceiling
+            @round_mode = :floor
+          elsif @round_mode == :floor
+            @round_mode = :ceiling
+          end
+        end
+
+        # determine the high,low inclusion flags of the rounding limits
+        case @round_mode
+          when :half_even
+            # rounding rage is (v-m-,v+m+) if v is odd and [v+m-,v+m+] if even
+            @round_l = @round_h = ((f%2)==0)
+          when :up, :ceiling
+            # rounding rage is (v-,v]
+            # ceiling is treated here assuming f>0
+            @round_l, @round_h = false, true
+          when :down, :floor
+            # rounding rage is [v,v+)
+            # floor is treated here assuming f>0
+            @round_l, @round_h = true, false
+          when :half_up
+            # rounding rage is [v+m-,v+m+)
+            @round_l, @round_h = true, false
+          when :half_down
+            # rounding rage is (v+m-,v+m+]
+            @round_l, @round_h = false, true
+          else
+            # Here assume only that round-to-nearest will be used, but not which variant of it
+            # The result is valid for any rounding (to nearest) but may produce more digits
+            # than stricly necessary for specific rounding modes.
+            # That is, enough digits are generated so that when the result is
+            # converted to floating point with the specified precision and
+            # correct rounding (to nearest), the result is the original number.
+            # rounding range is (v+m-,v+m+)
+            @round_l = @round_h = false
+        end
+
+        # Now compute the working quotients @r/@s, @m_p/@s = (v+ - @v), @m_m/@s = (@v - v-) and scale them.
+        if @e >= 0
+          if f != b_power(@p-1)
+            be = b_power(@e)
+            @r, @s, @m_p, @m_m = f*be*2, 2, be, be
+            @k = 0
+          else
+            be = exptt(b, e)
+            be1 = be*b
+            @r, @s, @m_p, @m_m = f*be1*2, b*2, be1, be
+            @k = 0
+          end
+        else
+          if e==min_e or f != b_power(@p-1)
+            @r, @s, @m_p, @m_m = f*2, exptt(b, -e)*2, 1, 1
+            @k = 0
+          else
+            @r, @s, @m_p, @m_m = f*b*2, exptt(b,1-e)*2, b, 1
+          end
+        end
+        @k = 0
+        scale!
+
+        # The value to be formatted is @v=@r/@s; m- = @m_m/@s = (@v - v-)/@s; m+ = @m_p/@s = (v+ - @v)/@s
+        # Now adjust @m_m, @m_p so that they define the rounding range
+        case @round_mode
+        when :up, :ceiling
+          # ceiling is treated here assuming @f>0
+          # rounding range is -v,@v
+          @m_m, @m_p = @m_m*2, 0
+        when :down, :floor
+          # floor is treated here assuming #f>0
+          # rounding range is @v,v+
+          @m_m, @m_p = 0, @m_p*2
+        else
+          # rounding range is v-,v+
+          # @m_m, @m_p = @m_m, @m_p
+        end
+
+        # Now m_m, m_p define the rounding range
+        [k] + (all ? generate_max : generate)
+
+      end
+
+      # Given r/s = v (number to convert to text), m_m/s = (v - v-)/s, m_p/s = (v+ - v)/s
+      # Scale the fractions so that the first significant digit is right after the radix point, i.e.
+      # find k = ceil(logB((r+m_p)/s)), the smallest integer such that (r+m_p)/s <= B^k
+      # if k>=0 return:
+      #  r=r, s=s*B^k, m_p=m_p, m_m=m_m
+      # if k<0 return:
+      #  r=r*B^k, s=s, m_p=m_p*B^k, m_m=m_m*B^k
+      #
+      # scale! is a general iterative method using only (multiprecision) integer arithmetic.
+      def scale!
+        loop do
+          if (@round_h ? (@r+@m_p >= @s) : (@r+@m_p > @s)) # k is too low
+            @s *= @output_b
+            @k += 1
+          elsif (@round_h ? ((@r+@m_p)*@output_b<@s) : ((@r+@m_p)*@output_b<=@s)) # k is too high
+            @r *= @output_b
+            @m_p *= @output_b
+            @m_m *= @output_b
+            @k -= 1
+          else
+            break
+          end
+        end
+      end
+
+      def b_power(n)
+        @b**n
+      end
+
+      def output_b_power(n)
+        @output_b**n
+      end
+
+      def generate_max
+        @round_up = false
+        list = []
+        r, s, m_p, m_m, = @r, @s, @m_p, @m_m
+        loop do
+          d,r = (r*@output_b).divmod(s)
+          m_p *= @output_b
+          m_m *= @output_b
+
+          list << d
+
+          tc1 = @round_l ? (r<=m_m) : (r<m_m)
+          tc2 = @round_h ? (r+m_p >= s) : (r+m_p > s)
+
+          if tc1 && tc2
+            @round_up = true if r*2 >= s
+            break
+          end
+        end
+        list
+      end
+
+      def generate
+        list = []
+        r, s, m_p, m_m, = @r, @s, @m_p, @m_m
+        loop do
+          d,r = (r*@output_b).divmod(s)
+          m_p *= @output_b
+          m_m *= @output_b
+          tc1 = @round_l ? (r<=m_m) : (r<m_m)
+          tc2 = @round_h ? (r+m_p >= s) : (r+m_p > s)
+
+          if not tc1
+            if not tc2
+              list << d
+            else
+              list << d+1
+              break
+            end
+          else
+            if not tc2
+              list << d
+              break
+            else
+              if r*2 < s
+                list << d
+                break
+              else
+                list << d+1
+                break
+              end
+            end
+          end
+
+        end
+        list
+      end
+
+      # scale_o1! is an optimized version of scale!; it requires an additional parameters with the
+      # floating-point number v=r/s
+      #
+      # It uses a Float estimate of ceil(logB(v)) that may need to adjusted one unit up
+      # TODO: find easy to use estimate; determine max distance to correct value and use it for fixing,
+      #       or use the general scale! for fixing (but remembar to multiply by exptt(...))
+      #       (determine when Math.log is aplicable, etc.)
+      def scale_o1!
+        return scale! if @v==0
+        est = estimate_log(@output_b, @b)
+        if est>=0
+          @k = est
+          @s *= output_b_power(est)
+          scale_fixup!
+        else
+          sc = output_b_power(-est)
+          @k = est
+          @r *= sc
+          @m_p *= sc
+          @m_m *= sc
+          scale_fixup!
+        end
+      end
+
+      def estimate_log(b, v)
+        # TODO: memoization of 1/logB based on b and v's type
+        case v
+        when DecNum
+          l = nil
+          DecNum.context(:precision=>12) do
+            case b
+            when 10
+              l = v.abs.log10
+            else
+              l = v.abs.ln/Flt.DecNum(b).ln
+            end
+          end
+          l -= Flt.DecNum(+1,1,-10)
+          l.ceil
+        else
+          # TODO: handle the case of a BinFloat > Float::MAX
+          l = nil
+          case b
+          when 10
+            l = Math.log10(v.abs.to_f)
+          else
+            l = Math.log(v.abs.to_f)/Math.log(b)
+          end
+          l -= 1E-10
+          l.ceil
+        end
+      end
+
+    end
+
     module BurgerDybvig # :nodoc: all
       module_function
       # This method converts v = f*b**e into a sequence of _B-base digits,
@@ -445,8 +735,6 @@ module Flt
       # In this case an additional logical value that tells if the last digit
       # should be rounded-up.
       def float_to_digits(v, f, e, round_mode, min_e, p, b, _B, all=false)
-        # Since this method handles only positive numbers and ceiling and floor
-        # are not symmetrical, they should have been swapped before the call.
         roundl, roundh = rounding_l_h(round_mode, f)
         if e >= 0
           if f != exptt(b, p-1)
@@ -540,8 +828,8 @@ module Flt
       # if k<0 return:
       #  r=r*B^k, s=s, m_p=m_p*B^k, m_m=m_m*B^k
       #
-      # scale2 is a general iterative method using only (multiprecision) integer arithmetic.
-      def scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok)
+      # scale is a general iterative method using only (multiprecision) integer arithmetic.
+      def scale(r,s,m_p,m_m,k,_B,low_ok ,high_ok)
         loop do
           if (high_ok ? (r+m_p >= s) : (r+m_p > s)) # k is too low
             s *= _B
@@ -558,14 +846,14 @@ module Flt
         [r,s,m_p,m_m,k]
       end
 
-      # scale is an optimized version of scale2; it requires an additional parameters with the
+      # scale_o1 is an optimized version of scale; it requires an additional parameters with the
       # floating-point number v=r/s
       #
       # It uses a Float estimate of ceil(logB(v)) that may need to adjusted one unit up
       # TODO: find easy to use estimate; determine max distance to correct value and use it for fixing,
-      #       or use the general scale2 for fixing (but remembar to multiply by exptt(...))
+      #       or use the general scale for fixing (but remembar to multiply by exptt(...))
       #       (determine when Math.log is aplicable, etc.)
-      def scale(r,s,m_p,m_m,k,_B,low_ok ,high_ok,v)
+      def scale_o1(r,s,m_p,m_m,k,_B,low_ok ,high_ok,v)
         # return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # testing
         return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if v==0
         # TODO: estimate using v's arithmetic, not Float
@@ -590,7 +878,7 @@ module Flt
       end
 
       # A different alternative optimization assuming the input base is 2
-      def scale3(r,s,m_p,m_m,k,_B,low_ok ,high_ok,f,e)
+      def scale_o3(r,s,m_p,m_m,k,_B,low_ok ,high_ok,f,e)
         # ONLY for b==2
         return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if v==0
         # TODO: estimate using v's arithmetic, not Float
