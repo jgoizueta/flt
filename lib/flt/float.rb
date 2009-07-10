@@ -250,8 +250,8 @@ class Float
       (sign < 0) ? -0.0 : 0.0
     end
 
-    # infinitie value with specified sign
-    def infinite(sign=+1)
+    # infinity value with specified sign
+    def infinity(sign=+1)
       (sign < 0) ? -1.0/0.0 : 1.0/0.0
     end
 
@@ -328,8 +328,8 @@ class Float
       (sign < 0) ? -MIN_N : MIN_N
     end
 
-    # minimum subnormal (denormalized) Float value (with specified sign)
-    def minimum_subnormal(sign=+1)
+    # maximum subnormal (denormalized) Float value (with specified sign)
+    def maximum_subnormal(sign=+1)
       (sign < 0) ? -MAX_D : MAX_D
     end
 
@@ -372,7 +372,7 @@ class Float
 
     # detect actual rounding mode
     def rounding
-      Flt::Support.detect_float_rounding
+      Flt::Support::AuxiliarFunctions.detect_float_rounding
     end
 
     def emin
