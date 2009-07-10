@@ -353,7 +353,7 @@ module Flt
         q = u.div v
         r = u-q*v
         v_r = v-r
-        z = context.Num(+1,q,k)
+        z = context.num_class.new(+1,q,k)
         exact = (r==0)
         if (round_mode == :down || round_mode == :floor)
           # z = z
@@ -379,8 +379,6 @@ module Flt
       # Given exact integers f and e, with f nonnegative, returns the floating-point number
       # closest to f * eb**e
       # (eb is the input radix)
-      #
-      # This is Clinger's \cd{AlgorithmM} modified to handle denormalized numbers and cope with overflow.
       def algM(context, f, e, round_mode, eb=10) # ceiling & floor must be swapped for negative numbers
         if e<0
          u,v,k = f,eb**(-e),0
@@ -447,7 +445,7 @@ module Flt
     #
     # The rounding range of @v is the interval of values that round to @v under the runding-mode.
     # If the rounding mode is one of the round-to-nearest variants (even, up, down), then
-    # it is (v- = (@v-@m_m)/@s, v+ = (@v+@m_)/2) whith the boundaries oper or closed as explained below.
+    # it is (v- = (@v-@m_m)/@s, v+ = (@v+@m_)/2) whith the boundaries open or closed as explained below.
     # In this case:
     #   @m_m/@s = (@v - v-) where v- = @v.next_minus is the lower adjacent to v floating point value
     #   @m_p/@s = (v+ - @v) where v+ = @v.next_plus is the upper adjacent to v floating point value
@@ -459,6 +457,13 @@ module Flt
     # @output_min_e is the output minimum exponent
     # p is the input floating point precision
     class BurgerDybvigT
+
+      # This Object-oriented implementation is slower than the functional one for two reasons:
+      # * The overhead of object creation
+      # * The use of instance variables instead of local variables
+      # But if scale is optimized or local variables are used in the inner loops, then this implementation
+      # is on par with the functional one for Float and it is more efficient for Flt types, where the variables
+      # passed as parameters hold larger objects.
 
       def initialize(input_b, input_min_e, output_b)
         @b = input_b
@@ -483,13 +488,14 @@ module Flt
       # as many digits as possible are required.
       # In this case an additional logical value that tells if the last digit
       # should be rounded-up.
-      def format(v, f, e, round_mode, all=false)
+      def format(v, f, e, round_mode, p=nil, all=false)
         @minus = (v < 0)
         @v = v.abs
         @f = f.abs
         @e = e
         @round_mode = round_mode
         @all_digits = all
+        p ||= v.class.context.precision
 
         # adjust the rounding mode to work only with positive numbers
         if @minus
@@ -504,7 +510,7 @@ module Flt
         case @round_mode
           when :half_even
             # rounding rage is (v-m-,v+m+) if v is odd and [v+m-,v+m+] if even
-            @round_l = @round_h = ((f%2)==0)
+            @round_l = @round_h = ((@f%2)==0)
           when :up, :ceiling
             # rounding rage is (v-,v]
             # ceiling is treated here assuming f>0
@@ -530,26 +536,29 @@ module Flt
             @round_l = @round_h = false
         end
 
+        # TODO: use next_minus, next_plus instead of direct computing, don't require min_e
         # Now compute the working quotients @r/@s, @m_p/@s = (v+ - @v), @m_m/@s = (@v - v-) and scale them.
         if @e >= 0
-          if f != b_power(@p-1)
+          if @f != b_power(p-1)
             be = b_power(@e)
-            @r, @s, @m_p, @m_m = f*be*2, 2, be, be
+            @r, @s, @m_p, @m_m = @f*be*2, 2, be, be
             @k = 0
           else
             be = exptt(b, e)
-            be1 = be*b
-            @r, @s, @m_p, @m_m = f*be1*2, b*2, be1, be
+            be1 = be*@b
+            @r, @s, @m_p, @m_m = @f*be1*2, @b*2, be1, be
             @k = 0
           end
         else
-          if e==min_e or f != b_power(@p-1)
-            @r, @s, @m_p, @m_m = f*2, exptt(b, -e)*2, 1, 1
+          if @e==@min_e or @f != b_power(p-1)
+            @r, @s, @m_p, @m_m = @f*2, b_power(-@e)*2, 1, 1
             @k = 0
           else
-            @r, @s, @m_p, @m_m = f*b*2, exptt(b,1-e)*2, b, 1
+            @r, @s, @m_p, @m_m = @f*@b*2, b_power(1-@e)*2, @b, 1
           end
         end
+        # puts "OO BEFORE"
+        # puts [@r, @s, @m_p, @m_m].inspect
         @k = 0
         scale!
 
@@ -568,9 +577,11 @@ module Flt
           # rounding range is v-,v+
           # @m_m, @m_p = @m_m, @m_p
         end
+        # puts "OO"
+        # puts [@r, @s, @m_p, @m_m].inspect
 
         # Now m_m, m_p define the rounding range
-        [k] + (all ? generate_max : generate)
+        [@k] + (all ? generate_max : generate)
 
       end
 
@@ -583,7 +594,8 @@ module Flt
       #  r=r*B^k, s=s, m_p=m_p*B^k, m_m=m_m*B^k
       #
       # scale! is a general iterative method using only (multiprecision) integer arithmetic.
-      def scale!
+      def scale_original!(really=false)
+        # return scale_o1! unless really || @v.zero?
         loop do
           if (@round_h ? (@r+@m_p >= @s) : (@r+@m_p > @s)) # k is too low
             @s *= @output_b
@@ -594,6 +606,29 @@ module Flt
             @m_m *= @output_b
             @k -= 1
           else
+            break
+          end
+        end
+      end
+      # using local vars instead of instance vars: it makes a difference in performance
+      def scale!(really=false)
+        # return scale_o1! unless really || @v.zero? # Optimization test
+        r, s, m_p, m_m, k,output_b = @r, @s, @m_p, @m_m, @k,@output_b
+        loop do
+          if (@round_h ? (r+m_p >= s) : (r+m_p > s)) # k is too low
+            s *= output_b
+            k += 1
+          elsif (@round_h ? ((r+m_p)*output_b<s) : ((r+m_p)*output_b<=s)) # k is too high
+            r *= output_b
+            m_p *= output_b
+            m_m *= output_b
+            k -= 1
+          else
+            @s = s
+            @r = r
+            @m_p = m_p
+            @m_m = m_m
+            @k = k
             break
           end
         end
@@ -673,24 +708,56 @@ module Flt
       #       or use the general scale! for fixing (but remembar to multiply by exptt(...))
       #       (determine when Math.log is aplicable, etc.)
       def scale_o1!
-        return scale! if @v==0
-        est = estimate_log(@output_b, @b)
+        return scale! if @v.zero?
+        est = estimate_log(@output_b, @v)
+        # puts "OO est = #{est} #{@output_b} #{@v}"
         if est>=0
           @k = est
           @s *= output_b_power(est)
-          scale_fixup!
+          scale_fixup! # we could call scale here, that doesn't mean a great difference
         else
           sc = output_b_power(-est)
           @k = est
           @r *= sc
           @m_p *= sc
           @m_m *= sc
-          scale_fixup!
+          scale_fixup! # we could call scale here, that doesn't mean a great difference
         end
       end
 
+      # fix up scaling (final step): specialized version of scale!
+      # This performs a single up scaling step, i.e. behaves like scale2, but
+      # the input must be at least one step down from the final result
+      def scale_fixup!
+        if (@round_h ? (@r+@m_p >= @s) : (@r+@m_p > @s)) # too low?
+          @s *= @output_b
+          @k += 1
+        end
+      end
+
+      MAX_EST = Float::MAX.to_i
+      MIN_EST = Float::MIN
+      ESTIMATE_FLOAT_LOG_B = {2=>1/Math.log(2), 10=>1/Math.log(10), 16=>1/Math.log(16)}
       def estimate_log(b, v)
-        # TODO: memoization of 1/logB based on b and v's type
+        # v_abs = v.abs
+        # v_flt = v_abs.to_f
+        # if (v_abs < MAX_EST) && (v_flt > MIN_EST) # this check is significanly slow for Flt types
+        #   log_b = ESTIMATE_FLOAT_LOG_B[b]
+        #   log_b = ESTIMATE_FLOAT_LOG_B[b] = 1.0/Math.log(b) if b.nil?
+        #   return (Math.log(v_flt)*log_b - 1E-10).ceil
+        # end
+        v_abs = v.abs
+        v_flt = v_abs.to_f
+        log_b = ESTIMATE_FLOAT_LOG_B[b]
+        log_b = ESTIMATE_FLOAT_LOG_B[b] = 1.0/Math.log(b) if b.nil?
+        begin
+          result = (Math.log(v_flt)*log_b - 1E-10).ceil
+        rescue
+          # rescuing errors is more efficient than checking (v_abs < MAX_EST) && (v_flt > MIN_EST) when v is a Flt
+        else
+          return result if result.is_a?(Integer)
+        end
+        v = v.to_decimal_exact if v.is_a?(BinNum)
         case v
         when DecNum
           l = nil
@@ -705,16 +772,8 @@ module Flt
           l -= Flt.DecNum(+1,1,-10)
           l.ceil
         else
-          # TODO: handle the case of a BinFloat > Float::MAX
-          l = nil
-          case b
-          when 10
-            l = Math.log10(v.abs.to_f)
-          else
-            l = Math.log(v.abs.to_f)/Math.log(b)
-          end
-          l -= 1E-10
-          l.ceil
+          # TO DO: rough estimate, then use scale! to adjust
+          raise "Not yet implemented: log(#{b}) estimate for class #{v.class}"
         end
       end
 
@@ -742,23 +801,27 @@ module Flt
           if f != exptt(b, p-1)
             be = exptt(b, e)
             r, s, m_p, m_m, k = scale(f*be*2, 2, be, be, 0, _B, roundl, roundh, v)
-            # r, s, m_p, m_m, k = scale3(f*be*2, 2, be, be, 0, _B, roundl, roundh, f, e)
+            #r, s, m_p, m_m, k = scale_o3(f*be*2, 2, be, be, 0, _B, roundl, roundh, f, e)
           else
             be = exptt(b, e)
             be1 = be*b
             r, s, m_p, m_m, k = scale(f*be1*2, b*2, be1, be, 0, _B, roundl, roundh, v)
-            # r, s, m_p, m_m, k = scale3(f*be1*2, b*2, be1, be, 0, _B, roundl, roundh, f, e)
+            #r, s, m_p, m_m, k = scale_o3(f*be1*2, b*2, be1, be, 0, _B, roundl, roundh, f, e)
           end
         else
           if e==min_e or f != exptt(b, p-1)
             r, s, m_p, m_m, k = scale(f*2, exptt(b, -e)*2, 1, 1, 0, _B, roundl, roundh,v)
+            #r, s, m_p, m_m, k = scale_o3(f*2, exptt(b, -e)*2, 1, 1, 0, _B, roundl, roundh,f,e)
           else
             r, s, m_p, m_m, k = scale(f*b*2, exptt(b,1-e)*2, b, 1, 0, _B, roundl ,roundh, v)
+            #r, s, m_p, m_m, k = scale_o3(f*b*2, exptt(b,1-e)*2, b, 1, 0, _B, roundl ,roundh, f,e)
           end
         end
         # The value to be formatted is v=r/s; m- = m_m/s = (v - v-)/2; m+ = m_p/s = (v+ - v)/2
         m_m, m_p = rounding_range(r, s, m_m, m_p, round_mode)
         # Now m_m, m_p define the rounding range
+        # puts "FUN"
+        # puts [r, s, m_p, m_m].inspect
         if all
           [k] + generate_max(r, s, m_p, m_m, _B, roundl, roundh)
         else
@@ -831,7 +894,7 @@ module Flt
       #  r=r*B^k, s=s, m_p=m_p*B^k, m_m=m_m*B^k
       #
       # scale is a general iterative method using only (multiprecision) integer arithmetic.
-      def scale(r,s,m_p,m_m,k,_B,low_ok ,high_ok)
+      def scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok)
         loop do
           if (high_ok ? (r+m_p >= s) : (r+m_p > s)) # k is too low
             s *= _B
@@ -855,11 +918,15 @@ module Flt
       # TODO: find easy to use estimate; determine max distance to correct value and use it for fixing,
       #       or use the general scale for fixing (but remembar to multiply by exptt(...))
       #       (determine when Math.log is aplicable, etc.)
-      def scale_o1(r,s,m_p,m_m,k,_B,low_ok ,high_ok,v)
+      def scale(r,s,m_p,m_m,k,_B,low_ok ,high_ok,v)
+        return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # to disable optimization for testing
+        # puts "FUN BEF"
+        # puts [r, s, m_p, m_m].inspect
         # return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # testing
         return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if v==0
         # TODO: estimate using v's arithmetic, not Float
         est = estimate_log(_B, v)
+        # puts "FUN est = #{est} #{_B} #{v}"
         if est>=0
           fixup(r,s*exptt(_B,est),m_p,m_m,est,_B,low_ok,high_ok)
         else
@@ -882,7 +949,7 @@ module Flt
       # A different alternative optimization assuming the input base is 2
       def scale_o3(r,s,m_p,m_m,k,_B,low_ok ,high_ok,f,e)
         # ONLY for b==2
-        return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if v==0
+        return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if f==0
         # TODO: estimate using v's arithmetic, not Float
         est = ((e+f.to_s(2).size-1)*invlog2of(_B) - 1E-10).to_i # to_s(2) ?
         if est>=0
@@ -983,7 +1050,12 @@ module Flt
         _B**k # TODO: memoize computed values or use table for common bases and exponents
       end
 
+      MAX_EST = Float::MAX.to_i
+      MIN_EST = Float::MIN
       def estimate_log(b, v)
+        v_abs = v.abs
+        v_flt = v_abs.to_f
+        return (Math.log(v.abs.to_f)/Math.log(b) - 1E-10).ceil if (v_abs < MAX_EST) && (v_flt > MIN_EST)
         # TODO: memoization of 1/logB based on b and v's type
         case v
         when DecNum
