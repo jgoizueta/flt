@@ -452,10 +452,12 @@ module Flt
           if f != exptt(b, p-1)
             be = exptt(b, e)
             r, s, m_p, m_m, k = scale(f*be*2, 2, be, be, 0, _B, roundl, roundh, v)
+            # r, s, m_p, m_m, k = scale3(f*be*2, 2, be, be, 0, _B, roundl, roundh, f, e)
           else
             be = exptt(b, e)
             be1 = be*b
             r, s, m_p, m_m, k = scale(f*be1*2, b*2, be1, be, 0, _B, roundl, roundh, v)
+            # r, s, m_p, m_m, k = scale3(f*be1*2, b*2, be1, be, 0, _B, roundl, roundh, f, e)
           end
         else
           if e==min_e or f != exptt(b, p-1)
@@ -530,27 +532,15 @@ module Flt
         end
       end
 
-      def scale(r,s,m_p,m_m,k,_B,low_ok ,high_ok,v)
-        # return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # testing
-        return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if v==0
-        # TODO: estimate using v's arithmetic, not Float
-        est = estimate_log(_B, v)
-        if est>=0
-          fixup(r,s*exptt(_B,est),m_p,m_m,est,_B,low_ok,high_ok)
-        else
-          sc = exptt(_B,-est)
-          fixup(r*sc,s,m_p*sc,m_m*sc,est,_B,low_ok,high_ok)
-        end
-      end
-
-      def fixup(r,s,m_p,m_m,k,_B,low_ok,high_ok)
-        if (high_ok ? (r+m_p >= s) : (r+m_p > s)) # too low?
-          [r,s*_B,m_p,m_m,k+1]
-        else
-          [r,s,m_p,m_m,k]
-        end
-      end
-
+      # Given r/s = v (number to convert to text), m_m/s = (v - v-)/s, m_p/s = (v+ - v)/s
+      # Scale the fractions so that the first significant digit is right after the radix point, i.e.
+      # find k = ceil(logB((r+m_p)/s)), the smallest integer such that (r+m_p)/s <= B^k
+      # if k>=0 return:
+      #  r=r, s=s*B^k, m_p=m_p, m_m=m_m
+      # if k<0 return:
+      #  r=r*B^k, s=s, m_p=m_p*B^k, m_m=m_m*B^k
+      #
+      # scale2 is a general iterative method using only (multiprecision) integer arithmetic.
       def scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok)
         loop do
           if (high_ok ? (r+m_p >= s) : (r+m_p > s)) # k is too low
@@ -566,6 +556,56 @@ module Flt
           end
         end
         [r,s,m_p,m_m,k]
+      end
+
+      # scale is an optimized version of scale2; it requires an additional parameters with the
+      # floating-point number v=r/s
+      #
+      # It uses a Float estimate of ceil(logB(v)) that may need to adjusted one unit up
+      # TODO: find easy to use estimate; determine max distance to correct value and use it for fixing,
+      #       or use the general scale2 for fixing (but remembar to multiply by exptt(...))
+      #       (determine when Math.log is aplicable, etc.)
+      def scale(r,s,m_p,m_m,k,_B,low_ok ,high_ok,v)
+        # return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # testing
+        return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if v==0
+        # TODO: estimate using v's arithmetic, not Float
+        est = estimate_log(_B, v)
+        if est>=0
+          fixup(r,s*exptt(_B,est),m_p,m_m,est,_B,low_ok,high_ok)
+        else
+          sc = exptt(_B,-est)
+          fixup(r*sc,s,m_p*sc,m_m*sc,est,_B,low_ok,high_ok)
+        end
+      end
+
+      # fix up scaling (final step): specialized version of scale2.
+      # This performs a single up scaling step, i.e. behaves like scale2, but
+      # the input must be at least one step down from the final result
+      def fixup(r,s,m_p,m_m,k,_B,low_ok,high_ok)
+        if (high_ok ? (r+m_p >= s) : (r+m_p > s)) # too low?
+          [r,s*_B,m_p,m_m,k+1]
+        else
+          [r,s,m_p,m_m,k]
+        end
+      end
+
+      # A different alternative optimization assuming the input base is 2
+      def scale3(r,s,m_p,m_m,k,_B,low_ok ,high_ok,f,e)
+        # ONLY for b==2
+        return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) if v==0
+        # TODO: estimate using v's arithmetic, not Float
+        est = ((e+f.to_s(2).size-1)*invlog2of(_B) - 1E-10).to_i # to_s(2) ?
+        if est>=0
+          fixup(r,s*exptt(_B,est),m_p,m_m,est,_B,low_ok,high_ok)
+        else
+          sc = exptt(_B,-est)
+          fixup(r*sc,s,m_p*sc,m_m*sc,est,_B,low_ok,high_ok)
+        end
+      end
+
+      def invlog2of(_B)
+        # TODO: use a table!
+        Math.log(2)/Math.log(_B)
       end
 
       def generate(r,s,m_p,m_m,_B,low_ok ,high_ok)
