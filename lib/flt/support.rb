@@ -440,18 +440,23 @@ module Flt
     # @r numerator of @v: @v = @r/@s
     # @m_m numerator of the distance from the rounding-range lower limit, l, to @v: @m_m/@s = (@v - l)
     # @m_p numerator of the distance from @v to the rounding-range upper limit, u: @m_p/@s = (u - @v)
+    # All numbers in the randound-range are rounded to @v (with the given precision p)
     # @k scale factor that is applied to the quotients @r/@s, @m_m/@s and @m_p/@s to put the first
-    # significant digit right after the radix point.
+    # significant digit right after the radix point. @b**@k is the first power of @b >= u
     #
     # The rounding range of @v is the interval of values that round to @v under the runding-mode.
     # If the rounding mode is one of the round-to-nearest variants (even, up, down), then
-    # it is (v- = (@v-@m_m)/@s, v+ = (@v+@m_)/2) whith the boundaries open or closed as explained below.
+    # it is ((v+v-)/2 = (@v-@m_m)/@s, (v+v+)/2 = (@v+@m_)/2) whith the boundaries open or closed as explained below.
     # In this case:
-    #   @m_m/@s = (@v - v-) where v- = @v.next_minus is the lower adjacent to v floating point value
-    #   @m_p/@s = (v+ - @v) where v+ = @v.next_plus is the upper adjacent to v floating point value
+    #   @m_m/@s = (@v - (v + v-)/2) where v- = @v.next_minus is the lower adjacent to v floating point value
+    #   @m_p/@s = ((v + v+)/2 - @v) where v+ = @v.next_plus is the upper adjacent to v floating point value
     # If the rounding is directed, then the rounding interval is either (v-, @v] or [@v, v+]
     # @roundl is true if the lower limit of the rounding range is closed (i.e., if l rounds to @v)
     # @roundh is true if the upper limit of the rounding range is closed (i.e., if u rounds to @v)
+    # if @roundh, then @k is the minimum @k with (@r+@m_p)/@s <= @output_b**@k
+    #   @k = ceil(logB((@r+@m_p)/2)) with lobB the @output_b base logarithm
+    # if @roundh, then @k is the minimum @k with (@r+@m_p)/@s < @output_b**@k
+    #   @k = 1+floor(logB((@r+@m_p)/2))
     #
     # @output_b is the output base
     # @output_min_e is the output minimum exponent
@@ -470,6 +475,17 @@ module Flt
         @min_e = input_min_e
         @output_b = output_b
         @round_up = nil
+      end
+
+      # debug
+      def reset!
+        @k = @s = @r = @m_m = @m_p = nil
+        @round_mode = nil
+        @v = nil
+        @f = @e = nil
+        @all_digits = nil
+        @minus = nil
+        @round_l = @round_h = nil
       end
 
       attr_reader :round_up
@@ -542,25 +558,21 @@ module Flt
           if @f != b_power(p-1)
             be = b_power(@e)
             @r, @s, @m_p, @m_m = @f*be*2, 2, be, be
-            @k = 0
           else
             be = exptt(b, e)
             be1 = be*@b
             @r, @s, @m_p, @m_m = @f*be1*2, @b*2, be1, be
-            @k = 0
           end
         else
           if @e==@min_e or @f != b_power(p-1)
             @r, @s, @m_p, @m_m = @f*2, b_power(-@e)*2, 1, 1
-            @k = 0
           else
             @r, @s, @m_p, @m_m = @f*@b*2, b_power(1-@e)*2, @b, 1
           end
         end
-        # puts "OO BEFORE"
-        # puts [@r, @s, @m_p, @m_m].inspect
         @k = 0
-        scale!
+        scale_optimized!
+
 
         # The value to be formatted is @v=@r/@s; m- = @m_m/@s = (@v - v-)/@s; m+ = @m_p/@s = (v+ - @v)/@s
         # Now adjust @m_m, @m_p so that they define the rounding range
@@ -595,7 +607,6 @@ module Flt
       #
       # scale! is a general iterative method using only (multiprecision) integer arithmetic.
       def scale_original!(really=false)
-        # return scale_o1! unless really || @v.zero?
         loop do
           if (@round_h ? (@r+@m_p >= @s) : (@r+@m_p > @s)) # k is too low
             @s *= @output_b
@@ -611,8 +622,7 @@ module Flt
         end
       end
       # using local vars instead of instance vars: it makes a difference in performance
-      def scale!(really=false)
-        # return scale_o1! unless really || @v.zero? # Optimization test
+      def scale!
         r, s, m_p, m_m, k,output_b = @r, @s, @m_p, @m_m, @k,@output_b
         loop do
           if (@round_h ? (r+m_p >= s) : (r+m_p > s)) # k is too low
@@ -700,6 +710,7 @@ module Flt
         list
       end
 
+      ESTIMATE_FLOAT_LOG_B = {2=>1/Math.log(2), 10=>1/Math.log(10), 16=>1/Math.log(16)}
       # scale_o1! is an optimized version of scale!; it requires an additional parameters with the
       # floating-point number v=r/s
       #
@@ -707,22 +718,65 @@ module Flt
       # TODO: find easy to use estimate; determine max distance to correct value and use it for fixing,
       #       or use the general scale! for fixing (but remembar to multiply by exptt(...))
       #       (determine when Math.log is aplicable, etc.)
-      def scale_o1!
+      def scale_optimized!
         return scale! if @v.zero?
-        est = estimate_log(@output_b, @v)
-        # puts "OO est = #{est} #{@output_b} #{@v}"
-        if est>=0
-          @k = est
-          @s *= output_b_power(est)
-          scale_fixup! # we could call scale here, that doesn't mean a great difference
+
+        # 1. compute estimated_scale
+
+        # 1.1. try to use Float logarithms (Math.log)
+        v = @v
+        v_abs = v.abs
+        v_flt = v_abs.to_f
+        b = @output_b
+        log_b = ESTIMATE_FLOAT_LOG_B[b]
+        log_b = ESTIMATE_FLOAT_LOG_B[b] = 1.0/Math.log(b) if b.nil?
+        estimated_scale = nil
+        fixup = false
+        begin
+          estimated_scale = (Math.log(v_flt)*log_b - 1E-10).ceil
+          fixup = true
+        rescue
+          # rescuing errors is more efficient than checking (v_abs < Float::MAX.to_i) && (v_flt > Float::MIN) when v is a Flt
         else
-          sc = output_b_power(-est)
-          @k = est
+          # estimated_scale = nil
+        end
+
+        # 1.2. Use Flt::DecNum logarithm
+        if estimated_scale.nil?
+          v.to_decimal_exact if v.is_a?(BinNum)
+          if v.is_a?(DecNum)
+            l = nil
+            DecNum.context(:precision=>12) do
+              case b
+              when 10
+                l = v_abs.log10
+              else
+                l = v_abs.ln/Flt.DecNum(b).ln
+              end
+            end
+            l -= Flt.DecNum(+1,1,-10)
+            estimated_scale = l.ceil
+            fixup = true
+          end
+        end
+
+        # 1.3 more rough Float aproximation
+          # TODO: optimize denominator, correct numerator for more precision with first digit or part
+          # of the coefficient (like _log_10_lb)
+        estimated_scale ||= (v.adjusted_exponent.to_f * Math.log(v.class.radix) * log_b).ceil
+
+        if estimated_scale >= 0
+          @k = estimated_scale
+          @s *= output_b_power(estimated_scale)
+        else
+          sc = output_b_power(-estimated_scale)
+          @k = estimated_scale
           @r *= sc
           @m_p *= sc
           @m_m *= sc
-          scale_fixup! # we could call scale here, that doesn't mean a great difference
         end
+        fixup ? scale_fixup! : scale!
+
       end
 
       # fix up scaling (final step): specialized version of scale!
@@ -732,48 +786,6 @@ module Flt
         if (@round_h ? (@r+@m_p >= @s) : (@r+@m_p > @s)) # too low?
           @s *= @output_b
           @k += 1
-        end
-      end
-
-      MAX_EST = Float::MAX.to_i
-      MIN_EST = Float::MIN
-      ESTIMATE_FLOAT_LOG_B = {2=>1/Math.log(2), 10=>1/Math.log(10), 16=>1/Math.log(16)}
-      def estimate_log(b, v)
-        # v_abs = v.abs
-        # v_flt = v_abs.to_f
-        # if (v_abs < MAX_EST) && (v_flt > MIN_EST) # this check is significanly slow for Flt types
-        #   log_b = ESTIMATE_FLOAT_LOG_B[b]
-        #   log_b = ESTIMATE_FLOAT_LOG_B[b] = 1.0/Math.log(b) if b.nil?
-        #   return (Math.log(v_flt)*log_b - 1E-10).ceil
-        # end
-        v_abs = v.abs
-        v_flt = v_abs.to_f
-        log_b = ESTIMATE_FLOAT_LOG_B[b]
-        log_b = ESTIMATE_FLOAT_LOG_B[b] = 1.0/Math.log(b) if b.nil?
-        begin
-          result = (Math.log(v_flt)*log_b - 1E-10).ceil
-        rescue
-          # rescuing errors is more efficient than checking (v_abs < MAX_EST) && (v_flt > MIN_EST) when v is a Flt
-        else
-          return result if result.is_a?(Integer)
-        end
-        v = v.to_decimal_exact if v.is_a?(BinNum)
-        case v
-        when DecNum
-          l = nil
-          DecNum.context(:precision=>12) do
-            case b
-            when 10
-              l = v.abs.log10
-            else
-              l = v.abs.ln/Flt.DecNum(b).ln
-            end
-          end
-          l -= Flt.DecNum(+1,1,-10)
-          l.ceil
-        else
-          # TO DO: rough estimate, then use scale! to adjust
-          raise "Not yet implemented: log(#{b}) estimate for class #{v.class}"
         end
       end
 
@@ -919,7 +931,7 @@ module Flt
       #       or use the general scale for fixing (but remembar to multiply by exptt(...))
       #       (determine when Math.log is aplicable, etc.)
       def scale(r,s,m_p,m_m,k,_B,low_ok ,high_ok,v)
-        return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # to disable optimization for testing
+        # return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # to disable optimization for testing
         # puts "FUN BEF"
         # puts [r, s, m_p, m_m].inspect
         # return scale2(r,s,m_p,m_m,k,_B,low_ok ,high_ok) # testing
