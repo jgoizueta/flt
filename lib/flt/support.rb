@@ -594,7 +594,7 @@ module Flt
         if @adjusted_digits.nil? && !@digits.nil?
           if @round_up
             base = @output_b
-            dec_pos = @radix_point_position
+            dec_pos = @k
             digits = @digits.dup
             # carry = roundup ? 1 : 0
             # digits = digits.reverse.map{|d| d += carry; d>=base ? 0 : (carry=0;d)}.reverse
@@ -758,11 +758,12 @@ module Flt
         v_flt = v_abs.to_f
         b = @output_b
         log_b = ESTIMATE_FLOAT_LOG_B[b]
-        log_b = ESTIMATE_FLOAT_LOG_B[b] = 1.0/Math.log(b) if b.nil?
+        log_b = ESTIMATE_FLOAT_LOG_B[b] = 1.0/Math.log(b) if log_b.nil?
         estimated_scale = nil
         fixup = false
         begin
-          estimated_scale = (Math.log(v_flt)*log_b - 1E-10).ceil
+          l = ((b==10) ? Math.log10(v_flt) : Math.log(v_flt)*log_b)
+          estimated_scale =(l - 1E-10).ceil
           fixup = true
         rescue
           # rescuing errors is more efficient than checking (v_abs < Float::MAX.to_i) && (v_flt > Float::MIN) when v is a Flt
