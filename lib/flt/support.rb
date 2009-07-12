@@ -380,7 +380,7 @@ module Flt
       # closest to f * eb**e
       # (eb is the input radix)
       #
-      # This is Clinger's \cd{AlgorithmM} modified to handle denormalized numbers and cope with overflow.
+      # This is Clinger's +AlgorithmM+ modified to handle denormalized numbers and cope with overflow.
       def algM(context, f, e, round_mode, eb=10) # ceiling & floor must be swapped for negative numbers
         if e<0
          u,v,k = f,eb**(-e),0
