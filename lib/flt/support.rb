@@ -576,8 +576,6 @@ module Flt
           # rounding range is v-,v+
           # @m_m, @m_p = @m_m, @m_p
         end
-        # puts "OO"
-        # puts [@r, @s, @m_p, @m_m].inspect
 
         # Now m_m, m_p define the rounding range
         all ? generate_max : generate

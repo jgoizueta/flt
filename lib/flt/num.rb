@@ -84,7 +84,6 @@
 #++
 
 #--
-# TODO: Burger and Dybvig formatting algorithms: add formatting options
 # TODO: for BinNum#to_s consider using the context precision as a minimum and/or adding an exact mode
 # TODO: for BinNum(String) with non exact precision, use context precision only if no exact conversion is possible
 # TODO: selecting the kind of ulp is awkward; consider one of these options:
