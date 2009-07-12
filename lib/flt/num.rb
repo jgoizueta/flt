@@ -1285,7 +1285,7 @@ class Num < Numeric
                   rounding = :ceiling
                 end
               end
-              # TODO: for exact rounding, use BurgerDybvig.float_to_digits (to convert base 10 to base 2)
+              # TODO: for exact rounding, use BurgerDybvig (to convert base 10 to base 2)
               # generating the minimum number of digits for the input precision (convert input to DecNum first)
               # then check for an exact result.
               ans, exact = Support::Clinger.algM(context, coeff, exp, rounding, 10)

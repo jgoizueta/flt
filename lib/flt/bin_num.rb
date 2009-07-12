@@ -376,20 +376,14 @@ class BinNum < Num
     context = define_context(binfloat_context)
     inexact = true
     rounding = context.rounding unless any_rounding
-    if @sign == -1
-      if rounding == :ceiling
-        rounding = :floor
-      elsif rounding == :floor
-        rounding = :ceiling
-      end
-    end
-    x = self.abs # .to_f
+    x = self
 
-    p = self.number_of_digits
+    p = self.number_of_digits # context.precision
 
-    dec_pos,round_needed,*digits = Support::BurgerDybvig.float_to_digits(x,@coeff,@exp,rounding,
-                                           context.etiny,p,num_class.radix,output_radix, all_digits)
-    dec_pos, digits = Support::BurgerDybvig.adjust(dec_pos, round_needed, digits, output_radix)
+    formatter = Flt::Support::BurgerDybvig.new(num_class.radix, context.etiny, output_radix)
+    s, f, e = x.split
+    formatter.format(x, f, e, rounding, p, all_digits)
+    dec_pos,digits = formatter.adjusted_digits
 
     ds = digits.map{|d| d.to_s(output_radix)}.join
     sgn = ((sign==-1) ? '-' : '')
