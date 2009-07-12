@@ -1,4 +1,8 @@
 require File.dirname(__FILE__) + '/helper.rb'
+require File.dirname(__FILE__) + '/../lib/flt/float'
+require File.dirname(__FILE__) + '/../lib/flt/bigdecimal'
+require File.dirname(__FILE__) + '/../lib/flt/tolerance'
+
 
 class TestBinfloatConversion < Test::Unit::TestCase
 
@@ -15,7 +19,7 @@ class TestBinfloatConversion < Test::Unit::TestCase
         x = random_float
         txt = BinNum(x).to_s
         y = BinNum(txt).to_f
-        assert_equal x, y
+        assert_equal x, y, "FAIL #{x.split.inspect} #{rounding} #{y.split.inspect} #{x.class}"
       end
     end
   end

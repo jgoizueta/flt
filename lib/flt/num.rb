@@ -1300,7 +1300,7 @@ class Num < Numeric
                   rounding = :ceiling
                 end
               end
-              # TODO: for exact rounding, use BurgerDybvig.float_to_digits (to convert base 10 to base 2)
+              # TODO: for exact rounding, use BurgerDybvig (to convert base 10 to base 2)
               # generating the minimum number of digits for the input precision (convert input to DecNum first)
               # then check for an exact result.
               ans, exact = Support::Clinger.algM(context, coeff, exp, rounding, 10)
@@ -3096,23 +3096,15 @@ class Num < Numeric
     context = define_context(num_context)
     inexact = true
     rounding = context.rounding unless any_rounding
-    if @sign == -1
-      if rounding == :ceiling
-        rounding = :floor
-      elsif rounding == :floor
-        rounding = :ceiling
-      end
-    end
-    x = self.abs # .to_f
+    x = self
 
-    p = self.number_of_digits
+    p = self.number_of_digits # context.precision
 
-    dec_pos,round_needed,*digits = Support::BurgerDybvig.float_to_digits(x,@coeff,@exp,rounding,
-                                           context.etiny,p,num_class.radix,output_radix, all_digits)
-    dec_pos, digits = Support::BurgerDybvig.adjust(dec_pos, round_needed, digits, output_radix)
+    formatter = Flt::Support::BurgerDybvig.new(num_class.radix, context.etiny, output_radix)
+    formatter.format(x, @coeff, @exp, rounding, p, all_digits)
+    dec_pos,digits = formatter.adjusted_digits
 
     ds = digits.map{|d| d.to_s(output_radix)}.join
-    sgn = ((sign==-1) ? '-' : '')
     n_ds = ds.size
     exp = dec_pos - n_ds
     leftdigits = dec_pos
