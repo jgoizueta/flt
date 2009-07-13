@@ -3310,6 +3310,74 @@ class Num < Numeric
     end
   end
 
+  # Exact base conversion: preserve x value.
+  #
+  # Convert x to a Flt::Num of the specified base or class
+  # If the dest_context is exact, this may raise the Inexact flag (and return NaN), for some cases
+  # (e.g. converting DecNum('0.1') to BinNum)
+  #
+  # The current destination context (overriden by dest_context) determines the valid range and the precision
+  # (if its is not :exact the result will be rounded)
+  def self.convert_exact(x, dest_base_or_class, dest_context=nil)
+    num_class = dest_base_or_class.is_a?(Integer) ? Num[dest_base_or_class] :  dest_base_or_class
+    if x.special?
+      if x.nan?
+        num_class.nan
+      else # x.infinite?
+        num_class.infinite(self.sign)
+      end
+    elsif x.zero?
+      num_class.zero(x.sign)
+    else
+      num_class.context(dest_context) do
+        sign, coeff, exp = x.split
+        y = num_class.Num(sign*coeff)
+        if exp < 0
+          y *= Rational(1,x.num_class.int_radix_power(-exp))
+        else
+          y *= x.num_class.int_radix_power(exp)
+        end
+        y.reduce
+      end
+    end
+  end
+
+  # Approximate base conversion.
+  #
+  # Convert x to another Flt::Num class, so that if the result is converted to back to
+  # the original class with the same precision and rounding mode, the value is preserved,
+  # but use as few decimal digits as possible.
+  #
+  # To increment the result number of digits x can be normalized or its precision (quantum) changed.
+  # TODO: alternative way to define the precision (p) or change to use the context precision ?
+  def self.convert(x, dest_base_or_class, origin_context=nil, any_rounding=false)
+    num_class = dest_base_or_class.is_a?(Num) ? dest_base_or_class : Num[dest_base_or_class]
+    if x.special?
+      if x.nan?
+        num_class.nan
+      else # x.infinite?
+        num_class.infinite(x.sign)
+      end
+    elsif x.zero?
+      num_class.zero(x.sign)
+    else
+      context = x.num_class.define_context(origin_context)
+
+      p = x.number_of_digits # context.precision
+      s,f,e = x.split
+      rounding = context.rounding unless any_rounding
+
+      formatter = Flt::Support::Formatter.new(x.num_class.radix, num_class.context.etiny, num_class.radix)
+      formatter.format(x, f, e, rounding, p, false)
+      dec_pos,digits = formatter.adjusted_digits
+
+      # f = digits.map{|d| d.to_s(num_class.radix)}.join.to_i(num_class.radix)
+      f = digits.inject(0){|a,b| a*num_class.radix + b}
+      e = dec_pos - digits.size
+      num_class.Num(s, f, e)
+    end
+  end
+
 end # Num
 
 end # Flt
