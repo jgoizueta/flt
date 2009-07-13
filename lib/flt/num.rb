@@ -1267,7 +1267,7 @@ class Num < Numeric
           @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for DecNum: #{arg.inspect}").split
           return
         end
-        @sign =  (m.sign == '-') ? -1 : +1
+        sign =  (m.sign == '-') ? -1 : +1
         if m.int || m.onlyfrac
           if m.int
             intpart = m.int
@@ -1292,22 +1292,16 @@ class Num < Numeric
             # givin the sign, coefficient and exponent.
             if (10%num_class.radix) == 0
               rounding = context.rounding
-              if @sign == -1
-                if rounding == :ceiling
-                  rounding = :floor
-                elsif rounding == :floor
-                  rounding = :ceiling
-                end
-              end
-              # TODO: for exact rounding, use BurgerDybvig (to convert base 10 to base 2)
+              # TODO: for exact rounding, use Burger-Dybvig (to convert base 10 to base 2)
               # generating the minimum number of digits for the input precision (convert input to DecNum first)
               # then check for an exact result.
-              ans, exact = Support::Clinger.algM(context, coeff, exp, rounding, 10)
-              context.exception(Inexact,"Inexact decimal to radix #{num_class.radix} conversion") if !exact
-              if !exact && context.exact?
-                @sign, coeff, exp =  num_class.nan.split
+              reader = Support::Reader.new
+              ans = reader.read(context, rounding, sign, coeff, exp, 10)
+              context.exception(Inexact,"Inexact decimal to radix #{num_class.radix} conversion") if !reader.exact?
+              if !reader.exact? && context.exact?
+                sign, coeff, exp =  num_class.nan.split
               else
-                discard, coeff, exp = ans.split
+                sign, coeff, exp = ans.split
               end
             else
               # hard case, but probably won't be needed; here's a Q&D solution for testing
@@ -1318,7 +1312,7 @@ class Num < Numeric
               end
             end
           end
-          @coeff, @exp = coeff, exp
+          @sign, @coeff, @exp = sign, coeff, exp
         else
           if m.diag
             # NaN
@@ -2449,7 +2443,8 @@ class Num < Numeric
 
   # Returns a copy of with the sign of other
   def copy_sign(other)
-    Num(other.sign, @coeff, @exp)
+    sign = other.respond_to?(:sign) ? other.sign : ((other < 0) ? -1 : +1)
+    Num(sign, @coeff, @exp)
   end
 
   # Returns true if the value is an integer
@@ -2705,8 +2700,9 @@ class Num < Numeric
   # showing trailing zeros up to the stored precision.
   #
   # With bases different from the radix, the floating-point number is treated
-  # as an approximation with a precision of number_of_digits. The conversion renders
-  # that aproximation in other base without introducing additional precision.
+  # as an approximation with a precision of number_of_digits, representing any value
+  # within its rounding range. In that case, this method always renders
+  # that aproximated value in other base without introducing additional precision.
   #
   # The resulting text numeral is such that it has as few digits as possible while
   # preserving the original while if converted back to the same type of floating-point value with
@@ -2727,6 +2723,10 @@ class Num < Numeric
   # is considered as significant here if when used on input, cannot
   # arbitrarily change its value and preserve the parsed value of the
   # floating point number.
+  # Using all_digits will show trailing zeros up to the precision of the floating-point, so
+  # the output will preserve the input precision. With all_digits and the :down rounding-mod
+  # (truncation), the result will be the exact value floating-point value in the output base
+  # (if it is conmensurable with the floating-point base).
   def to_s(*args)
     eng=false
     context=nil
@@ -3101,7 +3101,7 @@ class Num < Numeric
 
     p = self.number_of_digits # context.precision
 
-    formatter = Flt::Support::BurgerDybvig.new(num_class.radix, context.etiny, output_radix)
+    formatter = Flt::Support::Formatter.new(num_class.radix, context.etiny, output_radix)
     formatter.format(x, @coeff, @exp, rounding, p, all_digits)
     dec_pos,digits = formatter.adjusted_digits
 

@@ -335,19 +335,95 @@ module Flt
       end
     end
 
+    # Floating-point reading and printing (from/to text literals).
     #
-    # these are functions from Nio::Clinger, generalized for arbitrary floating point formats
+    # Here are methods for floating-point reading using algorithms by William D. Clinger and
+    # printing using algorithms by Robert G. Burger and R. Kent Dybvig.
+    #
+    # Reading and printing can also viewed as floating-point conversion betwen a fixed-precision
+    # floating-point format (the floating-point numbers) and and a free floating-point format (text) wich
+    # may use different numerical bases.
+    #
+    # The Reader class implements the Clinger reading algorithm which converts a free form numeric value
+    # (as a text literal, i.e. a free floating-point format, usually in base 10) which is taken
+    # as an exact value, to a correctly-rounded floating-point of specified precision and with a
+    # specified rounding mode.
+    #
+    # The Formatter class implements the Burger-Dybvig printing algorithm which converts a
+    # fixed-precision floating point value and produces a text literal in same base, usually 10,
+    # (equivalently, it produces a floating-point free-format value) so that it rounds back to
+    # the original value (with some specified rounding-mode or any round-to-nearest mode) and with
+    # the same original precision (e.g. using the Clinger algorithm)
+
     # Clinger algorithms to read floating point numbers from text literas with correct rounding.
     # from his paper: "How to Read Floating Point Numbers Accurately"
     # (William D. Clinger)
-    module Clinger #:nodoc:
+    class Reader
 
-      module_function
+      def initialize
+        @exact = nil
+      end
+
+      def exact?
+        @exact
+      end
+
+      # Given exact integers f and e, with f nonnegative, returns the floating-point number
+      # closest to f * eb**e
+      # (eb is the input radix)
+      #
+      # This is Clinger's +AlgorithmM+ modified to handle denormalized numbers and cope with overflow.
+      def read(context, round_mode, sign, f, e, eb=10) # ceiling & floor must be swapped for negative numbers
+        if sign == -1
+          if rounding == :ceiling
+            rounding = :floor
+          elsif rounding == :floor
+            rounding = :ceiling
+          end
+        end
+
+        if e<0
+         u,v,k = f,eb**(-e),0
+        else
+          u,v,k = f*(eb**e),1,0
+        end
+
+        if exact_mode = context.exact?
+          exact_mode = :quiet if !context.traps[Num::Inexact]
+          n = [(Math.log(u)/Math.log(2)).ceil,1].max # This is very rough
+          context.precision = n
+        else
+          n = context.precision
+        end
+        min_e = context.etiny
+        max_e = context.etop
+
+        rp_n = context.num_class.int_radix_power(n)
+        rp_n_1 = context.num_class.int_radix_power(n-1)
+        r = context.num_class.radix
+        loop do
+           x = u.div(v) # bottleneck
+           # overflow if k>=max_e
+           if (x>=rp_n_1 && x<rp_n) || k==min_e || k==max_e
+              z, exact = Reader.ratio_float(context,u,v,k,round_mode)
+              context.exact = exact_mode if exact_mode
+              @exact = exact
+              return z.copy_sign(sign)
+           elsif x<rp_n_1
+             u *= r
+             k -= 1
+           elsif x>=rp_n
+             v *= r
+             k += 1
+           end
+        end
+
+      end
 
       # Given exact positive integers u and v with beta**(n-1) <= u/v < beta**n
       # and exact integer k, returns the floating point number closest to u/v * beta**n
       # (beta is the floating-point radix)
-      def ratio_float(context, u, v, k, round_mode)
+      def self.ratio_float(context, u, v, k, round_mode)
         # since this handles only positive numbers and ceiling and floor
         # are not symmetrical, they should have been swapped before calling this.
         q = u.div v
@@ -375,58 +451,19 @@ module Flt
         return z, exact
       end
 
-      # AlgorithmM:
-      # Given exact integers f and e, with f nonnegative, returns the floating-point number
-      # closest to f * eb**e
-      # (eb is the input radix)
-      #
-      # This is Clinger's +AlgorithmM+ modified to handle denormalized numbers and cope with overflow.
-      def algM(context, f, e, round_mode, eb=10) # ceiling & floor must be swapped for negative numbers
-        if e<0
-         u,v,k = f,eb**(-e),0
-        else
-          u,v,k = f*(eb**e),1,0
-        end
-
-        if exact_mode = context.exact?
-          exact_mode = :quiet if !context.traps[Num::Inexact]
-          n = [(Math.log(u)/Math.log(2)).ceil,1].max # TODO: check if correct and optimize
-          context.precision = n
-        else
-          n = context.precision
-        end
-        min_e = context.etiny
-        max_e = context.etop
-
-        rp_n = context.num_class.int_radix_power(n)
-        rp_n_1 = context.num_class.int_radix_power(n-1)
-        r = context.num_class.radix
-        loop do
-           x = u.div(v) # bottleneck
-           # overflow if k>=max_e
-           if (x>=rp_n_1 && x<rp_n) || k==min_e || k==max_e
-              result = ratio_float(context,u,v,k,round_mode)
-              context.exact = exact_mode if exact_mode
-              return result
-           elsif x<rp_n_1
-             u *= r
-             k -= 1
-           elsif x>=rp_n
-             v *= r
-             k += 1
-           end
-        end
-
-      end
-
-    end # Clinger
+    end # Reader
 
     # Burger and Dybvig free formatting algorithm,
     # from their paper: "Printing Floating-Point Numbers Quickly and Accurately"
     # (Robert G. Burger, R. Kent Dybvig)
     #
     # This algorithm formats arbitrary base floating point numbers as decimal
-    # text literals.
+    # text literals. The floating-point (with fixed precision) is interpreted as an approximated
+    # value, representing any value in its 'rounding-range' (the interval where all values round
+    # to the floating-point value, with the given precision and rounding mode).
+    # An alternative approach which is not taken here would be to represent the exact floating-point
+    # value with some given precision and rounding mode requirements; that can be achieve with
+    # Clinger algorithm for finite (non-exact) precision.
     #
     # The variables used by the algorithm are stored in instance variables:
     # @v - The number to be formatted = @f*@b**@e
@@ -460,7 +497,7 @@ module Flt
     # @output_b is the output base
     # @output_min_e is the output minimum exponent
     # p is the input floating point precision
-    class BurgerDybvig
+    class Formatter
 
       # This Object-oriented implementation is slower than the functional one for two reasons:
       # * The overhead of object creation
@@ -490,6 +527,8 @@ module Flt
       # more digits may be needed to assure round-trip value preservation.
       # This is useful to generate a fixed number of digits or if
       # as many digits as possible are required.
+      # Beware: this may lead to an infinite-loop if v cannot be represented exactly in the output-base;
+      # e.g. formatting '0.1' (as a decimal floating-point number) in base 2.
       #
       # In this case, the round_up flag is set to indicate that the last digits should be
       # rounded up.
@@ -499,6 +538,7 @@ module Flt
       # value (with the same precision as input).
       # should be rounded-up.
       def format(v, f, e, round_mode, p=nil, all=false)
+        # TODO: consider removing parameters f,e and using v.split instead
         @minus = (v < 0)
         @v = v.abs
         @f = f.abs
@@ -694,6 +734,8 @@ module Flt
         r, s, m_p, m_m, = @r, @s, @m_p, @m_m
         loop do
           d,r = (r*@output_b).divmod(s)
+          # TODO: detect repetition of r value to avoid infinite loop (can only happen if (output_b % b) != 0)
+          # TODO: optionally limit the maximum number of digits
           m_p *= @output_b
           m_m *= @output_b
 
@@ -888,7 +930,8 @@ module Flt
             end
           end
         end
-      end
+
+      end # Formatter
 
     end # AuxiliarFunctions
 
