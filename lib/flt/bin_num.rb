@@ -234,13 +234,13 @@ class BinNum < Num
       DecNum.zero(self.sign)
     else
       DecNum.context(dec_context) do
-        puts "exp: #{@exp.inspect}"
         x = Flt.DecNum(@sign*@coeff)
         if @exp < 0
-          x*Rational(1,2**(-@exp))
+          x *= Rational(1,2**(-@exp))
         else
-          x*2**@exp
+          x *= 2**@exp
         end
+        x.reduce
       end
     end
   end
