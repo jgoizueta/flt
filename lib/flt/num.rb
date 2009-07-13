@@ -2713,7 +2713,7 @@ class Num < Numeric
   # the same context precision that the original number had (number_of_digits).
   #
   # To render the exact value of a BinNum x in decimal this can be used instead:
-  #   x.to_decimal_exact.to_s
+  #   x.to_decimal_exact(:exact=>true).to_s
   #
   # Options:
   # :base output base, 10 by default
@@ -3075,6 +3075,8 @@ class Num < Numeric
   # inexact value in decimal without introducing additional precision.
   # If the exact value of the number expressed in decimal is desired (we consider
   # the BinNum an exact number), this can be done with BinNum.to_decimal_exact(x).to_s
+  # or with rounding=:down and :all_digits=>true
+  # TODO: support options (base, all_digits, any_rounding, eng) and context options in the same hash
   def format(num_context, options={})
     output_radix = options[:base] || 10
     all_digits = options[:all_digits]

@@ -358,7 +358,7 @@ module Flt
           # assert x.class==BinNum
           # TODO: optimize (implement log10, power for BinNum)
           exp = xs.map do |x|
-            x = x.to_decimal_exact.normalize
+            x = x.to_decimal_exact(:exact=>true).normalize
             exp = x.adjusted_exponent
             exp -= 1 if x.coefficient == x.class.context.minimum_normalized_coefficient # if :low mode
             exp -= FloatingTolerance.ref_adjusted_exp

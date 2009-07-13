@@ -223,7 +223,7 @@ class BinNum < Num
   #
   # The current DecNum.context determines the valid range and the precision
   # (if its is not :exact the result will be rounded)
-  def to_decimal_exact()
+  def to_decimal_exact(dec_context=nil)
     if special?
       if nan?
         DecNum.nan
@@ -233,7 +233,15 @@ class BinNum < Num
     elsif zero?
       DecNum.zero(self.sign)
     else
-      Flt.DecNum(@sign*@coeff)*Flt.DecNum(2)**@exp
+      DecNum.context(dec_context) do
+        puts "exp: #{@exp.inspect}"
+        x = Flt.DecNum(@sign*@coeff)
+        if @exp < 0
+          x*Rational(1,2**(-@exp))
+        else
+          x*2**@exp
+        end
+      end
     end
   end
 
@@ -242,7 +250,7 @@ class BinNum < Num
   # Convert to decimal so that if the decimal is converted to a BinNum of the same precision
   # and with same rounding (i.e. BinNum.from_decimal(x, context)) the value of the BinNum
   # is preserved, but use as few decimal digits as possible.
-  def to_decimal(binfloat_context=nil, any_rounding=false)
+  def to_decimal(bin_context=nil, any_rounding=false)
     if special?
       if nan?
         DecNum.nan
@@ -252,7 +260,7 @@ class BinNum < Num
     elsif zero?
       DecNum.zero(self.sign)
     else
-      context = define_context(binfloat_context)
+      context = define_context(bin_context)
       Flt.DecNum(format(context, :base=>10, :all_digits=>false, :any_rounding=>any_rounding))
     end
   end
