@@ -484,12 +484,19 @@ module Flt
       # that rounding is used; otherwise enough digits to produce v with
       # any rounding are delivered.
       #
-      # If the +all+ parameter is true, all significant digits are generated,
+      # If the +all+ parameter is true, all significant digits are generated without rounding,
       # i.e. all digits that, if used on input, cannot arbitrarily change
-      # preserving the parsed value of the floating point number.
-      # This will be useful to generate a fixed number of digits or if
+      # preserving the parsed value of the floating point number. Since the digits are not rounded
+      # more digits may be needed to assure round-trip value preservation.
+      # This is useful to generate a fixed number of digits or if
       # as many digits as possible are required.
-      # In this case an additional logical value that tells if the last digit
+      #
+      # In this case, the round_up flag is set to indicate that the last digits should be
+      # rounded up.
+      #
+      # Note that the round_mode here is not the rounding mode applied to the output;
+      # it is the rounding mode that applied to *input* preserves the original floating-point
+      # value (with the same precision as input).
       # should be rounded-up.
       def format(v, f, e, round_mode, p=nil, all=false)
         @minus = (v < 0)
@@ -773,7 +780,7 @@ module Flt
 
         # 1.2. Use Flt::DecNum logarithm
         if estimated_scale.nil?
-          v.to_decimal_exact if v.is_a?(BinNum)
+          v.to_decimal_exact(:precision=>12) if v.is_a?(BinNum)
           if v.is_a?(DecNum)
             l = nil
             DecNum.context(:precision=>12) do
