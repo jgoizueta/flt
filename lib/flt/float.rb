@@ -165,8 +165,15 @@ class Float
       exp = :inf
     else
       coeff,exp = Math.frexp(self)
-      coeff = Math.ldexp(coeff,Float::MANT_DIG).to_i
-      exp -= Float::MANT_DIG
+      if exp < MIN_EXP
+        # denormalized number
+        coeff = Math.ldexp(coeff, exp-MIN_EXP+MANT_DIG).to_i
+        exp = MIN_EXP-MANT_DIG
+      else
+        # normalized number
+        coeff = Math.ldexp(coeff, MANT_DIG).to_i
+        exp -= MANT_DIG
+      end
     end
     [sign, coeff, exp]
   end
