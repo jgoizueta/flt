@@ -341,10 +341,10 @@ module Flt
     # printing using algorithms by Robert G. Burger and R. Kent Dybvig.
     #
     # Reading and printing can also viewed as floating-point conversion betwen a fixed-precision
-    # floating-point format (the floating-point numbers) and and a free floating-point format (text) wich
+    # floating-point format (the floating-point numbers) and and a free floating-point format (text) which
     # may use different numerical bases.
     #
-    # The Reader class implements the Clinger reading algorithm which converts a free form numeric value
+    # The Reader class implements the Clinger reading algorithm which converts a free-form numeric value
     # (as a text literal, i.e. a free floating-point format, usually in base 10) which is taken
     # as an exact value, to a correctly-rounded floating-point of specified precision and with a
     # specified rounding mode.
@@ -355,7 +355,7 @@ module Flt
     # the original value (with some specified rounding-mode or any round-to-nearest mode) and with
     # the same original precision (e.g. using the Clinger algorithm)
 
-    # Clinger algorithms to read floating point numbers from text literas with correct rounding.
+    # Clinger algorithms to read floating point numbers from text literals with correct rounding.
     # from his paper: "How to Read Floating Point Numbers Accurately"
     # (William D. Clinger)
     class Reader
@@ -372,13 +372,18 @@ module Flt
       # closest to f * eb**e
       # (eb is the input radix)
       #
-      # This is Clinger's +AlgorithmM+ modified to handle denormalized numbers and cope with overflow.
-      def read(context, round_mode, sign, f, e, eb=10) # ceiling & floor must be swapped for negative numbers
+      # This is Clinger's +AlgorithmM+ modified to handle denormalized numbers and cope with overflow,
+      # and cope with exact precision.
+      #
+      # If the context precision is exact an Inexact exception may occur (an NaN be returned)
+      # if an exact conversion is not possible.
+      def read(context, round_mode, sign, f, e, eb=10)
+        @exact = true
         if sign == -1
-          if rounding == :ceiling
-            rounding = :floor
-          elsif rounding == :floor
-            rounding = :ceiling
+          if round_mode == :ceiling
+            round_mode = :floor
+          elsif round_mode == :floor
+            round_mode = :ceiling
           end
         end
 
@@ -389,9 +394,22 @@ module Flt
         end
 
         if exact_mode = context.exact?
-          exact_mode = :quiet if !context.traps[Num::Inexact]
-          n = [(Math.log(u)/Math.log(2)).ceil,1].max # This is very rough
-          context.precision = n
+          a,b = [eb, context.radix].sort
+          k = (Math.log(b)/Math.log(a)).round
+          if b == a**k
+            # conmensurable bases
+            if eb > context.radix
+              n = AuxiliarFunctions._ndigits(f, eb)*k
+            else
+              n = (AuxiliarFunctions._ndigits(f, eb)+k-1)/k
+            end
+          else
+            # inconmesurable bases; exact result may not be possible
+            x = Num[eb].Num(sign, f, e)
+            x = Num.convert_exact(x, context.num_class, context)
+            @exact = !x.nan?
+            return x
+          end
         else
           n = context.precision
         end
@@ -406,8 +424,8 @@ module Flt
            # overflow if k>=max_e
            if (x>=rp_n_1 && x<rp_n) || k==min_e || k==max_e
               z, exact = Reader.ratio_float(context,u,v,k,round_mode)
-              context.exact = exact_mode if exact_mode
               @exact = exact
+              context.exception Num::Inexact if !exact
               return z.copy_sign(sign)
            elsif x<rp_n_1
              u *= r
@@ -462,8 +480,8 @@ module Flt
     # value, representing any value in its 'rounding-range' (the interval where all values round
     # to the floating-point value, with the given precision and rounding mode).
     # An alternative approach which is not taken here would be to represent the exact floating-point
-    # value with some given precision and rounding mode requirements; that can be achieve with
-    # Clinger algorithm for finite (non-exact) precision.
+    # value with some given precision and rounding mode requirements; that can be achieved with
+    # Clinger algorithm (which may fail for exact precision).
     #
     # The variables used by the algorithm are stored in instance variables:
     # @v - The number to be formatted = @f*@b**@e
@@ -523,15 +541,18 @@ module Flt
       #
       # If the +all+ parameter is true, all significant digits are generated without rounding,
       # i.e. all digits that, if used on input, cannot arbitrarily change
-      # preserving the parsed value of the floating point number. Since the digits are not rounded
+      # while preserving the parsed value of the floating point number. Since the digits are not rounded
       # more digits may be needed to assure round-trip value preservation.
-      # This is useful to generate a fixed number of digits or if
-      # as many digits as possible are required.
-      # Beware: this may lead to an infinite-loop if v cannot be represented exactly in the output-base;
-      # e.g. formatting '0.1' (as a decimal floating-point number) in base 2.
+      # This is useful to reflect the precision of the floating point value in the output; in particular
+      # trailing significant zeros are shown.
       #
-      # In this case, the round_up flag is set to indicate that the last digits should be
-      # rounded up.
+      # With :down rounding (truncation) this could be used to show the exact value of the floating
+      # point but beware: when used with directed rounding, if the value has not an exact representation
+      # in the output base this will lead to an infinite loop.
+      # formatting '0.1' (as a decimal floating-point number) in base 2 with :down rounding
+      #
+      # When the +all+ parameters is used the result is not rounded, and the round_up flag is set
+      # to indicate that the last digits should be rounded up.
       #
       # Note that the round_mode here is not the rounding mode applied to the output;
       # it is the rounding mode that applied to *input* preserves the original floating-point
@@ -593,7 +614,7 @@ module Flt
             be = b_power(@e)
             @r, @s, @m_p, @m_m = @f*be*2, 2, be, be
           else
-            be = exptt(b, e)
+            be = b_power(@e)
             be1 = be*@b
             @r, @s, @m_p, @m_m = @f*be1*2, @b*2, be1, be
           end
@@ -860,7 +881,7 @@ module Flt
 
       # fix up scaling (final step): specialized version of scale!
       # This performs a single up scaling step, i.e. behaves like scale2, but
-      # the input must be at least one step down from the final result
+      # the input must be at most one step down from the final result
       def scale_fixup!
         if (@round_h ? (@r+@m_p >= @s) : (@r+@m_p > @s)) # too low?
           @s *= @output_b
@@ -895,6 +916,30 @@ module Flt
       end
       NBITS_BLOCK = 32
       NBITS_LIMIT = Math.ldexp(1,Float::MANT_DIG).to_i
+
+      # Number of base b digits in an integer
+      def _ndigits(x, b)
+        raise  TypeError, "The argument to _ndigits should be nonnegative." if x < 0
+        return 0 unless x.is_a?(Integer)
+        if x.is_a?(Fixnum)
+          return 0 if x==0
+          x.to_s(b).length
+        elsif x <= NDIGITS_LIMIT
+          (Math.log(x)/Math.log(b)).floor + 1
+        else
+          n = 0
+          block = b**NDIGITS_BLOCK
+          while x!=0
+            y = x
+            x /= block
+            n += NDIGITS_BLOCK
+          end
+          n += y.to_s(b).length - NDIGITS_BLOCK if y!=0
+          n
+        end
+      end
+      NDIGITS_BLOCK = 50
+      NDIGITS_LIMIT = Float::MAX.to_i
 
       def detect_float_rounding
         x = x = Math::ldexp(1, Float::MANT_DIG+1) # 10000...00*Float::RADIX**2 == Float::RADIX**(Float::MANT_DIG+1)

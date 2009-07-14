@@ -233,7 +233,7 @@ class BinNum < Num
   # and with same rounding (i.e. BinNum.from_decimal(x, context)) the value of the BinNum
   # is preserved, but use as few decimal digits as possible.
   def to_decimal(bin_context=nil, any_rounding=false)
-    Num.convert(self, bin_context, any_rounding)
+    Num.convert(self, DecNum, bin_context, any_rounding)
   end
 
   # Approximate BinNum to DecNum conversion apt for conversion back to BinNum with any rounding mode.

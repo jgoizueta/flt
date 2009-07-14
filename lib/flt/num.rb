@@ -1267,8 +1267,9 @@ class Num < Numeric
           @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for DecNum: #{arg.inspect}").split
           return
         end
-        sign =  (m.sign == '-') ? -1 : +1
+        @sign = (m.sign == '-') ? -1 : +1
         if m.int || m.onlyfrac
+          sign = @sign
           if m.int
             intpart = m.int
             fracpart = m.frac
@@ -2708,7 +2709,9 @@ class Num < Numeric
   # preserving the original while if converted back to the same type of floating-point value with
   # the same context precision that the original number had (number_of_digits).
   #
-  # To render the exact value of a BinNum x in decimal this can be used instead:
+  # To render the exact value of a Num x in a different base b this can be used
+  #   Flt::Num.convert_exact(x, b).to_s(:base=>b)
+  # Or, to represent a BinNum x in decimal:
   #   x.to_decimal_exact(:exact=>true).to_s
   #
   # Options:
@@ -3074,8 +3077,8 @@ class Num < Numeric
   # as an approximation with x.number_of_digits precision and showing that
   # inexact value in decimal without introducing additional precision.
   # If the exact value of the number expressed in decimal is desired (we consider
-  # the BinNum an exact number), this can be done with BinNum.to_decimal_exact(x).to_s
-  # or with rounding=:down and :all_digits=>true
+  # the Flt an exact number), this can be done with Num.convert_exact.
+  #
   # TODO: support options (base, all_digits, any_rounding, eng) and context options in the same hash
   def format(num_context, options={})
     output_radix = options[:base] || 10
@@ -3083,7 +3086,7 @@ class Num < Numeric
     any_rounding = options[:any_rounding]
     eng = options[:eng]
 
-    sgn = sign<0 ? '-' : ''
+    sgn = @sign<0 ? '-' : ''
     if special?
       if @exp==:inf
         return "#{sgn}Infinity"
@@ -3333,7 +3336,7 @@ class Num < Numeric
         sign, coeff, exp = x.split
         y = num_class.Num(sign*coeff)
         if exp < 0
-          y *= Rational(1,x.num_class.int_radix_power(-exp))
+          y /= x.num_class.int_radix_power(-exp)
         else
           y *= x.num_class.int_radix_power(exp)
         end
@@ -3351,7 +3354,7 @@ class Num < Numeric
   # To increment the result number of digits x can be normalized or its precision (quantum) changed.
   # TODO: alternative way to define the precision (p) or change to use the context precision ?
   def self.convert(x, dest_base_or_class, origin_context=nil, any_rounding=false)
-    num_class = dest_base_or_class.is_a?(Num) ? dest_base_or_class : Num[dest_base_or_class]
+    num_class = dest_base_or_class.is_a?(Integer) ? Num[dest_base_or_class] :  dest_base_or_class
     if x.special?
       if x.nan?
         num_class.nan
