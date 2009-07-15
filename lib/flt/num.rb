@@ -25,7 +25,7 @@
 # The reduce operation (originally called 'normalize') removes trailing 0s and increments the exponent if necessary;
 # the representation is rescaled to use the maximum exponent possible (while maintaining an integral significand.)
 #
-# A classical floating-point normalize opration would remove leading 0s and decrement the exponent instead,
+# A classical floating-point normalize opwration would remove leading 0s and decrement the exponent instead,
 # rescaling to the minimum exponent theat maintains the significand value under some conventional limit (1 or the radix).
 #
 # The logb and adjusted operations return the exponent that applies to the most significand digit (logb as a Decimal
