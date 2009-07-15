@@ -662,10 +662,13 @@ class Num < Numeric
     end
 
     # Normalizes (changes quantum) so that the coefficient has precision digits, unless it is subnormal.
+    # For surnormal numbers the Subnormal flag is raised an a subnormal is returned with the smallest
+    # possible exponent.
+    #
     # This is different from reduce GDAS function which was formerly called normalize, and corresponds
     # to the classic meaning of floating-point normalization.
     #
-    # Note that the number is also rounded if it had more precision than the context.
+    # Note that the number is also rounded (precision is reduced) if it had more precision than the context.
     def normalize(x)
       _convert(x).normalize(self)
     end
@@ -2121,12 +2124,14 @@ class Num < Numeric
     return Num(dup.sign, coeff/num_class.int_radix_power(nd-end_d), exp)
   end
 
-  # normalizes so that the coefficient has precision digits
-  # (this is not the old GDA normalize function)
-  # Note that this reduces precision to that specified by the context if the
-  # number is more precise.
-  # For surnormal numbers the Subnormal flag is raised an a subnormal is returned
-  # but with the smallest possible exponent.
+  # Normalizes (changes quantum) so that the coefficient has precision digits, unless it is subnormal.
+  # For surnormal numbers the Subnormal flag is raised an a subnormal is returned with the smallest
+  # possible exponent.
+  #
+  # This is different from reduce GDAS function which was formerly called normalize, and corresponds
+  # to the classic meaning of floating-point normalization.
+  #
+  # Note that the number is also rounded (precision is reduced) if it had more precision than the context.
   def normalize(context=nil)
     context = define_context(context)
     return Num(self) if self.special? || self.zero?
