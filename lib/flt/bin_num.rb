@@ -59,7 +59,6 @@ class BinNum < Num
     # Normalized strict epsilon; see Num::Context.epsilon()
     def half_epsilon(sign=+1)
       super.normalize
-
     end
 
   end # BinNum::Context
