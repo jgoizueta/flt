@@ -1,4 +1,5 @@
 require 'flt/num'
+require 'flt/float'
 
 module Flt
 
@@ -76,16 +77,7 @@ class BinNum < Num
             elsif x.zero?
               BinNum.zero((x.to_s[0,1].strip=="-") ? -1 : +1)
             else
-              coeff, exp = Math.frexp(x)
-              coeff = Math.ldexp(coeff, Float::MANT_DIG).to_i
-              exp -= Float::MANT_DIG
-              if coeff < 0
-                sign = -1
-                coeff = -coeff
-              else
-                sign = +1
-              end
-              Num(sign, coeff, exp)
+              Num(*x.split)
             end
           }
         )
