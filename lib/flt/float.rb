@@ -129,7 +129,7 @@ class Float
   # Sign: -1 for minus, +1 for plus, nil for nan (note that Float zero is signed)
   def sign
     if nan?
-      nil
+      nilg
     elsif self==0
       self.to_s[0,1] == "-" ? -1 : +1
     else
@@ -140,7 +140,7 @@ class Float
   # Return copy of self with the sign of other
   def copy_sign(other)
     self_sign = self.sign
-    other_sign = other.sign
+    other_sign = other.is_a?(Integer) ? (other < 0 ? -1 : +1) : other.sign
     if self_sign && other_sign
       if self_sign == other_sign
         self
