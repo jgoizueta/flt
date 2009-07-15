@@ -902,7 +902,7 @@ class Num < Numeric
         # largest epsilon: 0.0...10 (precision digits shown to the right of the decimal point)
         exp = 1-precision
         coeff = 1
-      when :half_even, :half_down #, :up #  :up #     :down,    :half_down, :up05, :floor
+      when :half_even, :half_down
         # next largest:    0.0...050...1 (+precision-1 additional digits here)
         exp = 1-2*precision
         coeff = 1 + num_class.int_radix_power(precision)/2

@@ -561,7 +561,7 @@ module Flt
       def format(v, f, e, round_mode, p=nil, all=false)
         # TODO: consider removing parameters f,e and using v.split instead
         @minus = (v < 0)
-        @v = v.abs
+        @v = v.copy_sign(+1) # don't use v.abs because it rounds (and may overflow also)
         @f = f.abs
         @e = e
         @round_mode = round_mode
@@ -824,7 +824,7 @@ module Flt
 
         # 1.1. try to use Float logarithms (Math.log)
         v = @v
-        v_abs = v.abs
+        v_abs = v.copy_sign(+1) # don't use v.abs because it rounds (and may overflow also)
         v_flt = v_abs.to_f
         b = @output_b
         log_b = ESTIMATE_FLOAT_LOG_B[b]
