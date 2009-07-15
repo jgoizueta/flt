@@ -84,7 +84,8 @@
 #++
 
 #--
-# TODO: for BinNum#to_s consider using the context precision as a minimum and/or adding an exact mode
+# TODO: for BinNum#to_s consider using the context precision as a minimum and/or adding an exact mode, or
+#       adding an option for a minimum precision.
 # TODO: for BinNum(String) with non exact precision, use context precision only if no exact conversion is possible
 # TODO: selecting the kind of ulp is awkward; consider one of these options:
 #       * don't support variant ulps; always use Muller's ulp
