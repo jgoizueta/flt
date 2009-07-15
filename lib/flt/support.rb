@@ -425,7 +425,7 @@ module Flt
            if (x>=rp_n_1 && x<rp_n) || k==min_e || k==max_e
               z, exact = Reader.ratio_float(context,u,v,k,round_mode)
               @exact = exact
-              context.exception Num::Inexact if !exact
+              context.exception Num::Inexact if !exact && context.respond_to?(:exception)
               return z.copy_sign(sign)
            elsif x<rp_n_1
              u *= r
