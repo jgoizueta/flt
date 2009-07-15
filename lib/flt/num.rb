@@ -661,8 +661,11 @@ class Num < Numeric
       _convert(x).reduce(self)
     end
 
-    # normalizes so that the coefficient has precision digits
-    # (this is not the old GDA normalize function)
+    # Normalizes (changes quantum) so that the coefficient has precision digits, unless it is subnormal.
+    # This is different from reduce GDAS function which was formerly called normalize, and corresponds
+    # to the classic meaning of floating-point normalization.
+    #
+    # Note that the number is also rounded if it had more precision than the context.
     def normalize(x)
       _convert(x).normalize(self)
     end
