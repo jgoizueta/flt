@@ -2786,6 +2786,187 @@ class Num < Numeric
     format(context, options.merge(:eng=>eng))
   end
 
+  # Raises to the power of x.
+  #
+  # If self is negative then other
+  # must be integral.  The result will be inexact unless other is
+  # integral and the result is finite and can be expressed exactly
+  # in 'precision' digits.
+  def power(other, context=nil)
+
+    context = num_class.define_context(context)
+    other = _convert(other)
+
+    ans = _check_nans(context, other)
+    return ans if ans
+
+    # 0**0 = NaN (!), x**0 = 1 for nonzero x (including +/-Infinity)
+    if other.zero?
+      if self.zero?
+        return context.exception(InvalidOperation, '0 ** 0')
+      else
+        return Num(1)
+      end
+    end
+
+    # result has sign -1 iff self.sign is -1 and other is an odd integer
+    result_sign = +1
+    _self = self
+    if _self.sign == -1
+      if other.integral?
+        result_sign = -1 if !other.even?
+      else
+        # -ve**noninteger = NaN
+        # (-0)**noninteger = 0**noninteger
+        unless self.zero?
+          return context.exception(InvalidOperation, 'x ** y with x negative and y not an integer')
+        end
+      end
+      # negate self, without doing any unwanted rounding
+      _self = self.copy_negate
+    end
+
+    # 0**(+ve or Inf)= 0; 0**(-ve or -Inf) = Infinity
+    if _self.zero?
+      return (other.sign == +1) ? Num(result_sign, 0, 0) : num_class.infinity(result_sign)
+    end
+
+    # Inf**(+ve or Inf) = Inf; Inf**(-ve or -Inf) = 0
+    if _self.infinite?
+      return (other.sign == +1) ? num_class.infinity(result_sign) : Num(result_sign, 0, 0)
+    end
+
+    # 1**other = 1, but the choice of exponent and the flags
+    # depend on the exponent of self, and on whether other is a
+    # positive integer, a negative integer, or neither
+    if _self == Num(1)
+      return _self if context.exact?
+      if other.integral?
+        # exp = max(self._exp*max(int(other), 0),
+        # 1-context.prec) but evaluating int(other) directly
+        # is dangerous until we know other is small (other
+        # could be 1e999999999)
+        if other.sign == -1
+          multiplier = 0
+        elsif other > context.precision
+          multiplier = context.precision
+        else
+          multiplier = other.to_i
+        end
+
+        exp = _self.exponent * multiplier
+        if exp < 1-context.precision
+          exp = 1-context.precision
+          context.exception Rounded
+        end
+      else
+        context.exception Rounded
+        context.exception Inexact
+        exp = 1-context.precision
+      end
+
+      return Num(result_sign, num_class.int_radix_power(-exp), exp)
+    end
+
+    # compute adjusted exponent of self
+    self_adj = _self.adjusted_exponent
+
+    # self ** infinity is infinity if self > 1, 0 if self < 1
+    # self ** -infinity is infinity if self < 1, 0 if self > 1
+    if other.infinite?
+      if (other.sign == +1) == (self_adj < 0)
+        return Num(result_sign, 0, 0)
+      else
+        return num_class.infinity(result_sign)
+      end
+    end
+
+    # from here on, the result always goes through the call
+    # to _fix at the end of this function.
+    ans = nil
+
+    # crude test to catch cases of extreme overflow/underflow.  If
+    # log_radix(self)*other >= radix**bound and bound >= len(str(Emax))
+    # then radixs**bound >= radix**len(str(Emax)) >= Emax+1 and hence
+    # self**other >= radix**(Emax+1), so overflow occurs.  The test
+    # for underflow is similar.
+    bound = _self._log_radix_exp_bound + other.adjusted_exponent
+    if (self_adj >= 0) == (other.sign == +1)
+      # self > 1 and other +ve, or self < 1 and other -ve
+      # possibility of overflow
+      if bound >= _number_of_digits(context.emax)
+        ans = Num(result_sign, 1, context.emax+1)
+      end
+    else
+      # self > 1 and other -ve, or self < 1 and other +ve
+      # possibility of underflow to 0
+      etiny = context.etiny
+      if bound >= _number_of_digits(-etiny)
+        ans = Num(result_sign, 1, etiny-1)
+      end
+    end
+
+    # try for an exact result with precision +1
+    if ans.nil?
+      if context.exact?
+        if other.adjusted_exponent < 100 # ???? 4 ? ...
+          test_precision = _self.number_of_digits*other.to_i+1
+        else
+          test_precision = _self.number_of_digits+1
+        end
+      else
+        test_precision = context.precision + 1
+      end
+      ans = _self._power_exact(other, test_precision)
+      if !ans.nil? && (result_sign == -1)
+        ans = Num(-1, ans.coefficient, ans.exponent)
+      end
+    end
+
+    # usual case: inexact result, x**y computed directly as exp(y*log(x))
+    if !ans.nil?
+      return ans if context.exact?
+    else
+      return context.exception(Inexact, "Inexact power") if context.exact?
+
+      p = context.precision
+      xc = _self.coefficient
+      xe = _self.exponent
+      yc = other.coefficient
+      ye = other.exponent
+      yc = -yc if other.sign == -1
+
+      # compute correctly rounded result:  start with precision +3,
+      # then increase precision until result is unambiguously roundable
+      extra = 3
+      coeff, exp = nil, nil
+      loop do
+        coeff, exp = _power(xc, xe, yc, ye, p+extra)
+        break if (coeff % (num_class.int_radix_power(_number_of_digits(coeff)-p)/2)) != 0 # base 2: (coeff % (10**(_number_of_digits(coeff)-p-1))) != 0
+        extra += 3
+      end
+      ans = Num(result_sign, coeff, exp)
+    end
+
+    # the specification says that for non-integer other we need to
+    # raise Inexact, even when the result is actually exact.  In
+    # the same way, we need to raise Underflow here if the result
+    # is subnormal.  (The call to _fix will take care of raising
+    # Rounded and Subnormal, as usual.)
+    if !other.integral?
+      context.exception Inexact
+      # pad with zeros up to length context.precision+1 if necessary
+      if ans.number_of_digits <= context.precision
+        expdiff = context.precision+1 - ans.number_of_digits
+        ans = Num(ans.sign, num_class.int_mult_radix_power(ans.coefficient, expdiff), ans.exponent-expdiff)
+      end
+      context.exception Underflow if ans.adjusted_exponent < context.emin
+    end
+    # unlike exp, ln and log10, the power function respects the
+    # rounding mode; no need to use ROUND_HALF_EVEN here
+    ans._fix(context)
+  end
+
   # Check if the number or other is NaN, signal if sNaN or return NaN;
   # return nil if none is NaN.
   def _check_nans(context=nil, other=nil)
@@ -3242,6 +3423,203 @@ class Num < Numeric
     end
   end
 
+  # Compute a lower bound for the adjusted exponent of self.log10()
+  # In other words, find r such that self.log10() >= 10**r.
+  # Assumes that self is finite and positive and that self != 1.
+  def _log_radix_exp_bound
+    # For x >= radix or x < 1/radix we only need a bound on the integer
+    # part of log_radix(self), and this comes directly from the
+    # exponent of x.  For 1/radix <= x <= radix we use the inequalities
+    # 1-1/x <= log(x) <= x-1. If x > 1 we have |log_radix(x)| >
+    # (1-1/x)/k > 0.  If x < 1 then |log_radix(x)| > (1-x)/k > 0
+    # with k = floor(log(radix)*radix**m)/radix**m (m = 3 for radix=10)
+    #
+    # The original Python cod used lexical order (having converted to strings) for (num < den) and (num < 231)
+    # so the results would be different e.g. for num = 9; Can this happen? What is the correct way?
+
+    adj = self.exponent + number_of_digits - 1
+    return _number_of_digits(adj) - 1 if adj >= 1 # self >= radix
+    return _number_of_digits(-1-adj)-1 if adj <= -2 # self < 1/radix
+
+    k, m = {
+      10 => [231, 3],
+      2 => [89, 7]
+    }[num_class.radix]
+    raise InvalidOperation, "Base #{num_class.radix} not supported for _log_radix_exp_bound" if k.nil?
+
+    c = self.coefficient
+    e = self.exponent
+    if adj == 0
+      # 1 < self < 10
+      num = (c - num_class.int_radix_power(-e))
+      den = (k*c)
+      return _number_of_digits(num) - _number_of_digits(den) - ((num < den) ? 1 : 0) + (m-1)
+    end
+    # adj == -1, 0.1 <= self < 1
+    num = (num_class.int_radix_power(-e)-c)
+    return _number_of_digits(num.to_i) + e - ((num < k) ? 1 : 0) - (m-2)
+  end
+
+  # Attempt to compute self**other exactly
+  # Given Decimals self and other and an integer p, attempt to
+  # compute an exact result for the power self**other, with p
+  # digits of precision.  Return nil if self**other is not
+  # exactly representable in p digits.
+  #
+  # Assumes that elimination of special cases has already been
+  # performed: self and other must both be nonspecial; self must
+  # be positive and not numerically equal to 1; other must be
+  # nonzero.  For efficiency, other.exponent should not be too large,
+  # so that 10**other.exponent.abs is a feasible calculation.
+  def _power_exact(other, p)
+
+    # In the comments below, we write x for the value of self and
+    # y for the value of other.  Write x = xc*10**xe and y =
+    # yc*10**ye.
+
+    # The main purpose of this method is to identify the *failure*
+    # of x**y to be exactly representable with as little effort as
+    # possible.  So we look for cheap and easy tests that
+    # eliminate the possibility of x**y being exact.  Only if all
+    # these tests are passed do we go on to actually compute x**y.
+
+    # Here's the main idea.  First normalize both x and y.  We
+    # express y as a rational m/n, with m and n relatively prime
+    # and n>0.  Then for x**y to be exactly representable (at
+    # *any* precision), xc must be the nth power of a positive
+    # integer and xe must be divisible by n.  If m is negative
+    # then additionally xc must be a power of either 2 or 5, hence
+    # a power of 2**n or 5**n.
+    #
+    # There's a limit to how small |y| can be: if y=m/n as above
+    # then:
+    #
+    #  (1) if xc != 1 then for the result to be representable we
+    #      need xc**(1/n) >= 2, and hence also xc**|y| >= 2.  So
+    #      if |y| <= 1/nbits(xc) then xc < 2**nbits(xc) <=
+    #      2**(1/|y|), hence xc**|y| < 2 and the result is not
+    #      representable.
+    #
+    #  (2) if xe != 0, |xe|*(1/n) >= 1, so |xe|*|y| >= 1.  Hence if
+    #      |y| < 1/|xe| then the result is not representable.
+    #
+    # Note that since x is not equal to 1, at least one of (1) and
+    # (2) must apply.  Now |y| < 1/nbits(xc) iff |yc|*nbits(xc) <
+    # 10**-ye iff len(str(|yc|*nbits(xc)) <= -ye.
+    #
+    # There's also a limit to how large y can be, at least if it's
+    # positive: the normalized result will have coefficient xc**y,
+    # so if it's representable then xc**y < 10**p, and y <
+    # p/log10(xc).  Hence if y*log10(xc) >= p then the result is
+    # not exactly representable.
+
+    # if len(str(abs(yc*xe)) <= -ye then abs(yc*xe) < 10**-ye,
+    # so |y| < 1/xe and the result is not representable.
+    # Similarly, len(str(abs(yc)*xc_bits)) <= -ye implies |y|
+    # < 1/nbits(xc).
+
+    xc = self.coefficient
+    xe = self.exponent
+    while (xc % num_class.radix) == 0
+      xc /= num_class.radix
+      xe += 1
+    end
+
+    yc = other.coefficient
+    ye = other.exponent
+    while (yc % num_class.radix) == 0
+      yc /= num_class.radix
+      ye += 1
+    end
+
+    # case where xc == 1: result is 10**(xe*y), with xe*y
+    # required to be an integer
+    if xc == 1
+      if ye >= 0
+        exponent = xe*yc*num_class.int_radix_power(ye)
+      else
+        exponent, remainder = (xe*yc).divmod(num_class.int_radix_power(-ye))
+        return nil if remainder!=0
+      end
+      exponent = -exponent if other.sign == -1
+      # if other is a nonnegative integer, use ideal exponent
+      if other.integral? and (other.sign == +1)
+        ideal_exponent = self.exponent*other.to_i
+        zeros = [exponent-ideal_exponent, p-1].min
+      else
+        zeros = 0
+      end
+      return Num(+1, num_class.int_radix_power(zeros), exponent-zeros)
+    end
+
+    # case where y is negative: xc must be either a power
+    # of 2 or a power of 5.
+    if other.sign == -1
+      # TODO: detect powers of 2 or 5
+      return nil
+    end
+
+    # now y is positive; find m and n such that y = m/n
+    if ye >= 0
+      m, n = num_class.int_mult_radix_power(yc,ye), 1
+    else
+      return nil if (xe != 0) and (_number_of_digits((yc*xe).abs) <= -ye)
+      xc_bits = _nbits(xc)
+      return nil if (xc != 1) and (_number_of_digits(yc.abs*xc_bits) <= -ye)
+      m, n = yc, num_class.int_radix_power(-ye)
+      while ((m % 2) == 0) && ((n % 2) == 0)
+        m /= 2
+        n /= 2
+      end
+      while ((m % 5) == 0) && ((n % 5) == 0)
+        m /= 5
+        n /= 5
+      end
+    end
+
+    # compute nth root of xc*radix**xe
+    if n > 1
+      # if 1 < xc < 2**n then xc isn't an nth power
+      return nil if xc != 1 and xc_bits <= n
+
+      xe, rem = xe.divmod(n)
+      return nil if rem != 0
+
+      # compute nth root of xc using Newton's method
+      a = 1 << -(-_nbits(xc)/n) # initial estimate
+      q = r = nil
+      loop do
+        q, r = xc.divmod(a**(n-1))
+        break if a <= q
+        a = (a*(n-1) + q)/n
+      end
+      return nil if !((a == q) and (r == 0))
+      xc = a
+    end
+
+    # now xc*radix**xe is the nth root of the original xc*radix**xe
+    # compute mth power of xc*radix**xe
+
+    # if m > p*_log_radix_mult/_log_radix_lb(xc) then m > p/log_radix(xc),
+    # hence xc**m > radix**p and the result is not representable.
+    #return nil if (xc > 1) and (m > p*100/_log10_lb(xc))
+    return nil if (xc > 1) and (m > p*_log_radix_mult/_log_radix_lb(xc))
+    xc = xc**m
+    xe *= m
+    return nil if xc > num_class.int_radix_power(p)
+
+    # by this point the result *is* exactly representable
+    # adjust the exponent to get as close as possible to the ideal
+    # exponent, if necessary
+    if other.integral? && other.sign == +1
+      ideal_exponent = self.exponent*other.to_i
+      zeros = [xe-ideal_exponent, p-_number_of_digits(xc)].min
+    else
+      zeros = 0
+    end
+    return Num(+1, num_class.int_mult_radix_power(xc, zeros), xe-zeros)
+  end
+
   module AuxiliarFunctions
 
     module_function
@@ -3289,7 +3667,355 @@ class Num < Numeric
       return swap ? [other, tmp] : [tmp, other]
     end
 
-  end
+    # Given integers xc, xe, yc and ye representing Num x = xc*radix**xe and
+    # y = yc*radix**ye, compute x**y.  Returns a pair of integers (c, e) such that:
+    #
+    #   radix**(p-1) <= c <= radix**p, and
+    #   (c-1)*radix**e < x**y < (c+1)*radix**e
+    #
+    # in other words, c*radix**e is an approximation to x**y with p digits
+    # of precision, and with an error in c of at most 1.  (This is
+    # almost, but not quite, the same as the error being < 1ulp: when c
+    # == radix**(p-1) we can only guarantee error < radix ulp.)
+    #
+    # We assume that: x is positive and not equal to 1, and y is nonzero.
+    def _power(xc, xe, yc, ye, p)
+      # Find b such that radix**(b-1) <= |y| <= radix**b
+      b = _number_of_digits(yc.abs) + ye
+
+      # log(x) = lxc*radix**(-p-b-1), to p+b+1 places after the decimal point
+      lxc = _log(xc, xe, p+b+1)
+
+      # compute product y*log(x) = yc*lxc*radix**(-p-b-1+ye) = pc*radix**(-p-1)
+      shift = ye-b
+      if shift >= 0
+          pc = lxc*yc*num_class.int_radix_power(shift)
+      else
+          pc = _div_nearest(lxc*yc, num_class.int_radix_power(-shift))
+      end
+
+      if pc == 0
+          # we prefer a result that isn't exactly 1; this makes it
+          # easier to compute a correctly rounded result in __pow__
+          if (_number_of_digits(xc) + xe >= 1) == (yc > 0) # if x**y > 1:
+              coeff, exp = num_class.int_radix_power(p-1)+1, 1-p
+          else
+              coeff, exp = num_class.int_radix_power(p)-1, -p
+          end
+      else
+          coeff, exp = _exp(pc, -(p+1), p+1)
+          coeff = _div_nearest(coeff, num_class.radix)
+          exp += 1
+      end
+
+      return coeff, exp
+    end
+
+    EXP_INC = 2
+    # Compute an approximation to exp(c*radix**e), with p decimal places of precision.
+    # Returns integers d, f such that:
+    #
+    #   radix**(p-1) <= d <= radix**p, and
+    #   (d-1)*radix**f < exp(c*radix**e) < (d+1)*radix**f
+    #
+    # In other words, d*radix**f is an approximation to exp(c*radix**e) with p
+    # digits of precision, and with an error in d of at most 1.  This is
+    # almost, but not quite, the same as the error being < 1ulp: when d
+    # = radix**(p-1) the error could be up to radix ulp.
+    def _exp(c, e, p)
+        # we'll call iexp with M = radix**(p+2), giving p+3 digits of precision
+        p += EXP_INC
+
+        # compute log(radix) with extra precision = adjusted exponent of c*radix**e
+        # TODO: without the .abs tests fail because c is negative: c should not be negative!!
+        extra = [0, e + _number_of_digits(c.abs) - 1].max
+        q = p + extra
+
+        # compute quotient c*radix**e/(log(radix)) = c*radix**(e+q)/(log(radix)*radix**q),
+        # rounding down
+        shift = e+q
+        if shift >= 0
+            cshift = c*num_class.int_radix_power(shift)
+        else
+            cshift = c/num_class.int_radix_power(-shift)
+        end
+        quot, rem = cshift.divmod(_log_radix_digits(q))
+
+        # reduce remainder back to original precision
+        rem = _div_nearest(rem, num_class.int_radix_power(extra))
+
+        # for radix=10: error in result of _iexp < 120;  error after division < 0.62
+        r = _div_nearest(_iexp(rem, num_class.int_radix_power(p)), num_class.int_radix_power(EXP_INC+1)), quot - p + (EXP_INC+1)
+        return r
+    end
+
+    LOG_PREC_INC = 2
+    # Given integers c, e and p with c > 0, compute an integer
+    # approximation to radix**p * log(c*radix**e), with an absolute error of
+    # at most 1.  Assumes that c*radix**e is not exactly 1.
+    def _log(c, e, p)
+        # Increase precision by 2. The precision increase is compensated
+        # for at the end with a division
+        p += LOG_PREC_INC
+
+        # rewrite c*radix**e as d*radix**f with either f >= 0 and 1 <= d <= radix,
+        # or f <= 0 and 1/radix <= d <= 1.  Then we can compute radix**p * log(c*radix**e)
+        # as radix**p * log(d) + radix**p*f * log(radix).
+        l = _number_of_digits(c)
+        f = e+l - ((e+l >= 1) ? 1 : 0)
+
+        # compute approximation to radix**p*log(d), with error < 27 for radix=10
+        if p > 0
+            k = e+p-f
+            if k >= 0
+                c *= num_class.int_radix_power(k)
+            else
+                c = _div_nearest(c, num_class.int_radix_power(-k))  # error of <= 0.5 in c for radix=10
+            end
+
+            # _ilog magnifies existing error in c by a factor of at most radix
+            log_d = _ilog(c, num_class.int_radix_power(p)) # error < 5 + 22 = 27 for radix=10
+        else
+            # p <= 0: just approximate the whole thing by 0; error < 2.31 for radix=10
+            log_d = 0
+        end
+
+        # compute approximation to f*radix**p*log(radix), with error < 11 for radix=10.
+        if f
+            extra = _number_of_digits(f.abs) - 1
+            if p + extra >= 0
+                # for radix=10:
+                # error in f * _log10_digits(p+extra) < |f| * 1 = |f|
+                # after division, error < |f|/10**extra + 0.5 < 10 + 0.5 < 11
+                f_log_r = _div_nearest(f*_log_radix_digits(p+extra), num_class.int_radix_power(extra))
+            else
+                f_log_r = 0
+            end
+        else
+            f_log_r = 0
+        end
+
+        # error in sum < 11+27 = 38; error after division < 0.38 + 0.5 < 1 for radix=10
+        return _div_nearest(f_log_r + log_d, num_class.int_radix_power(LOG_PREC_INC)) # extra radix factor for base 2 ???
+    end
+
+    # Given integers x and M, M > 0, such that x/M is small in absolute
+    # value, compute an integer approximation to M*exp(x/M).
+    # For redix=10, and 0 <= x/M <= 2.4, the absolute error in the result is bounded by 60 (and
+    # is usually much smaller).
+    def _iexp(x, m, l=8)
+
+        # Algorithm: to compute exp(z) for a real number z, first divide z
+        # by a suitable power R of 2 so that |z/2**R| < 2**-L.  Then
+        # compute expm1(z/2**R) = exp(z/2**R) - 1 using the usual Taylor
+        # series
+        #
+        #     expm1(x) = x + x**2/2! + x**3/3! + ...
+        #
+        # Now use the identity
+        #
+        #     expm1(2x) = expm1(x)*(expm1(x)+2)
+        #
+        # R times to compute the sequence expm1(z/2**R),
+        # expm1(z/2**(R-1)), ... , exp(z/2), exp(z).
+
+        # Find R such that x/2**R/M <= 2**-L
+        r = _nbits((x<<l)/m)
+
+        # Taylor series.  (2**L)**T > M
+        t = -(-num_class.radix*_number_of_digits(m)/(3*l)).to_i
+        y = _div_nearest(x, t)
+        mshift = m<<r
+        (1...t).to_a.reverse.each do |i|
+            y = _div_nearest(x*(mshift + y), mshift * i)
+        end
+
+        # Expansion
+        (0...r).to_a.reverse.each do |k|
+            mshift = m<<(k+2)
+            y = _div_nearest(y*(y+mshift), mshift)
+        end
+
+        return m+y
+    end
+
+    # Integer approximation to M*log(x/M), with absolute error boundable
+    # in terms only of x/M.
+    #
+    # Given positive integers x and M, return an integer approximation to
+    # M * log(x/M).  For radix=10, L = 8 and 0.1 <= x/M <= 10 the difference
+    # between the approximation and the exact result is at most 22.  For
+    # L = 8 and 1.0 <= x/M <= 10.0 the difference is at most 15.  In
+    # both cases these are upper bounds on the error; it will usually be
+    # much smaller.
+    def _ilog(x, m, l = 8)
+      # The basic algorithm is the following: let log1p be the function
+      # log1p(x) = log(1+x).  Then log(x/M) = log1p((x-M)/M).  We use
+      # the reduction
+      #
+      #    log1p(y) = 2*log1p(y/(1+sqrt(1+y)))
+      #
+      # repeatedly until the argument to log1p is small (< 2**-L in
+      # absolute value).  For small y we can use the Taylor series
+      # expansion
+      #
+      #    log1p(y) ~ y - y**2/2 + y**3/3 - ... - (-y)**T/T
+      #
+      # truncating at T such that y**T is small enough.  The whole
+      # computation is carried out in a form of fixed-point arithmetic,
+      # with a real number z being represented by an integer
+      # approximation to z*M.  To avoid loss of precision, the y below
+      # is actually an integer approximation to 2**R*y*M, where R is the
+      # number of reductions performed so far.
+
+      y = x-m
+      # argument reduction; R = number of reductions performed
+      r = 0
+      # while (r <= l && y.abs << l-r >= m ||
+      #        r > l and y.abs>> r-l >= m)
+      while (((r <= l) && ((y.abs << (l-r)) >= m)) ||
+             ((r > l) && ((y.abs>>(r-l)) >= m)))
+          y = _div_nearest((m*y) << 1,
+                           m + _sqrt_nearest(m*(m+_rshift_nearest(y, r)), m))
+          r += 1
+      end
+
+      # Taylor series with T terms
+      t = -(-10*_number_of_digits(m)/(3*l)).to_i
+      yshift = _rshift_nearest(y, r)
+      w = _div_nearest(m, t)
+      # (1...t).reverse_each do |k| # Ruby 1.9
+      (1...t).to_a.reverse.each do |k|
+         w = _div_nearest(m, k) - _div_nearest(yshift*w, m)
+      end
+
+      return _div_nearest(w*y, m)
+    end
+
+    # Closest integer to the square root of the positive integer n.  a is
+    # an initial approximation to the square root.  Any positive integer
+    # will do for a, but the closer a is to the square root of n the
+    # faster convergence will be.
+    def _sqrt_nearest(n, a)
+
+        if n <= 0 or a <= 0
+            raise ArgumentError, "Both arguments to _sqrt_nearest should be positive."
+        end
+
+        b=0
+        while a != b
+            b, a = a, a--n/a>>1 # ??
+        end
+        return a
+    end
+
+    # Given an integer x and a nonnegative integer shift, return closest
+    # integer to x / 2**shift; use round-to-even in case of a tie.
+    def _rshift_nearest(x, shift)
+        b, q = (1 << shift), (x >> shift)
+        return q + (((2*(x & (b-1)) + (q&1)) > b) ? 1 : 0)
+        #return q + (2*(x & (b-1)) + (((q&1) > b) ? 1 : 0))
+    end
+
+    # Closest integer to a/b, a and b positive integers; rounds to even
+    # in the case of a tie.
+    def _div_nearest(a, b)
+      q, r = a.divmod(b)
+      q + (((2*r + (q&1)) > b) ? 1 : 0)
+    end
+
+    # We'll memoize the digits of log(10):
+    @log_radix_digits = {
+      # 10=>"23025850929940456840179914546843642076011014886",
+      2=>""
+    }
+    class <<self
+      attr_reader :log_radix_digits
+    end
+    LOG_RADIX_INC = 2
+    LOG_RADIX_EXTRA = 3
+
+    # Given an integer p >= 0, return floor(radix**p)*log(radix).
+    def _log_radix_digits(p)
+      # digits are stored as a string, for quick conversion to
+      # integer in the case that we've already computed enough
+      # digits; the stored digits should always bge correct
+      # (truncated, not rounded to nearest).
+      raise ArgumentError, "p should be nonnegative" if p<0
+      stored_digits = (AuxiliarFunctions.log_radix_digits[num_class.radix] || "")
+      if p >= stored_digits.length
+          digits = nil
+          # compute p+3, p+6, p+9, ... digits; continue until at
+          # least one of the extra digits is nonzero
+          extra = LOG_RADIX_EXTRA
+          loop do
+            # compute p+extra digits, correct to within 1ulp
+            m = num_class.int_radix_power(p+extra+LOG_RADIX_INC)
+            digits = _div_nearest(_ilog(num_class.radix*m, m), num_class.int_radix_power(LOG_RADIX_INC)).to_s(num_class.radix)
+            break if digits[-extra..-1] != '0'*extra
+            extra += LOG_RADIX_EXTRA
+          end
+          # if the radix < e (i.e. only for radix==2), we must prefix with a 0 because log(radix)<1
+          # BUT THIS REDUCES PRECISION BY ONE? : may be avoid prefix and adjust scaling in the caller
+          prefix = num_class.radix==2 ? '0' : ''
+          # keep all reliable digits so far; remove trailing zeros
+          # and next nonzero digit
+          AuxiliarFunctions.log_radix_digits[num_class.radix] = prefix + digits.sub(/0*$/,'')[0...-1]
+      end
+      return (AuxiliarFunctions.log_radix_digits[num_class.radix][0..p]).to_i(num_class.radix)
+    end
+
+    LOG2_MULT = 100 # TODO: K=100? K=64? ...
+    LOG2_LB_CORRECTION = [ # (1..15).map{|i| (LOG2_MULT*Math.log(16.0/i)/Math.log(2)).ceil}
+      400, 300, 242, 200, 168, 142, 120, 100, 84, 68, 55, 42, 30, 20, 10
+      # for LOG2_MULT=64: 256, 192, 155, 128, 108, 91, 77, 64, 54, 44, 35, 27, 20, 13, 6
+    ]
+    # Compute a lower bound for LOG2_MULT*log10(c) for a positive integer c.
+    def log2_lb(c)
+        raise ArgumentError, "The argument to _log2_lb should be nonnegative." if c <= 0
+        str_c = c.to_s(16)
+        return LOG2_MULT*4*str_c.length - LOG2_LB_CORRECTION[str_c[0,1].to_i(16)]
+    end
+
+    LOG10_MULT = 100
+    LOG10_LB_CORRECTION = { # (1..9).map_hash{|i| LOG10_MULT - (LOG10_MULT*Math.log10(i)).floor}
+      '1'=> 100, '2'=> 70, '3'=> 53, '4'=> 40, '5'=> 31,
+      '6'=> 23, '7'=> 16, '8'=> 10, '9'=> 5
+    }
+    # Compute a lower bound for LOG10_MULT*log10(c) for a positive integer c.
+    def log10_lb(c)
+        raise ArgumentError, "The argument to _log10_lb should be nonnegative." if c <= 0
+        str_c = c.to_s
+        return LOG10_MULT*str_c.length - LOG10_LB_CORRECTION[str_c[0,1]]
+    end
+
+    def _log_radix_mult
+      case num_class.radix
+      when 10
+        LOG10_MULT
+      when 2
+        LOG2_MULT
+      else
+        raise ArgumentError, "_log_radix_mult not implemented for base #{num_class.radix}"
+      end
+    end
+
+    def _log_radix_lb(c)
+      case num_class.radix
+      when 10
+        log10_lb(c)
+      when 2
+        log2_lb(c)
+      else
+        raise ArgumentError, "_log_radix_lb not implemented for base #{num_class.radix}"
+      end
+    end
+
+    def _number_of_digits(v)
+      _ndigits(v, num_class.radix)
+    end
+
+  end # AuxiliarFunctions
 
   include AuxiliarFunctions
   extend AuxiliarFunctions
