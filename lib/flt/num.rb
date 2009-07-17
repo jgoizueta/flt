@@ -92,6 +92,9 @@
 #       * use an options hash for the kind of ulp parameter
 #       * keep the kind of ulp in the context
 # TODO: move the exception classes from Flt::Num to Flt ? move also Flt::Num::ContextBas to Flt ?
+# TODO: find better name for :all_digits (:preserve_precision, :mantain_precision, ...)
+# TODO: should the context determine the mode for cross-base literal-to-Num conversion (:free, :fixed)?
+#           BinNum.context.input = :fixed; x = BinNum('0.1')
 #++
 
 require 'flt/support'
@@ -2726,10 +2729,10 @@ class Num < Numeric
   # Options:
   # :base output base, 10 by default
   #
-  # :any_rounding if true he text literal will have enough digits to be
-  # converted back to self in any rounding mode. Otherwise only enough
-  # digits for conversion in the rounding mode specified by the context
-  # are produced.
+  # :rounding is used to override the context rounding, but it's main use is specify :nearest
+  # as the rounding-mode, which means that the text literal will have enough digits to be
+  # converted back to self in any round-to_nearest rounding mode. Otherwise only enough
+  # digits for conversion in a specific rounding mode are produced.
   #
   # :all_digits if true all significant digits are shown. A digit
   # is considered as significant here if when used on input, cannot
@@ -3072,10 +3075,10 @@ class Num < Numeric
   # Options:
   # :base output base, 10 by default
   #
-  # :any_rounding if true he text literal will have enough digits to be
-  # converted back to self in any rounding mode. Otherwise only enough
-  # digits for conversion in the rounding mode specified by the context
-  # are produced.
+  # :rounding is used to override the context rounding, but it's main use is specify :nearest
+  # as the rounding-mode, which means that the text literal will have enough digits to be
+  # converted back to self in any round-to_nearest rounding mode. Otherwise only enough
+  # digits for conversion in a specific rounding mode are produced.
   #
   # :all_digits if true all significant digits are shown. A digit
   # is considere as significant here if when used on input, cannot
@@ -3091,8 +3094,8 @@ class Num < Numeric
   # TODO: support options (base, all_digits, any_rounding, eng) and context options in the same hash
   def format(num_context, options={})
     output_radix = options[:base] || 10
+    rounding = options[:rounding]
     all_digits = options[:all_digits]
-    any_rounding = options[:any_rounding]
     eng = options[:eng]
 
     sgn = @sign<0 ? '-' : ''
@@ -3108,7 +3111,7 @@ class Num < Numeric
 
     context = define_context(num_context)
     inexact = true
-    rounding = context.rounding unless any_rounding
+    rounding ||= context.rounding
     x = self
 
     p = self.number_of_digits # context.precision
@@ -3341,7 +3344,12 @@ class Num < Numeric
     elsif x.zero?
       num_class.zero(x.sign)
     else
-      num_class.context(dest_context) do
+      if dest_base_or_class == Float
+        float = true
+        num_class = BinNum
+        dest_context = BinNum::FloatContext
+      end
+      y = num_class.context(dest_context) do
         sign, coeff, exp = x.split
         y = num_class.Num(sign*coeff)
         if exp < 0
@@ -3349,8 +3357,10 @@ class Num < Numeric
         else
           y *= x.num_class.int_radix_power(exp)
         end
-        y.reduce
+        # y.reduce
       end
+      y = y.to_f if float
+      y
     end
   end
 
@@ -3360,9 +3370,29 @@ class Num < Numeric
   # the original class with the same precision and rounding mode, the value is preserved,
   # but use as few decimal digits as possible.
   #
-  # To increment the result number of digits x can be normalized or its precision (quantum) changed.
-  # TODO: alternative way to define the precision (p) or change to use the context precision ?
-  def self.convert(x, dest_base_or_class, origin_context=nil, any_rounding=false)
+  # Optional parameters: a context and/or an options hash can be passed.
+  #
+  # The context should be a context for the type of x, and is used to specified the precision and rounding mode
+  # requiered to restore the original value from the converted value.
+  #
+  # The options are:
+  # * :rounding used to specify the rounding required for back conversion with precedence over the context;
+  #   the value :nearest means any round-to-nearest.
+  # * :all_digits to preserve the input precision by using all significant digits in the output, not
+  #   just the minimum required
+  # * :minimum_precision to specify a minimum for the precision
+  #
+  # To increment the result number of digits x can be normalized or its precision (quantum) changed,
+  # or use the :minimum_precision option.
+  def self.convert(x, dest_base_or_class, *args)
+    origin_context = args.shift if args.first.is_a?(ContextBase)
+    raise ArgumentError,"Invalid parameters for Num.convert" unless args.size<=1 && (args.empty? || args.first.is_a?(Hash))
+    options = args.first || {}
+
+    rounding = options[:rounding]
+    all_digits = options[:all_digits] # :all_digits ? :shortest/:significative
+    minimum_precision = options[:minimum_precision]
+
     num_class = dest_base_or_class.is_a?(Integer) ? Num[dest_base_or_class] :  dest_base_or_class
     if x.special?
       if x.nan?
@@ -3375,12 +3405,13 @@ class Num < Numeric
     else
       context = x.num_class.define_context(origin_context)
 
-      p = x.number_of_digits # context.precision
+      p = x.number_of_digits
+      p = minimum_precision if minimum_precision && p<minimum_precision
       s,f,e = x.split
-      rounding = context.rounding unless any_rounding
+      rounding ||= context.rounding unless
 
       formatter = Flt::Support::Formatter.new(x.num_class.radix, num_class.context.etiny, num_class.radix)
-      formatter.format(x, f, e, rounding, p, false)
+      formatter.format(x, f, e, rounding, p, all_digits)
       dec_pos,digits = formatter.adjusted_digits
 
       # f = digits.map{|d| d.to_s(num_class.radix)}.join.to_i(num_class.radix)

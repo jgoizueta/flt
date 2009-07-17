@@ -344,10 +344,10 @@ module Flt
     # floating-point format (the floating-point numbers) and and a free floating-point format (text) which
     # may use different numerical bases.
     #
-    # The Reader class implements the Clinger reading algorithm which converts a free-form numeric value
+    # The Reader class implements, in the default :free mode, converts a free-form numeric value
     # (as a text literal, i.e. a free floating-point format, usually in base 10) which is taken
     # as an exact value, to a correctly-rounded floating-point of specified precision and with a
-    # specified rounding mode.
+    # specified rounding mode. It also has a :fixed mode that uses the Formatter class indirectly.
     #
     # The Formatter class implements the Burger-Dybvig printing algorithm which converts a
     # fixed-precision floating point value and produces a text literal in same base, usually 10,
@@ -360,8 +360,20 @@ module Flt
     # (William D. Clinger)
     class Reader
 
-      def initialize
+      # There are two different reading approaches, selected by the :mode parameter:
+      # * :fixed (the destination context defines the resulting precision) input is rounded as specified
+      #   by the context; if the context precision is 'exact', the exact input value will be represented
+      #   in the destination base, which can lead to a Inexact exception (or a NaN result and an Inexact flag)
+      # * :free The input precision is preserved, and the destination context precision is ignored;
+      #   in this case the result can be converted back to the original number (with the same precision)
+      #   a rounding mode for the back conversion may be passed; otherwise any round-to-nearest is assumed.
+      #   (to increase the precision of the result the input precision must be increased --adding trailing zeros)
+      # * :free_shortest is like :free, but the minumum number of digits that preserve the original value
+      #   are generated (with :free, all significant digits are generated)
+      def initialize(options={})
         @exact = nil
+        @algorithm = options[:algorithm]
+        @mode = options[:mode] || :fixed
       end
 
       def exact?
@@ -372,56 +384,98 @@ module Flt
       # closest to f * eb**e
       # (eb is the input radix)
       #
-      # This is Clinger's +AlgorithmM+ modified to handle denormalized numbers and cope with overflow,
-      # and cope with exact precision.
-      #
       # If the context precision is exact an Inexact exception may occur (an NaN be returned)
       # if an exact conversion is not possible.
+      #
+      # round_mode: in :fixed mode it specifies how to round the result (to the context precision); it
+      # is passed separate from context for flexibility.
+      # in :free mode it specifies what rounding would be used to convert back the output to the
+      # input base eb (using the same precision that f has).
       def read(context, round_mode, sign, f, e, eb=10)
         @exact = true
-        if sign == -1
-          if round_mode == :ceiling
-            round_mode = :floor
-          elsif round_mode == :floor
-            round_mode = :ceiling
+
+        case @mode
+        when :free, :free_shortest
+          all_digits = (@mode == :free)
+          # for free mode, (any) :nearest rounding is used by default
+          Num.convert(Num[eb].Num(sign, f, e), context.num_class, :rounding=>round_mode||:nearest, :all_digits=>all_digits)
+        when :fixed
+          if exact_mode = context.exact?
+            a,b = [eb, context.radix].sort
+            m = (Math.log(b)/Math.log(a)).round
+            if b == a**m
+              # conmensurable bases
+              if eb > context.radix
+                n = AuxiliarFunctions._ndigits(f, eb)*m
+              else
+                n = (AuxiliarFunctions._ndigits(f, eb)+m-1)/m
+              end
+            else
+              # inconmesurable bases; exact result may not be possible
+              x = Num[eb].Num(sign, f, e)
+              x = Num.convert_exact(x, context.num_class, context)
+              @exact = !x.nan?
+              return x
+            end
+          else
+            n = context.precision
+          end
+          if round_mode == :nearest
+            # :nearest is not meaningful here in :fixed mode; replace it
+            if [:half_even, :half_up, :half_down].include?(context.rounding)
+              round_mode = context.rounding
+            else
+              round_mode = :half_even
+            end
+          end
+          # for fixed mode, use the context rounding by default
+          round_mode ||= context.rounding
+          case @algorithm
+          when :M
+            if sign == -1
+              if round_mode == :ceiling
+                round_mode = :floor
+              elsif round_mode == :floor
+                round_mode = :ceiling
+              end
+            end
+            _alg_m(context, round_mode, sign, f, e, eb, n)
+          else
+            # direct arithmetic conversion
+            if round_mode == context.rounding
+              Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
+            else
+              if context.num_class == Float
+                float = true
+                context = BinNum::FloatContext
+              end
+              x = context.num_class.context(context) do |context|
+                context.rounding = round_mode
+                Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
+              end
+              x = x.to_f if float
+              x
+            end
           end
         end
+      end
 
+      # Algorithm M to read floating point numbers from text literals with correct rounding
+      # from his paper: "How to Read Floating Point Numbers Accurately" (William D. Clinger)
+      def _alg_m(context, round_mode, sign, f, e, eb, n)
         if e<0
          u,v,k = f,eb**(-e),0
         else
           u,v,k = f*(eb**e),1,0
         end
-
-        if exact_mode = context.exact?
-          a,b = [eb, context.radix].sort
-          k = (Math.log(b)/Math.log(a)).round
-          if b == a**k
-            # conmensurable bases
-            if eb > context.radix
-              n = AuxiliarFunctions._ndigits(f, eb)*k
-            else
-              n = (AuxiliarFunctions._ndigits(f, eb)+k-1)/k
-            end
-          else
-            # inconmesurable bases; exact result may not be possible
-            x = Num[eb].Num(sign, f, e)
-            x = Num.convert_exact(x, context.num_class, context)
-            @exact = !x.nan?
-            return x
-          end
-        else
-          n = context.precision
-        end
         min_e = context.etiny
         max_e = context.etop
-
         rp_n = context.num_class.int_radix_power(n)
         rp_n_1 = context.num_class.int_radix_power(n-1)
         r = context.num_class.radix
         loop do
+           return context.exception(Num::Overflow,"Input literal out of range") if k>=context.etop
            x = u.div(v) # bottleneck
-           # overflow if k>=max_e
            if (x>=rp_n_1 && x<rp_n) || k==min_e || k==max_e
               z, exact = Reader.ratio_float(context,u,v,k,round_mode)
               @exact = exact
@@ -435,7 +489,6 @@ module Flt
              k += 1
            end
         end
-
       end
 
       # Given exact positive integers u and v with beta**(n-1) <= u/v < beta**n
@@ -596,7 +649,7 @@ module Flt
           when :half_down
             # rounding rage is (v+m-,v+m+]
             @round_l, @round_h = false, true
-          else
+          else # :nearest
             # Here assume only that round-to-nearest will be used, but not which variant of it
             # The result is valid for any rounding (to nearest) but may produce more digits
             # than stricly necessary for specific rounding modes.
@@ -607,7 +660,7 @@ module Flt
             @round_l = @round_h = false
         end
 
-        # TODO: use next_minus, next_plus instead of direct computing, don't require min_e
+        # TODO: use next_minus, next_plus instead of direct computing, don't require min_e & p
         # Now compute the working quotients @r/@s, @m_p/@s = (v+ - @v), @m_m/@s = (@v - v-) and scale them.
         if @e >= 0
           if @f != b_power(p-1)
@@ -674,7 +727,7 @@ module Flt
             while i>=0
               digits[i] += 1
               if digits[i] == base
-                digits[i] == 0
+                digits[i] = 0
               else
                 break
               end
