@@ -681,7 +681,7 @@ module Flt
             while i>=0
               digits[i] += 1
               if digits[i] == base
-                digits[i] == 0
+                digits[i] = 0
               else
                 break
               end
