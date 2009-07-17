@@ -3332,7 +3332,7 @@ class Num < Numeric
     elsif x.zero?
       num_class.zero(x.sign)
     else
-      if dest_base_or_class == Float && dest_context.nil?
+      if dest_base_or_class == Float
         float = true
         num_class = BinNum
         dest_context = BinNum::FloatContext
