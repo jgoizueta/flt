@@ -87,6 +87,8 @@
 # TODO: for BinNum#to_s consider using the context precision as a minimum and/or adding an exact mode, or
 #       adding an option for a minimum precision.
 # TODO: for BinNum(String) with non exact precision, use context precision only if no exact conversion is possible
+# TODO: add base selection for Num(String), either as an option :base=>... or as special syntax 0x B ...
+# TODO: add options to Num(String) for :free/:fixed modes (as in Reader)
 # TODO: selecting the kind of ulp is awkward; consider one of these options:
 #       * don't support variant ulps; always use Muller's ulp
 #       * use an options hash for the kind of ulp parameter
