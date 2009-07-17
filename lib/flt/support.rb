@@ -360,8 +360,9 @@ module Flt
     # (William D. Clinger)
     class Reader
 
-      def initialize
+      def initialize(algorithm=nil)
         @exact = nil
+        @algorithm = algorithm
       end
 
       def exact?
@@ -371,9 +372,6 @@ module Flt
       # Given exact integers f and e, with f nonnegative, returns the floating-point number
       # closest to f * eb**e
       # (eb is the input radix)
-      #
-      # This is Clinger's +AlgorithmM+ modified to handle denormalized numbers and cope with overflow,
-      # and cope with exact precision.
       #
       # If the context precision is exact an Inexact exception may occur (an NaN be returned)
       # if an exact conversion is not possible.
@@ -387,21 +385,15 @@ module Flt
           end
         end
 
-        if e<0
-         u,v,k = f,eb**(-e),0
-        else
-          u,v,k = f*(eb**e),1,0
-        end
-
         if exact_mode = context.exact?
           a,b = [eb, context.radix].sort
-          k = (Math.log(b)/Math.log(a)).round
-          if b == a**k
+          m = (Math.log(b)/Math.log(a)).round
+          if b == a**m
             # conmensurable bases
             if eb > context.radix
-              n = AuxiliarFunctions._ndigits(f, eb)*k
+              n = AuxiliarFunctions._ndigits(f, eb)*m
             else
-              n = (AuxiliarFunctions._ndigits(f, eb)+k-1)/k
+              n = (AuxiliarFunctions._ndigits(f, eb)+m-1)/m
             end
           else
             # inconmesurable bases; exact result may not be possible
@@ -413,15 +405,31 @@ module Flt
         else
           n = context.precision
         end
+        case @algorithm
+        when :M
+          _alg_m(context, round_mode, sign, f, e, eb, n)
+        else
+          # direct arithmetic conversion
+          Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
+        end
+      end
+
+      # Algorithm M to read floating point numbers from text literals with correct rounding
+      # from his paper: "How to Read Floating Point Numbers Accurately" (William D. Clinger)
+      def _alg_m(context, round_mode, sign, f, e, eb, n)
+        if e<0
+         u,v,k = f,eb**(-e),0
+        else
+          u,v,k = f*(eb**e),1,0
+        end
         min_e = context.etiny
         max_e = context.etop
-
         rp_n = context.num_class.int_radix_power(n)
         rp_n_1 = context.num_class.int_radix_power(n-1)
         r = context.num_class.radix
         loop do
+           return context.exception(Num::Overflow,"Input literal out of range") if k>=context.etop
            x = u.div(v) # bottleneck
-           # overflow if k>=max_e
            if (x>=rp_n_1 && x<rp_n) || k==min_e || k==max_e
               z, exact = Reader.ratio_float(context,u,v,k,round_mode)
               @exact = exact
@@ -435,7 +443,6 @@ module Flt
              k += 1
            end
         end
-
       end
 
       # Given exact positive integers u and v with beta**(n-1) <= u/v < beta**n
