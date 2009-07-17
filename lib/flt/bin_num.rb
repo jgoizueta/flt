@@ -232,17 +232,8 @@ class BinNum < Num
   # Convert to decimal so that if the decimal is converted to a BinNum of the same precision
   # and with same rounding (i.e. BinNum.from_decimal(x, context)) the value of the BinNum
   # is preserved, but use as few decimal digits as possible.
-  def to_decimal(bin_context=nil, any_rounding=false)
-    Num.convert(self, DecNum, bin_context, any_rounding)
-  end
-
-  # Approximate BinNum to DecNum conversion apt for conversion back to BinNum with any rounding mode.
-  #
-  # Convert to decimal so that if the decimal is converted to a BinNum of the same precision
-  # and with any rounding the value of the BinNum is preserved, but use as few decimal digits
-  # as possible.
-  def to_decimal_any_rounding(binfloat_context=nil)
-    to_decimal(binfloat_context, true)
+  def to_decimal(*args)
+    Num.convert(self, DecNum, *args)
   end
 
   # DecNum to BinNum conversion.
