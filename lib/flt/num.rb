@@ -3345,7 +3345,7 @@ class Num < Numeric
         else
           y *= x.num_class.int_radix_power(exp)
         end
-        y.reduce
+        # y.reduce
       end
       y = y.to_f if float
       y
