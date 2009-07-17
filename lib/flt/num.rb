@@ -3332,7 +3332,12 @@ class Num < Numeric
     elsif x.zero?
       num_class.zero(x.sign)
     else
-      num_class.context(dest_context) do
+      if dest_base_or_class == Float && dest_context.nil?
+        float = true
+        num_class = BinNum
+        dest_context = BinNum::FloatContext
+      end
+      y = num_class.context(dest_context) do
         sign, coeff, exp = x.split
         y = num_class.Num(sign*coeff)
         if exp < 0
@@ -3342,6 +3347,8 @@ class Num < Numeric
         end
         y.reduce
       end
+      y = y.to_f if float
+      y
     end
   end
 
