@@ -370,6 +370,14 @@ module Flt
       #   (to increase the precision of the result the input precision must be increased --adding trailing zeros)
       # * :free_shortest is like :free, but the minumum number of digits that preserve the original value
       #   are generated (with :free, all significant digits are generated)
+      #
+      # For the fixed mode there are three conversion algorithms available that can be selected with the
+      # :algorithm parameter:
+      # * :A Arithmetic algorithm, using correctly rounded Flt::Num arithmetic.
+      # * :M The Clinger Algorithm M is the slowest method, but it was the first implemented and testes and
+      #   is kept as a reference for testing.
+      # * :R The Clinger Algorithm R, which requires an initial approximation is currently only implemented
+      #   for Float and is the fastest by far.
       def initialize(options={})
         @exact = nil
         @algorithm = options[:algorithm]
@@ -430,6 +438,22 @@ module Flt
           end
           # for fixed mode, use the context rounding by default
           round_mode ||= context.rounding
+          alg = @algorithm
+          if alg.nil?
+            # choose algorithm automatically
+            if context.num_class == Float
+              alg = :R
+            elsif context.num_class.radix == 2
+              if context.precision <= Float::MANT_DIG
+                if eb==10 && e<=Float::MAX_10_EXP # && e>=Float::MIN_10_EXP
+                  alg = :R
+                else
+                  mx_e = (Math.log(Float::MAX)/Math.log(eb)).floor
+                  alg = :R if e <= mx_e
+                end
+              end
+            end
+          end
           case @algorithm
           when :M, :R
             if sign == -1
@@ -445,7 +469,7 @@ module Flt
             when :R
               _alg_r(context, round_mode, sign, f, e, eb, n)
             end
-          else
+          else # :A
             # direct arithmetic conversion
             if round_mode == context.rounding
               Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
@@ -466,14 +490,19 @@ module Flt
       end
 
       def _alg_r(context, round_mode, sign, f, e, eb, n) # Fast for Float
-        # TODO: generalize to types != Float
-        #z0 = f*Float(eb)**e
+
+        raise InvalidArgument, "Reader Algorithm R only supports base 2" if context.radix != 2
+
         if e < 0
           z0 = Float(f)/Float(eb**(-e))
         else
           z0 = Float(f)*Float(eb**e)
         end
         # this Float aprx. is good enough in round to nearest to avoid iteration
+
+        if context.num_class != Float
+          z0 = context.num_class.Num(z0)
+        end
 
         @z = z0
         @r = context.num_class.radix
