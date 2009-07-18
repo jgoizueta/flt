@@ -466,7 +466,6 @@ module Flt
       end
 
       def _alg_r(context, round_mode, sign, f, e, eb, n) # Fast for Float
-        # TODO: rounding modes
         # TODO: generalize to types != Float
         #z0 = f*Float(eb)**e
         if e < 0
@@ -474,10 +473,15 @@ module Flt
         else
           z0 = Float(f)*Float(eb**e)
         end
+        # this Float aprx. is good enough in round to nearest to avoid iteration
 
         @z = z0
         @r = context.num_class.radix
-        @rp_n_1 = context.num_class.int_radix_power(n+1)
+        @rp_n_1 = context.num_class.int_radix_power(n-1)
+        # simplify rounding (we're handling only positive numbers here)
+        round_mode = :up if round_mode == :ceiling
+        round_mode = :down if round_mode == :floor
+        @round_mode = round_mode
 
         ret = nil
         loop do
@@ -497,34 +501,144 @@ module Flt
       end
 
       def compare(m, x, y)
+        # TODO: refactor to simplify logic
         ret = nil
         d = x-y
         d2 = 2*m*d.abs
-        if d2 < y
-          if (m == @rp_n_1) && (d < 0) && (y < @r*d2)
-            @z = @z.next_minus
-          else
-            ret = @z
-          end
-        elsif d2 == y
-          if (m%2) == 0
-            if (m == @rp_n_1) && (d < 0)
-              @z = @z.next_minus
+
+        # v = f*eb**e is the number to be approximated
+        # z = m*@r**k is the current aproximation
+        # the error of @z is eps = abs(v-z) = 1/2 * d2 / y
+        # we have x, y integers such that x/y = v/z
+        # so eps < 1/2 <=> d2 < y
+        #    d < 0 <=> x < y <=> v < z
+
+        if d2 < y # eps < 1/2
+          # TODO: unify d2<y and d2==y for directed rounding (separate block)
+          if @round_mode == :up
+            raise "AAAA" if (m == @rp_n_1)
+            # TODO: exception for m == @rp_n_1 ?
+            if d <= 0
+              # v <= z
+              ret = @z
             else
+              # v > z
+              ret = @z.next_plus
+            end
+          elsif @round_mode == :down
+            raise "BBBB" if (m == @rp_n_1)
+            # TODO: exception for m == @rp_n_1 ?
+            if d < 0
+              # v < z
+              ret = @z.next_minus
+            else
+              # v >= z
               ret = @z
             end
-          elsif d < 0
-            ret = @z.next_minus
-          elsif d > 0
-            ret = @z.next_plus
+          else
+            if (m == @rp_n_1) && (d < 0) && (y < @r*d2)
+              # z has the minimum normalized significand, i.e. is a power of @r
+              # and v < z
+              # and ...
+              raise "1111111"
+              @z = @z.next_minus
+            else
+              # unambiguous nearest
+              ret = @z
+            end
           end
-        elsif d < 0
-          @z = @z.next_minus
-        elsif d > 0
-          @z = @z.next_plus
+        elsif d2 == y # eps == 1/2
+          # round-to-nearest tie
+          if @round_mode == :up
+            raise "CCCC" if (m == @rp_n_1)
+            # TODO: exception for m == @rp_n_1 ?
+            if d <= 0
+              # v <= z
+              ret = @z
+            else
+              # v > z
+              ret = @z.next_plus
+            end
+          elsif @round_mode == :down
+            raise "DDDD" if (m == @rp_n_1)
+            # TODO: exception for m == @rp_n_1 ?
+            if d < 0
+              # v < z
+              ret = @z.next_minus
+            else
+              # v >= z
+              ret = @z
+            end
+          elsif @round_mode == :half_even
+            if (m%2) == 0 # m is even
+              if (m == @rp_n_1) && (d < 0)
+                @z = @z.next_minus
+              else
+                # tie to this
+                ret = @z
+              end
+            elsif d < 0
+              # tie to prev
+              ret = @z.next_minus
+            elsif d > 0
+              # tie to next
+              ret = @z.next_plus
+            end
+          elsif @round_mode == :half_up
+            if (m == @rp_n_1)
+              # NOT TESTED
+              raise "????"
+              if d < 0
+                # @z = @z.next_minus
+                ret = @z
+              else # d >= 0
+                # @z = @z.next_plus
+                ret = @z.next_plus
+              end
+            elsif d < 0
+              ret = @z
+            else # d > 0
+              ret = @z.next_plus
+            end
+          else # @round_mode == :half_down
+            if (m == @rp_n_1)
+              # NOT TESTED
+              raise "????"
+              if d < 0
+                # @z = @z.next_minus
+                ret = @z
+              else # d >= 0
+                # @z = @z.next_plus
+                ret = @z.next_minus
+              end
+            elsif d < 0
+              ret = @z.next_minus
+            else # d > 0
+              ret = @z
+            end
+          end
+        elsif d < 0 # eps > 1/2 and v < z
+          if (@round_mode == :up) && (d2 < 2*y)
+            # round up, eps < 1
+            ret = @z
+          else
+            @z = @z.next_minus
+          end
+        elsif d > 0 # eps > 1/2 and v > z
+          if (@round_mode == :down) && (d2 < 2*y)
+            # round down, eps < 1
+            ret = @z
+          else
+            @z = @z.next_plus
+          end
         else
           raise "????"
         end
+
+        # if the initial approx is good enough we can do this to avoid further iteration
+        ret ||= @z unless [:up,:down].include?(@round_mode)
+
+        return ret
       end
 
       # Algorithm M to read floating point numbers from text literals with correct rounding
