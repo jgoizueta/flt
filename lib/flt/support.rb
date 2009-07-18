@@ -513,130 +513,97 @@ module Flt
         # so eps < 1/2 <=> d2 < y
         #    d < 0 <=> x < y <=> v < z
 
-        if d2 < y # eps < 1/2
-          # TODO: unify d2<y and d2==y for directed rounding (separate block)
-          if @round_mode == :up
-            raise "AAAA" if (m == @rp_n_1)
-            # TODO: exception for m == @rp_n_1 ?
-            if d <= 0
-              # v <= z
+        directed_rounding = [:up, :down].include?(@round_mode)
+
+        if directed_rounding
+          if @round_mode==:up ? (d <= 0) : (d < 0)
+            # v <(=) z
+            chk = (m == @rp_n_1) ? d2*@r : d2
+            if (@round_mode == :up) && (chk < 2*y)
+              # eps < 1
               ret = @z
             else
-              # v > z
-              ret = @z.next_plus
+              @z = @z.next_minus
             end
-          elsif @round_mode == :down
-            raise "BBBB" if (m == @rp_n_1)
-            # TODO: exception for m == @rp_n_1 ?
-            if d < 0
-              # v < z
-              ret = @z.next_minus
-            else
-              # v >= z
+          else # @round_mode==:up ? (d > 0) : (d >= 0)
+            # v >(=) z
+            if (@round_mode == :down) && (d2 < 2*y)
+              # eps < 1
               ret = @z
+            else
+              @z = @z.next_plus
             end
-          else
+          end
+        else
+          if d2 < y # eps < 1/2
             if (m == @rp_n_1) && (d < 0) && (y < @r*d2)
               # z has the minimum normalized significand, i.e. is a power of @r
               # and v < z
-              # and ...
-              raise "1111111"
+              # and @r*eps > 1/2
+              # On the left of z the ulp is 1/@r than the ulp on the right; if v < z we
+              # must require an error @r times smaller.
               @z = @z.next_minus
             else
               # unambiguous nearest
               ret = @z
             end
-          end
-        elsif d2 == y # eps == 1/2
-          # round-to-nearest tie
-          if @round_mode == :up
-            raise "CCCC" if (m == @rp_n_1)
-            # TODO: exception for m == @rp_n_1 ?
-            if d <= 0
-              # v <= z
-              ret = @z
-            else
-              # v > z
-              ret = @z.next_plus
-            end
-          elsif @round_mode == :down
-            raise "DDDD" if (m == @rp_n_1)
-            # TODO: exception for m == @rp_n_1 ?
-            if d < 0
-              # v < z
-              ret = @z.next_minus
-            else
-              # v >= z
-              ret = @z
-            end
-          elsif @round_mode == :half_even
-            if (m%2) == 0 # m is even
-              if (m == @rp_n_1) && (d < 0)
-                @z = @z.next_minus
-              else
-                # tie to this
-                ret = @z
-              end
-            elsif d < 0
-              # tie to prev
-              ret = @z.next_minus
-            elsif d > 0
-              # tie to next
-              ret = @z.next_plus
-            end
-          elsif @round_mode == :half_up
-            if (m == @rp_n_1)
-              # NOT TESTED
-              raise "????"
-              if d < 0
-                # @z = @z.next_minus
-                ret = @z
-              else # d >= 0
-                # @z = @z.next_plus
+          elsif d2 == y # eps == 1/2
+            # round-to-nearest tie
+            if @round_mode == :half_even
+              if (m%2) == 0
+                # m is even
+                if (m == @rp_n_1) && (d < 0)
+                  # z is power of @r and v < z; this wasn't really a tie because
+                  # there are closer values on the left
+                  @z = @z.next_minus
+                else
+                  # m is even => round tie to z
+                  ret = @z
+                end
+              elsif d < 0
+                # m is odd, v < z => round tie to prev
+                ret = @z.next_minus
+              elsif d > 0
+                # m is odd, v > z => round tie to next
                 ret = @z.next_plus
               end
-            elsif d < 0
-              ret = @z
-            else # d > 0
-              ret = @z.next_plus
-            end
-          else # @round_mode == :half_down
-            if (m == @rp_n_1)
-              # NOT TESTED
-              raise "????"
+            elsif @round_mode == :half_up
               if d < 0
-                # @z = @z.next_minus
-                ret = @z
-              else # d >= 0
-                # @z = @z.next_plus
-                ret = @z.next_minus
+                # v < z
+                if (m == @rp_n_1)
+                  # this was not really a tie
+                  @z = @z.next_minus
+                else
+                  ret = @z
+                end
+              else # d > 0
+                # v >= z
+                ret = @z.next_plus
               end
-            elsif d < 0
-              ret = @z.next_minus
-            else # d > 0
-              ret = @z
+            else # @round_mode == :half_down
+              if d < 0
+                # v < z
+                if (m == @rp_n_1)
+                  # this was not really a tie
+                  @z = @z.next_minus
+                else
+                  ret = @z.next_minus
+                end
+              else # d < 0
+                # v > z
+                ret = @z
+              end
             end
-          end
-        elsif d < 0 # eps > 1/2 and v < z
-          if (@round_mode == :up) && (d2 < 2*y)
-            # round up, eps < 1
-            ret = @z
-          else
+          elsif d < 0 # eps > 1/2 and v < z
             @z = @z.next_minus
-          end
-        elsif d > 0 # eps > 1/2 and v > z
-          if (@round_mode == :down) && (d2 < 2*y)
-            # round down, eps < 1
-            ret = @z
-          else
+          elsif d > 0 # eps > 1/2 and v > z
             @z = @z.next_plus
           end
-        else
-          raise "????"
         end
 
+
         # if the initial approx is good enough we can do this to avoid further iteration
-        ret ||= @z unless [:up,:down].include?(@round_mode)
+        ret ||= @z unless directed_rounding
 
         return ret
       end
