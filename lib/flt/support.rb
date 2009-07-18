@@ -493,12 +493,13 @@ module Flt
 
         raise InvalidArgument, "Reader Algorithm R only supports base 2" if context.radix != 2
 
+        # Compute initial approximation; if Float uses IEEE-754 binary arithmetic, the approximation
+        # is good enough to be adjusted in just one step.
         if e < 0
           z0 = Float(f)/Float(eb**(-e))
         else
           z0 = Float(f)*Float(eb**e)
         end
-        # this Float aprx. is good enough in round to nearest to avoid iteration
 
         if context.num_class != Float
           z0 = context.num_class.Num(z0)
@@ -630,8 +631,8 @@ module Flt
           end
         end
 
-
-        # if the initial approx is good enough we can do this to avoid further iteration
+        # Assume the initial approx is good enough (uses IEEE-754 arithmetic with round-to-nearest),
+        # so we can avoid further iteration, except for directed rounding
         ret ||= @z unless directed_rounding
 
         return ret
