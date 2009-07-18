@@ -370,6 +370,14 @@ module Flt
       #   (to increase the precision of the result the input precision must be increased --adding trailing zeros)
       # * :free_shortest is like :free, but the minumum number of digits that preserve the original value
       #   are generated (with :free, all significant digits are generated)
+      #
+      # For the fixed mode there are three conversion algorithms available that can be selected with the
+      # :algorithm parameter:
+      # * :A Arithmetic algorithm, using correctly rounded Flt::Num arithmetic.
+      # * :M The Clinger Algorithm M is the slowest method, but it was the first implemented and testes and
+      #   is kept as a reference for testing.
+      # * :R The Clinger Algorithm R, which requires an initial approximation is currently only implemented
+      #   for Float and is the fastest by far.
       def initialize(options={})
         @exact = nil
         @algorithm = options[:algorithm]
@@ -430,8 +438,24 @@ module Flt
           end
           # for fixed mode, use the context rounding by default
           round_mode ||= context.rounding
+          alg = @algorithm
+          if alg.nil?
+            # choose algorithm automatically
+            if context.num_class == Float
+              alg = :R
+            elsif context.num_class.radix == 2
+              if context.precision <= Float::MANT_DIG
+                if eb==10 && e<=Float::MAX_10_EXP # && e>=Float::MIN_10_EXP
+                  alg = :R
+                else
+                  mx_e = (Math.log(Float::MAX)/Math.log(eb)).floor
+                  alg = :R if e <= mx_e
+                end
+              end
+            end
+          end
           case @algorithm
-          when :M
+          when :M, :R
             if sign == -1
               if round_mode == :ceiling
                 round_mode = :floor
@@ -439,8 +463,13 @@ module Flt
                 round_mode = :ceiling
               end
             end
-            _alg_m(context, round_mode, sign, f, e, eb, n)
-          else
+            case @algorithm
+            when :M
+              _alg_m(context, round_mode, sign, f, e, eb, n)
+            when :R
+              _alg_r(context, round_mode, sign, f, e, eb, n)
+            end
+          else # :A
             # direct arithmetic conversion
             if round_mode == context.rounding
               Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
@@ -458,6 +487,155 @@ module Flt
             end
           end
         end
+      end
+
+      def _alg_r(context, round_mode, sign, f, e, eb, n) # Fast for Float
+
+        raise InvalidArgument, "Reader Algorithm R only supports base 2" if context.radix != 2
+
+        # Compute initial approximation; if Float uses IEEE-754 binary arithmetic, the approximation
+        # is good enough to be adjusted in just one step.
+        if e < 0
+          z0 = Float(f)/Float(eb**(-e))
+        else
+          z0 = Float(f)*Float(eb**e)
+        end
+
+        if context.num_class != Float
+          z0 = context.num_class.Num(z0)
+        end
+
+        @z = z0
+        @r = context.num_class.radix
+        @rp_n_1 = context.num_class.int_radix_power(n-1)
+        # simplify rounding (we're handling only positive numbers here)
+        round_mode = :up if round_mode == :ceiling
+        round_mode = :down if round_mode == :floor
+        @round_mode = round_mode
+
+        ret = nil
+        loop do
+          m, k = @z.to_int_scale
+          if e >= 0 && k >= 0
+            ret = compare m, f*eb**e, m*@r**k
+          elsif e >= 0 && k < 0
+            ret = compare m, f*eb**e*@r**(-k), m
+          elsif e < 0 && k >= 0
+            ret = compare m, f, m*@r**k*eb**(-e)
+          else # e < 0 && k < 0
+            ret = compare m, f*@r**(-k), m*eb**(-e)
+          end
+          break if ret
+        end
+        ret && ret.copy_sign(sign)
+      end
+
+      def compare(m, x, y)
+        # TODO: refactor to simplify logic
+        ret = nil
+        d = x-y
+        d2 = 2*m*d.abs
+
+        # v = f*eb**e is the number to be approximated
+        # z = m*@r**k is the current aproximation
+        # the error of @z is eps = abs(v-z) = 1/2 * d2 / y
+        # we have x, y integers such that x/y = v/z
+        # so eps < 1/2 <=> d2 < y
+        #    d < 0 <=> x < y <=> v < z
+
+        directed_rounding = [:up, :down].include?(@round_mode)
+
+        if directed_rounding
+          if @round_mode==:up ? (d <= 0) : (d < 0)
+            # v <(=) z
+            chk = (m == @rp_n_1) ? d2*@r : d2
+            if (@round_mode == :up) && (chk < 2*y)
+              # eps < 1
+              ret = @z
+            else
+              @z = @z.next_minus
+            end
+          else # @round_mode==:up ? (d > 0) : (d >= 0)
+            # v >(=) z
+            if (@round_mode == :down) && (d2 < 2*y)
+              # eps < 1
+              ret = @z
+            else
+              @z = @z.next_plus
+            end
+          end
+        else
+          if d2 < y # eps < 1/2
+            if (m == @rp_n_1) && (d < 0) && (y < @r*d2)
+              # z has the minimum normalized significand, i.e. is a power of @r
+              # and v < z
+              # and @r*eps > 1/2
+              # On the left of z the ulp is 1/@r than the ulp on the right; if v < z we
+              # must require an error @r times smaller.
+              @z = @z.next_minus
+            else
+              # unambiguous nearest
+              ret = @z
+            end
+          elsif d2 == y # eps == 1/2
+            # round-to-nearest tie
+            if @round_mode == :half_even
+              if (m%2) == 0
+                # m is even
+                if (m == @rp_n_1) && (d < 0)
+                  # z is power of @r and v < z; this wasn't really a tie because
+                  # there are closer values on the left
+                  @z = @z.next_minus
+                else
+                  # m is even => round tie to z
+                  ret = @z
+                end
+              elsif d < 0
+                # m is odd, v < z => round tie to prev
+                ret = @z.next_minus
+              elsif d > 0
+                # m is odd, v > z => round tie to next
+                ret = @z.next_plus
+              end
+            elsif @round_mode == :half_up
+              if d < 0
+                # v < z
+                if (m == @rp_n_1)
+                  # this was not really a tie
+                  @z = @z.next_minus
+                else
+                  ret = @z
+                end
+              else # d > 0
+                # v >= z
+                ret = @z.next_plus
+              end
+            else # @round_mode == :half_down
+              if d < 0
+                # v < z
+                if (m == @rp_n_1)
+                  # this was not really a tie
+                  @z = @z.next_minus
+                else
+                  ret = @z.next_minus
+                end
+              else # d < 0
+                # v > z
+                ret = @z
+              end
+            end
+          elsif d < 0 # eps > 1/2 and v < z
+            @z = @z.next_minus
+          elsif d > 0 # eps > 1/2 and v > z
+            @z = @z.next_plus
+          end
+        end
+
+        # Assume the initial approx is good enough (uses IEEE-754 arithmetic with round-to-nearest),
+        # so we can avoid further iteration, except for directed rounding
+        ret ||= @z unless directed_rounding
+
+        return ret
       end
 
       # Algorithm M to read floating point numbers from text literals with correct rounding

@@ -187,9 +187,17 @@ class Float
     if special?
       nil
     else
-      coeff,exp = Math.frexp(x)
-      coeff = Math.ldexp(coeff,Float::MANT_DIG).to_i,
-      exp -= Float::MANT_DIG
+      coeff,exp = Math.frexp(self)
+      coeff = coeff.abs
+      if exp < MIN_EXP
+        # denormalized number
+        coeff = Math.ldexp(coeff, exp-MIN_EXP+MANT_DIG).to_i
+        exp = MIN_EXP-MANT_DIG
+      else
+        # normalized number
+        coeff = Math.ldexp(coeff, MANT_DIG).to_i
+        exp -= MANT_DIG
+      end
       [coeff, exp]
     end
   end
