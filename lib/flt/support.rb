@@ -431,7 +431,7 @@ module Flt
           # for fixed mode, use the context rounding by default
           round_mode ||= context.rounding
           case @algorithm
-          when :M
+          when :M, :R
             if sign == -1
               if round_mode == :ceiling
                 round_mode = :floor
@@ -439,7 +439,12 @@ module Flt
                 round_mode = :ceiling
               end
             end
-            _alg_m(context, round_mode, sign, f, e, eb, n)
+            case @algorithm
+            when :M
+              _alg_m(context, round_mode, sign, f, e, eb, n)
+            when :R
+              _alg_r(context, round_mode, sign, f, e, eb, n)
+            end
           else
             # direct arithmetic conversion
             if round_mode == context.rounding
@@ -457,6 +462,68 @@ module Flt
               x
             end
           end
+        end
+      end
+
+      def _alg_r(context, round_mode, sign, f, e, eb, n) # Fast for Float
+        # TODO: rounding modes
+        # TODO: generalize to types != Float
+        #z0 = f*Float(eb)**e
+        if e < 0
+          z0 = Float(f)/Float(eb**(-e))
+        else
+          z0 = Float(f)*Float(eb**e)
+        end
+
+        @z = z0
+        @r = context.num_class.radix
+        @rp_n_1 = context.num_class.int_radix_power(n+1)
+
+        ret = nil
+        loop do
+          m, k = @z.to_int_scale
+          if e >= 0 && k >= 0
+            ret = compare m, f*eb**e, m*@r**k
+          elsif e >= 0 && k < 0
+            ret = compare m, f*eb**e*@r**(-k), m
+          elsif e < 0 && k >= 0
+            ret = compare m, f, m*@r**k*eb**(-e)
+          else # e < 0 && k < 0
+            ret = compare m, f*@r**(-k), m*eb**(-e)
+          end
+          break if ret
+        end
+        ret && ret.copy_sign(sign)
+      end
+
+      def compare(m, x, y)
+        ret = nil
+        d = x-y
+        d2 = 2*m*d.abs
+        if d2 < y
+          if (m == @rp_n_1) && (d < 0) && (y < @r*d2)
+            @z = @z.next_minus
+          else
+            ret = @z
+          end
+        elsif d2 == y
+          if (m%2) == 0
+            if (m == @rp_n_1) && (d < 0)
+              @z = @z.next_minus
+            else
+              ret = @z
+            end
+          elsif d < 0
+            ret = @z.next_minus
+          elsif d > 0
+            ret = @z.next_plus
+          end
+        elsif d < 0
+          @z = @z.next_minus
+        elsif d > 0
+          @z = @z.next_plus
+        else
+          raise "????"
         end
       end
 
