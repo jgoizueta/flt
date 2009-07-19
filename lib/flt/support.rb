@@ -445,16 +445,13 @@ module Flt
               alg = :R
             elsif context.num_class.radix == 2
               if context.precision <= Float::MANT_DIG
-                if eb==10 && e<=Float::MAX_10_EXP # && e>=Float::MIN_10_EXP
-                  alg = :R
-                else
-                  mx_e = (Math.log(Float::MAX)/Math.log(eb)).floor
-                  alg = :R if e <= mx_e
-                end
+                min_exp, max_exp = Reader.float_min_max_exp(eb)
+                alg = :R if e <= max_exp # TODO: - context.precision ? >= min_ex ??
               end
             end
           end
-          case @algorithm
+          alg ||= :A
+          case alg
           when :M, :R
             if sign == -1
               if round_mode == :ceiling
@@ -463,7 +460,7 @@ module Flt
                 round_mode = :ceiling
               end
             end
-            case @algorithm
+            case alg
             when :M
               _alg_m(context, round_mode, sign, f, e, eb, n)
             when :R
@@ -472,7 +469,9 @@ module Flt
           else # :A
             # direct arithmetic conversion
             if round_mode == context.rounding
-              Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
+              x = Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
+              x = context.normalize(x) unless context.exact?
+              x
             else
               if context.num_class == Float
                 float = true
@@ -482,7 +481,11 @@ module Flt
                 context.rounding = round_mode
                 Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
               end
-              x = x.to_f if float
+              if float
+                x = x.to_f
+              else
+                x = context.normalize(x) unless context.exact?
+              end
               x
             end
           end
@@ -490,19 +493,39 @@ module Flt
       end
 
       def _alg_r(context, round_mode, sign, f, e, eb, n) # Fast for Float
-
         raise InvalidArgument, "Reader Algorithm R only supports base 2" if context.radix != 2
 
         # Compute initial approximation; if Float uses IEEE-754 binary arithmetic, the approximation
         # is good enough to be adjusted in just one step.
-        if e < 0
-          z0 = Float(f)/Float(eb**(-e))
+        @good_approx = true
+
+        if eb==2
+          z0 = Math.ldexp(f,e)
+        elsif eb==10
+          z0 = Float("#{f}E#{e}")
         else
-          z0 = Float(f)*Float(eb**e)
+          ff = f
+          ee = e
+          min_exp, max_exp = Reader.float_min_max_exp(eb)
+          # for eb==10 we could use Float("#{f}E#{e}")
+          if e <= min_exp
+            @good_approx = false
+            ff = Float(f)*Float(eb)**(e-min_exp-1)
+            ee = min_exp + 1
+          # elsif e >= max_exp
+          #   ff = Float(f)*...
+          end
+          # if ee < 0
+          #   z0 = Float(ff)/Float(eb**(-ee))
+          # else
+          #   z0 = Float(ff)*Float(eb**ee)
+          # end
+          z0 = Float(ff)*Float(eb)**ee
         end
 
         if context.num_class != Float
-          z0 = context.num_class.Num(z0)
+          @good_approx = false
+          z0 = context.num_class.Num(z0).plus(context)
         end
 
         @z = z0
@@ -516,21 +539,38 @@ module Flt
         ret = nil
         loop do
           m, k = @z.to_int_scale
+          # TODO: replace call to compare by setting the parameters in local variables,
+          #       then insert the body of compare here;
+          #       then eliminate innecesary instance variables
           if e >= 0 && k >= 0
-            ret = compare m, f*eb**e, m*@r**k
+            ret = compare m, f*eb**e, m*@r**k, context
           elsif e >= 0 && k < 0
-            ret = compare m, f*eb**e*@r**(-k), m
+            ret = compare m, f*eb**e*@r**(-k), m, context
           elsif e < 0 && k >= 0
-            ret = compare m, f, m*@r**k*eb**(-e)
+            ret = compare m, f, m*@r**k*eb**(-e), context
           else # e < 0 && k < 0
-            ret = compare m, f*@r**(-k), m*eb**(-e)
+            ret = compare m, f*@r**(-k), m*eb**(-e), context
           end
           break if ret
         end
         ret && ret.copy_sign(sign)
       end
 
-      def compare(m, x, y)
+      @float_min_max_exp_values = {
+        10 => [Float::MIN_10_EXP, Float::MAX_10_EXP]
+      }
+      class <<self
+        def float_min_max_exp(base)
+          unless min_max = @float_min_max_exp_values[base]
+            max_exp = (Math.log(Float::MAX)/Math.log(base)).floor
+            min_exp = ((Float::MIN_EXP-1)*Math.log(Float::RADIX)/Math.log(base)).ceil
+            @float_min_max_exp_values[base] = min_max = [min_exp, max_exp]
+          end
+          min_max
+        end
+      end
+
+      def compare(m, x, y, context)
         # TODO: refactor to simplify logic
         ret = nil
         d = x-y
@@ -553,7 +593,7 @@ module Flt
               # eps < 1
               ret = @z
             else
-              @z = @z.next_minus
+              @z = @z.next_minus(context)
             end
           else # @round_mode==:up ? (d > 0) : (d >= 0)
             # v >(=) z
@@ -561,7 +601,7 @@ module Flt
               # eps < 1
               ret = @z
             else
-              @z = @z.next_plus
+              @z = @z.next_plus(context)
             end
           end
         else
@@ -572,7 +612,7 @@ module Flt
               # and @r*eps > 1/2
               # On the left of z the ulp is 1/@r than the ulp on the right; if v < z we
               # must require an error @r times smaller.
-              @z = @z.next_minus
+              @z = @z.next_minus(context)
             else
               # unambiguous nearest
               ret = @z
@@ -585,7 +625,7 @@ module Flt
                 if (m == @rp_n_1) && (d < 0)
                   # z is power of @r and v < z; this wasn't really a tie because
                   # there are closer values on the left
-                  @z = @z.next_minus
+                  @z = @z.next_minus(context)
                 else
                   # m is even => round tie to z
                   ret = @z
@@ -633,7 +673,7 @@ module Flt
 
         # Assume the initial approx is good enough (uses IEEE-754 arithmetic with round-to-nearest),
         # so we can avoid further iteration, except for directed rounding
-        ret ||= @z unless directed_rounding
+        ret ||= @z unless directed_rounding || !@good_approx
 
         return ret
       end

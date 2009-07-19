@@ -18,7 +18,7 @@ class TestBinfloatConversion < Test::Unit::TestCase
       1000.times do
         x = random_float
         txt = BinNum(x).to_s
-        y = BinNum(txt).to_f
+        y = BinNum(txt, :fixed).to_f
         assert_equal x, y, "FAIL #{x.split.inspect} #{rounding} #{y.split.inspect} #{x.class}"
       end
     end

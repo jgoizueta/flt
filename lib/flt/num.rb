@@ -1224,22 +1224,40 @@ class Num < Numeric
   # to override specific context parameters.
   #
   # The Flt.DecNum() and Flt.BinNum() constructors admits the same parameters and can be used as a shortcut.
-  def initialize(*args)
-    context = nil
-    if args.size>0 && (args.last.kind_of?(ContextBase) || args.last.nil?)
-      context ||= args.pop
-    elsif args.size>1 && args.last.instance_of?(Hash)
-      context ||= args.pop
-    elsif args.size==1 && args.last.instance_of?(Hash)
-      arg = args.last
-      args = [arg[:sign], args[:coefficient], args[:exponent]]
-      arg.delete :sign
-      arg.delete :coefficient
-      arg.delete :exponent
-      context ||= arg
-    end
-    args = args.first if args.size==1 && args.first.is_a?(Array)
 
+    # Num(sign, coefficient, exponent)
+    # Num([sign, coefficient, exponent])
+    # Num(significand, exponent)
+    # Num([significand, exponent])
+    # Num(:sign=>+1, :coefficient=>c, :exponent=>e)
+    #
+    # Num(literal)
+    # Num(literal, :fixed)
+    # Num(literal, :mode=>:fixed)
+    # Num(literal, :base=>2)
+    # Num(literal, :fixed, :base=>2)
+    # Num(literal, :fixed, context, :base=>2)
+    # Num(literal, :mode=>:fixed, :base=>2)
+
+    # append to any one: context/nil/context_hash (merged sith other hashes)
+
+    # Context.extract_from_arguments!(args)
+    #   Context...., :precision=>..., :context=>...
+    # (Context object and or hash)
+  def initialize(*args)
+    options = args.pop if args.last.is_a?(Hash)
+    context = args.pop if args.size>0 && (args.last.kind_of?(ContextBase) || args.last.nil?)
+    context ||= options && options.delete(:context)
+    mode = args.pop if args.last.is_a?(Symbol) && ![:inf, :nan, :snan].include?(args.last)
+    args = args.first if args.size==1 && args.first.is_a?(Array)
+    if args.empty? && options
+      args = [options.delete(:sign)||+1,
+              options.delete(:coefficient) || 0,
+              options.delete(:exponent) || 0]
+    end
+    mode ||= options && options.delete(:mode)
+    base = (options && options.delete(:base)) || 10
+    context = options if context.nil? && options && !options.empty?
     context = define_context(context)
 
     case args.size
@@ -1291,38 +1309,35 @@ class Num < Numeric
           end
           exp = m.exp.to_i
           if fracpart
-            coeff = (intpart+fracpart).to_i
+            coeff = (intpart+fracpart).to_i(base)
             exp -= fracpart.size
           else
-            coeff = intpart.to_i
+            coeff = intpart.to_i(base)
           end
-          if num_class.radix != 10
-            # convert coeff*10**exp to coeff'*radix**exp'
-            # coeff, exp = num_class.decimal_to_radix(coeff, exp, context)
-            # Unlike definition of a DecNum by a text literal, when a text (decimal) literal is converted
-            # to a BinNum rounding is performed as dictated by the context, unlike exact precision is
-            # requested. To avoid rounding without exact mode, the number should be constructed by
-            # givin the sign, coefficient and exponent.
-            if (10%num_class.radix) == 0
-              rounding = context.rounding
-              # TODO: for exact rounding, use Burger-Dybvig (to convert base 10 to base 2)
-              # generating the minimum number of digits for the input precision (convert input to DecNum first)
-              # then check for an exact result.
-              reader = Support::Reader.new
-              ans = reader.read(context, rounding, sign, coeff, exp, 10)
-              context.exception(Inexact,"Inexact decimal to radix #{num_class.radix} conversion") if !reader.exact?
-              if !reader.exact? && context.exact?
-                sign, coeff, exp =  num_class.nan.split
-              else
-                sign, coeff, exp = ans.split
-              end
+          # TODO: consider: should fixed format be the default when num_class.radix != base ?
+
+          if false
+            # old behaviour:
+            # fixed format used when num_class.radix != base
+            # pro: => BinFloat(txt) == Float(txt)
+            mode ||= ((num_class.radix == base) ? :free : :fixed)
+          else
+            # pro: coherent with GDAS (DecNum)
+            # against: infinite loop possibility, specially :free vs :free_shortest
+            mode ||= :free
+          end
+
+          if [:free, :free_shortest].include?(mode) && base == num_class.radix
+            # simple case, the job is already done
+          else
+            rounding = context.rounding
+            reader = Support::Reader.new(:mode=>mode)
+            ans = reader.read(context, rounding, sign, coeff, exp, base)
+            context.exception(Inexact,"Inexact decimal to radix #{num_class.radix} conversion") if !reader.exact?
+            if !reader.exact? && context.exact?
+              sign, coeff, exp =  num_class.nan.split
             else
-              # hard case, but probably won't be needed; here's a Q&D solution for testing
-              if exp >= 0
-                sign,coeff,exp = num_class.new(coeff*10**exp)
-              else
-                sign,coeff,exp = (num_class.new(coeff)/num_class.new(10**-exp)).split
-              end
+              sign, coeff, exp = ans.split
             end
           end
           @sign, @coeff, @exp = sign, coeff, exp
@@ -3411,7 +3426,6 @@ class Num < Numeric
       p = minimum_precision if minimum_precision && p<minimum_precision
       s,f,e = x.split
       rounding ||= context.rounding unless
-
       formatter = Flt::Support::Formatter.new(x.num_class.radix, num_class.context.etiny, num_class.radix)
       formatter.format(x, f, e, rounding, p, all_digits)
       dec_pos,digits = formatter.adjusted_digits
