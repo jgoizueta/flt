@@ -161,7 +161,7 @@ class BinNum < Num
     FloatContext = BinNum::Context.new(
                                :precision=>Float::MANT_DIG,
                                :rounding=>Support::AuxiliarFunctions.detect_float_rounding,
-                               :emin=>Float::MIN_EXP-1, :emax=>Float::MAX_EXP+1,
+                               :emin=>Float::MIN_EXP-1, :emax=>Float::MAX_EXP-1,
                                :flags=>[],
                                :traps=>[DivisionByZero, Overflow, InvalidOperation],
                                :ignored_flags=>[],
