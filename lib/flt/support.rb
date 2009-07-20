@@ -558,7 +558,7 @@ module Flt
           end
           break if ret
         end
-        ret && ret.copy_sign(sign)
+        ret && ret.copy_sign(sign) # TODO: normalize?
       end
 
       @float_min_max_exp_values = {
@@ -703,12 +703,21 @@ module Flt
         rp_n_1 = context.num_class.int_radix_power(n-1)
         r = context.num_class.radix
         loop do
-           return context.exception(Num::Overflow,"Input literal out of range") if k>=context.etop
            x = u.div(v) # bottleneck
            if (x>=rp_n_1 && x<rp_n) || k==min_e || k==max_e
               z, exact = Reader.ratio_float(context,u,v,k,round_mode)
               @exact = exact
-              context.exception Num::Inexact if !exact && context.respond_to?(:exception)
+              if context.respond_to?(:exception)
+                if k==min_e
+                  context.exception(Num::Subnormal) if z.subnormal?
+                  context.exception(Num::Underflow,"Input literal out of range") if z.zero? && f!=0
+                elsif k==max_e
+                  if !context.exact? && z.coefficient > context.maximum_coefficient
+                    context.exception(Num::Overflow,"Input literal out of range")
+                  end
+                end
+                context.exception Num::Inexact if !exact
+              end
               return z.copy_sign(sign)
            elsif x<rp_n_1
              u *= r
