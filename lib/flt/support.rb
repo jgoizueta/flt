@@ -439,7 +439,7 @@ module Flt
           # for fixed mode, use the context rounding by default
           round_mode ||= context.rounding
           alg = @algorithm
-          if alg.nil? || alg==:R
+          if (context.num_class.radix == 2 && alg.nil?) || alg==:R
             z0 =  _alg_r_approx(context, round_mode, sign, f, e, eb, n)
             alg = z0 && :R
           end
