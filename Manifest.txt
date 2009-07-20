@@ -37,3 +37,5 @@ test/test_bin.rb
 test/test_binfloat_conversion.rb
 test/test_bin_arithmetic.rb
 test/test_tol.rb
+test/reader.rb
+test/test_num_constructor.rb

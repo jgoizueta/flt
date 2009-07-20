@@ -1,6 +1,6 @@
 == 0.1.0 2009-06-19
 
-* Initial release
+* Initial release as ruby-decimal
 
 == 0.2.0 2009-06-21
 
@@ -22,9 +22,10 @@
   - setting context exponent limits with elimit
   - require decimal/shortcut to use D for DecNum
 
-== 0.3.0 2009-
+== 0.4.0 2009-
 
-* Bug fixes:
-  - DecNum#normal? was incorrect for special values and zero
+* Switch to new name (Flt) and organization
+  - Arbitrary base support
+  - Tolerance objects
+  - Free and fixed input/output
 
-* New functionality:

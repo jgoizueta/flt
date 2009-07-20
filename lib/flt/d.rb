@@ -1,6 +1,6 @@
 require 'decimal'
 
-D = DecNum
+D = Flt::DecNum
 def D(*args)
-  DecNum(*args)
+  Flt.DecNum(*args)
 end

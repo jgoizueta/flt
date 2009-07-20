@@ -1,6 +1,6 @@
 require 'flt'
 
-B = BinNum
+B = Flt::BinNum
 def B(*args)
-  BinNum(*args)
+  Flt.BinNum(*args)
 end
