@@ -487,7 +487,7 @@ module Flt
 
       def _alg_r_approx(context, round_mode, sign, f, e, eb, n)
 
-        # return nil if context.num_class.radix != 2
+        return nil if context.num_class.radix != 2
 
         # Compute initial approximation; if Float uses IEEE-754 binary arithmetic, the approximation
         # is good enough to be adjusted in just one step.
@@ -525,30 +525,6 @@ module Flt
             @good_approx = false
             z0 = context.num_class.Num(z0).plus(context)
           end
-        end
-
-        if z0.nil?
-          num_class = context.num_class
-          if num_class == Float
-            float = true
-            context = BinNum::FloatContext
-          end
-          z0 = num_class.context(context) do |context|
-            context.rounding = round_mode
-            y = num_class.Num(sign*f).normalize
-            z = num_class.Num(Num[eb].int_radix_power(e.abs)).normalize
-            if e < 0
-              y /= z
-            else
-              y *= z
-            end
-          end
-          if float
-            z0 = x.to_f
-          else
-            z0 = context.normalize(x) unless context.exact?
-          end
-          z0 = z0.copy_sign(sign)
         end
 
         z0
