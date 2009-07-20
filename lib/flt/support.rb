@@ -495,7 +495,7 @@ module Flt
 
         ndigits = Support::AuxiliarFunctions._ndigits(f, eb)
         adj_exp = e + ndigits - 1
-        min_exp, max_exp = Reader.float_min_max_exp(eb)
+        min_exp, max_exp = Reader.float_min_max_adj_exp(eb)
 
         if adj_exp >= min_exp && adj_exp <= max_exp
           if eb==2
@@ -563,17 +563,21 @@ module Flt
 
       @float_min_max_exp_values = {
         10 => [Float::MIN_10_EXP, Float::MAX_10_EXP],
-        2 => [Float::MIN_EXP-1, Float::MAX_EXP-1]
+        Float::RADIX => [Float::MIN_EXP, Float::MAX_EXP],
+        -Float::RADIX => [Float::MIN_EXP-Float::MANT_DIG, Float::MAX_EXP-Float::MANT_DIG]
       }
       class <<self
-        # Minimum & maximum adjusted exponent for numbers in base to be in the range of Float
-        def float_min_max_exp(base)
-          unless min_max = @float_min_max_exp_values[base]
+        # Minimum & maximum adjusted exponent for numbers in base to be in the range of Floats
+        def float_min_max_adj_exp(base, normalized=false)
+          k = normalized ? base : -base
+          unless min_max = @float_min_max_exp_values[k]
             max_exp = (Math.log(Float::MAX)/Math.log(base)).floor
-            min_exp = ((Float::MIN_EXP-1)*Math.log(Float::RADIX)/Math.log(base)).ceil
-            @float_min_max_exp_values[base] = min_max = [min_exp, max_exp]
+            e = Float::MIN_EXP
+            e -= Float::MANT_DIG unless normalized
+            min_exp = (e*Math.log(Float::RADIX)/Math.log(base)).ceil
+            @float_min_max_exp_values[k] = min_max = [min_exp, max_exp]
           end
-          min_max
+          min_max.map{|e| e - 1} # adjust
         end
       end
 
