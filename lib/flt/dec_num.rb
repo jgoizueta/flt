@@ -89,20 +89,49 @@ class DecNum < Num
   # * A String containing a text representation of the number
   # * An Integer
   # * A Rational
-  # * Another DecNum value.
-  # * A sign, coefficient and exponent (either as separate arguments, as an array or as a Hash with symbolic keys).
-  #   This is the internal representation of DecNum, as returned by DecNum#split.
+  # * A Value of a type for which conversion is defined in the context.
+  # * Another DecNum.
+  # * A sign, coefficient and exponent (either as separate arguments, as an array or as a Hash with symbolic keys),
+  #   or a signed coefficient and an exponent.
+  #   This is the internal representation of Num, as returned by Num#split.
   #   The sign is +1 for plus and -1 for minus; the coefficient and exponent are
   #   integers, except for special values which are defined by :inf, :nan or :snan for the exponent.
-  # * Any other type for which custom conversion is defined in the context.
   #
-  # An optional Context can be passed as the last argument to override the current context; also a hash can be passed
-  # to override specific context parameters.
+  # An optional Context can be passed after the value-definint argument to override the current context
+  # and options can be passed in a last hash argument; alternatively context options can be overriden
+  # by options of the hash argument.
   #
-  # Except for custom defined conversions, DecNums are constructed with the precision specified by the
-  # input parameters (i.e. with the exact value specified by the parameters) and the context precision is ignored.
+  # When the number is defined by a numeric literal (a String), it can be followed by a symbol that specifies
+  # the mode used to convert the literal to a floating-point value:
+  # * :free is currently the default for all cases. The precision of the input literal (including trailing zeros)
+  #   is preserved and the precision of the context is ignored.
+  #   When the literal is in base 10, (which is the case by default), the literal is preserved exactly.
+  #   Otherwise, all significative digits that can be derived from the literal are generanted, significative
+  #   meaning here that if the digit is changed and the value converted back to a literal of the same base and
+  #   precision, the original literal will not be obtained.
+  # * :free_shortest is a variation of :free in which only the minimun number of digits that are necessary to
+  #   produce the original literal when the value is converted back with the same original precision.
+  # * :fixed will round and normalize the value to the precision specified by the context (normalize meaning
+  #   that exaclty the number of digits specified by the precision will be generated, even if the original
+  #   literal has fewer digits.) This may fail returning NaN (and raising Inexact) if the context precision is
+  #   :exact, but not if the floating-point radix is a multiple of the input base.
+  #
+  # Options that can be passed for construction from literal:
+  # * :base is the numeric base of the input, 10 by default.
   #
   # The Flt.DecNum() constructor admits the same parameters and can be used as a shortcut for DecNum creation.
+  # Examples:
+  #   DecNum('0.1000')                                  # -> 0.1000
+  #   DecNum('0.12345')                                 # -> 0.12345
+  #   DecNum('1.2345E-1')                               # -> 0.12345
+  #   DecNum('0.1000', :free_shortest)                  # -> 0.1000
+  #   DecNum('0.1000',:fixed, :precision=>20)           # -> 0.10000000000000000000
+  #   DecNum('0.12345',:fixed, :precision=>20)          # -> 0.12345000000000000000
+  #   DecNum('0.100110E3', :base=>2)                    # -> 4.8
+  #   DecNum('0.1E-5', :free, :base=>2)                 # -> 0.016
+  #   DecNum('0.1E-5', :free_shortest, :base=>2)        # -> 0.02
+  #   DecNum('0.1E-5', :fixed, :base=>2, :exact=>true)  # -> 0.015625
+  #   DecNum('0.1E-5', :fixed, :base=>2)                # -> 0.01562500000000000000000000000
   def initialize(*args)
     super(*args)
   end
@@ -1245,9 +1274,9 @@ class DecNum < Num
 
 end
 
+module_function
 # DecNum constructor. See DecNum#new for the parameters.
 # If a DecNum is passed a reference to it is returned (no new object is created).
-module_function
 def DecNum(*args)
   DecNum.Num(*args)
 end

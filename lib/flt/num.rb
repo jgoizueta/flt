@@ -1214,36 +1214,37 @@ class Num < Numeric
   # * A String containing a text representation of the number
   # * An Integer
   # * A Rational
+  # * For binary floating point: a Float
+  # * A Value of a type for which conversion is defined in the context.
   # * Another floating-point value of the same type.
-  # * A sign, coefficient and exponent (either as separate arguments, as an array or as a Hash with symbolic keys).
+  # * A sign, coefficient and exponent (either as separate arguments, as an array or as a Hash with symbolic keys),
+  #   or a signed coefficient and an exponent.
   #   This is the internal representation of Num, as returned by Num#split.
   #   The sign is +1 for plus and -1 for minus; the coefficient and exponent are
   #   integers, except for special values which are defined by :inf, :nan or :snan for the exponent.
   #
-  # An optional Context can be passed as the last argument to override the current context; also a hash can be passed
-  # to override specific context parameters.
+  # An optional Context can be passed after the value-definint argument to override the current context
+  # and options can be passed in a last hash argument; alternatively context options can be overriden
+  # by options of the hash argument.
   #
-  # The Flt.DecNum() and Flt.BinNum() constructors admits the same parameters and can be used as a shortcut.
-
-    # Num(sign, coefficient, exponent)
-    # Num([sign, coefficient, exponent])
-    # Num(significand, exponent)
-    # Num([significand, exponent])
-    # Num(:sign=>+1, :coefficient=>c, :exponent=>e)
-    #
-    # Num(literal)
-    # Num(literal, :fixed)
-    # Num(literal, :mode=>:fixed)
-    # Num(literal, :base=>2)
-    # Num(literal, :fixed, :base=>2)
-    # Num(literal, :fixed, context, :base=>2)
-    # Num(literal, :mode=>:fixed, :base=>2)
-
-    # append to any one: context/nil/context_hash (merged sith other hashes)
-
-    # Context.extract_from_arguments!(args)
-    #   Context...., :precision=>..., :context=>...
-    # (Context object and or hash)
+  # When the number is defined by a numeric literal (a String), it can be followed by a symbol that specifies
+  # the mode used to convert the literal to a floating-point value:
+  # * :free is currently the default for all cases. The precision of the input literal (including trailing zeros)
+  #   is preserved and the precision of the context is ignored.
+  #   When the literal is in the same base as the floating-point radix, (which, by default, is the case for
+  #   DecNum only), the literal is preserved exactly in floating-point.
+  #   Otherwise, all significative digits that can be derived from the literal are generanted, significative
+  #   meaning here that if the digit is changed and the value converted back to a literal of the same base and
+  #   precision, the original literal will not be obtained.
+  # * :free_shortest is a variation of :free in which only the minimun number of digits that are necessary to
+  #   produce the original literal when the value is converted back with the same original precision.
+  # * :fixed will round and normalize the value to the precision specified by the context (normalize meaning
+  #   that exaclty the number of digits specified by the precision will be generated, even if the original
+  #   literal has fewer digits.) This may fail returning NaN (and raising Inexact) if the context precision is
+  #   :exact, but not if the floating-point radix is a multiple of the input base.
+  #
+  # Options that can be passed for construction from literal:
+  # * :base is the numeric base of the input, 10 by default.
   def initialize(*args)
     options = args.pop if args.last.is_a?(Hash)
     context = args.pop if args.size>0 && (args.last.kind_of?(ContextBase) || args.last.nil?)
@@ -1314,16 +1315,17 @@ class Num < Numeric
           else
             coeff = intpart.to_i(base)
           end
-          # TODO: consider: should fixed format be the default when num_class.radix != base ?
 
           if false
-            # old behaviour:
-            # fixed format used when num_class.radix != base
-            # pro: => BinFloat(txt) == Float(txt)
+            # Old behaviour: use :fixed format when num_class.radix != base
+            # Advantages:
+            # * Behaviour similar to Float: BinFloat(txt) == Float(txt)
             mode ||= ((num_class.radix == base) ? :free : :fixed)
           else
-            # pro: coherent with GDAS (DecNum)
-            # against: infinite loop possibility, specially :free vs :free_shortest
+            # New behaviour: the default is always :free
+            # Advantages:
+            # * Is coherent with construction of DecNum from decimal literal:
+            #   preserve precision of the literal with independence of context.
             mode ||= :free
           end
 
