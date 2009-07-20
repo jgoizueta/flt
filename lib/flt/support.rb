@@ -487,7 +487,7 @@ module Flt
 
       def _alg_r_approx(context, round_mode, sign, f, e, eb, n)
 
-        return nil if context.num_class.radix != 2
+        return nil if context.num_class.radix != Float::RADIX || context.precision > Float::MANT_DIG
 
         # Compute initial approximation; if Float uses IEEE-754 binary arithmetic, the approximation
         # is good enough to be adjusted in just one step.
