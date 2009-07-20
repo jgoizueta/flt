@@ -1044,10 +1044,17 @@ module Flt
         @round_up = false
         list = []
         r, s, m_p, m_m, = @r, @s, @m_p, @m_m
+        n_iters, rs = 0, []
         loop do
+          if (n_iters > 10000)
+            raise "Infinite digit sequence." if rs.include?(r)
+            rs << r
+          else
+            n_iters += 1
+          end
+
           d,r = (r*@output_b).divmod(s)
-          # TODO: detect repetition of r value to avoid infinite loop (can only happen if (output_b % b) != 0)
-          # TODO: optionally limit the maximum number of digits
+
           m_p *= @output_b
           m_m *= @output_b
 
