@@ -439,16 +439,9 @@ module Flt
           # for fixed mode, use the context rounding by default
           round_mode ||= context.rounding
           alg = @algorithm
-          if alg.nil?
-            # choose algorithm automatically
-            if context.num_class == Float
-              alg = :R
-            elsif context.num_class.radix == 2
-              if context.precision <= Float::MANT_DIG
-                min_exp, max_exp = Reader.float_min_max_exp(eb)
-                alg = :R if e <= max_exp # TODO: - context.precision ? >= min_ex ??
-              end
-            end
+          if alg.nil? || alg==:R
+            z0 =  _alg_r_approx(context, round_mode, sign, f, e, eb, n)
+            alg = z0 && :R
           end
           alg ||= :A
           case alg
@@ -464,7 +457,7 @@ module Flt
             when :M
               _alg_m(context, round_mode, sign, f, e, eb, n)
             when :R
-              _alg_r(context, round_mode, sign, f, e, eb, n)
+              _alg_r(z0, context, round_mode, sign, f, e, eb, n)
             end
           else # :A
             # direct arithmetic conversion
@@ -492,41 +485,55 @@ module Flt
         end
       end
 
-      def _alg_r(context, round_mode, sign, f, e, eb, n) # Fast for Float
-        raise InvalidArgument, "Reader Algorithm R only supports base 2" if context.radix != 2
+      def _alg_r_approx(context, round_mode, sign, f, e, eb, n)
+
+        return nil if context.num_class.radix != 2
 
         # Compute initial approximation; if Float uses IEEE-754 binary arithmetic, the approximation
         # is good enough to be adjusted in just one step.
         @good_approx = true
 
-        if eb==2
-          z0 = Math.ldexp(f,e)
-        elsif eb==10
-          z0 = Float("#{f}E#{e}")
-        else
-          ff = f
-          ee = e
-          min_exp, max_exp = Reader.float_min_max_exp(eb)
-          # for eb==10 we could use Float("#{f}E#{e}")
-          if e <= min_exp
-            @good_approx = false
-            ff = Float(f)*Float(eb)**(e-min_exp-1)
-            ee = min_exp + 1
-          # elsif e >= max_exp
-          #   ff = Float(f)*...
+        ndigits = Support::AuxiliarFunctions._ndigits(f, eb)
+        adj_exp = e + ndigits - 1
+        min_exp, max_exp = Reader.float_min_max_exp(eb)
+
+        if adj_exp >= min_exp && adj_exp <= max_exp
+          if eb==2
+            z0 = Math.ldexp(f,e)
+          elsif eb==10
+            z0 = Float("#{f}E#{e}")
+          else
+            ff = f
+            ee = e
+            # for eb==10 we could use Float("#{f}E#{e}")
+            if e <= min_exp
+              @good_approx = false
+              ff = Float(f)*Float(eb)**(e-min_exp-1)
+              ee = min_exp + 1
+            # elsif e >= max_exp
+            #   ff = Float(f)*...
+            end
+            # if ee < 0
+            #   z0 = Float(ff)/Float(eb**(-ee))
+            # else
+            #   z0 = Float(ff)*Float(eb**ee)
+            # end
+            z0 = Float(ff)*Float(eb)**ee
           end
-          # if ee < 0
-          #   z0 = Float(ff)/Float(eb**(-ee))
-          # else
-          #   z0 = Float(ff)*Float(eb**ee)
-          # end
-          z0 = Float(ff)*Float(eb)**ee
+
+          if z0 && context.num_class != Float
+            @good_approx = false
+            z0 = context.num_class.Num(z0).plus(context)
+          end
         end
 
-        if context.num_class != Float
-          @good_approx = false
-          z0 = context.num_class.Num(z0).plus(context)
-        end
+        # TODO try normalized Flt arithmetic; compare speed with :A
+
+        z0
+      end
+
+      def _alg_r(z0, context, round_mode, sign, f, e, eb, n) # Fast for Float
+        raise InvalidArgument, "Reader Algorithm R only supports base 2" if context.radix != 2
 
         @z = z0
         @r = context.num_class.radix
@@ -557,9 +564,11 @@ module Flt
       end
 
       @float_min_max_exp_values = {
-        10 => [Float::MIN_10_EXP, Float::MAX_10_EXP]
+        10 => [Float::MIN_10_EXP, Float::MAX_10_EXP],
+        2 => [Float::MIN_EXP-1, Float::MAX_EXP-1]
       }
       class <<self
+        # Minimum & maximum adjusted exponent for numbers in base to be in the range of Float
         def float_min_max_exp(base)
           unless min_max = @float_min_max_exp_values[base]
             max_exp = (Math.log(Float::MAX)/Math.log(base)).floor
@@ -1192,6 +1201,7 @@ module Flt
       def _ndigits(x, b)
         raise  TypeError, "The argument to _ndigits should be nonnegative." if x < 0
         return 0 unless x.is_a?(Integer)
+        return _nbits(x) if b==2
         if x.is_a?(Fixnum)
           return 0 if x==0
           x.to_s(b).length
