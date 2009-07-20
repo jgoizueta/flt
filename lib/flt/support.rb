@@ -463,7 +463,7 @@ module Flt
             # direct arithmetic conversion
             if round_mode == context.rounding
               x = Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
-              x = context.normalize(x) unless context.exact?
+              x = context.normalize(x) unless !context.respond_to?(:normalize) || context.exact?
               x
             else
               if context.num_class == Float
