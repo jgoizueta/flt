@@ -1,11 +1,19 @@
-== 0.1.0 2009-06-19
+== 1.0.0 2009-07-22
 
-* Initial release as ruby-decimal
+* First release of the new Flt project (derived from the former Ruby-Decimal.)
+  - New gem name: flt
+  - New organization in Flt¡ namespace
+  - Arbitrary base support; Flt::DecNum replaces Decimal; new classes BinNum, Num[b].
+  - Tolerance objects to define floating-point tolerances.
+  - Free and fixed input/output formats.
 
-== 0.2.0 2009-06-21
+== 0.2.2 2009-07-21
 
-* New functions implemented:
-  exp(), ln(), log10(), power().
+* Bug fixes:
+  - Decimal#normal? was incorrect for special values and zero.
+  - After a local context, the global context was set to a copy of the original
+    context, so any previously stored reference to it was now unbound.
+  - Context#normalize was incorrect.
 
 == 0.2.1 2009-06-23
 
@@ -22,10 +30,11 @@
   - setting context exponent limits with elimit
   - require decimal/shortcut to use D for DecNum
 
-== 0.4.0 2009-
+== 0.2.0 2009-06-21
 
-* Switch to new name (Flt) and organization
-  - Arbitrary base support
-  - Tolerance objects
-  - Free and fixed input/output
+* New functions implemented:
+  exp(), ln(), log10(), power().
 
+== 0.1.0 2009-06-19
+
+* Initial release as ruby-decimal
