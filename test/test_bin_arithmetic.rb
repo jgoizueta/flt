@@ -41,13 +41,44 @@ class TestBinArithmetic < Test::Unit::TestCase
       # next if y.abs < Float::EPSILON*x.abs
       next if y.zero?
       z = x / y
-      if z != (BinNum(x)/BinNum(y)).to_f
-        puts "x=#{float_split(x).inspect}"
-        puts "y=#{float_split(y).inspect}"
-        puts "z=#{float_split(z).inspect}"
-        puts "->#{(BinNum(x)/BinNum(y)).split.inspect}"
-      end
+      # if z != (BinNum(x)/BinNum(y)).to_f
+      #   puts "x=#{float_split(x).inspect}"
+      #   puts "y=#{float_split(y).inspect}"
+      #   puts "z=#{float_split(z).inspect}"
+      #   puts "->#{(BinNum(x)/BinNum(y)).split.inspect}"
+      # end
       assert_equal z, (BinNum(x)/BinNum(y)).to_f
+    end
+  end
+
+  def test_power
+    float_emulation_context
+    each_pair(@test_float_data) do |x, y|
+      next if x.zero? && y.zero?
+      x = x.abs
+      xx = BinNum(x)
+      yy = BinNum(y)
+      z = x**y
+      zz = nil
+      begin
+        zz = xx**yy
+      rescue=>err
+        if err.is_a?(Num::Overflow)
+          zz = BinNum.infinity
+        else
+          zz = err.to_s
+        end
+      end
+      ok = true
+      zzz = nil
+      if zz != z
+        # Math.power may not be accurate enough
+        zzz = +BinNum.context(:precision=>512) { xx**yy }
+        if zzz != zz
+          ok = false
+        end
+      end
+      assert ok, "#{x}**#{y} (#{x.split.inspect}**#{y.split.inspect}) Incorrect: #{zz.split.inspect} instead of #{zzz && zzz.split.inspect}"
     end
   end
 

@@ -3711,7 +3711,7 @@ class Num < Numeric
       return coeff, exp
     end
 
-    EXP_INC = 2
+    EXP_INC = 4
     # Compute an approximation to exp(c*radix**e), with p decimal places of precision.
     # Returns integers d, f such that:
     #
@@ -3749,7 +3749,7 @@ class Num < Numeric
         return r
     end
 
-    LOG_PREC_INC = 2
+    LOG_PREC_INC = 4
     # Given integers c, e and p with c > 0, compute an integer
     # approximation to radix**p * log(c*radix**e), with an absolute error of
     # at most 1.  Assumes that c*radix**e is not exactly 1.
