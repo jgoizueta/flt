@@ -4084,7 +4084,7 @@ class Num < Numeric
       if x.nan?
         num_class.nan
       else # x.infinite?
-        num_class.infinite(self.sign)
+        num_class.infinity(x.sign)
       end
     elsif x.zero?
       num_class.zero(x.sign)
