@@ -88,11 +88,12 @@
 #       * don't support variant ulps; always use Muller's ulp
 #       * use an options hash for the kind of ulp parameter
 #       * keep the kind of ulp in the context
+#       also, note that Tolerance uses only the Muller king of ulp.
 # TODO: move the exception classes from Flt::Num to Flt ? move also Flt::Num::ContextBas to Flt ?
 # TODO: find better name for :all_digits (:preserve_precision, :mantain_precision, ...)
 # TODO: should the context determine the mode for cross-base literal-to-Num conversion (:free, :fixed)?
 #           BinNum.context.input = :fixed; x = BinNum('0.1')
-# TODO: debug power and and release
+# TODO: We're being very intrusive with the Float extensions; is there a better way?
 #++
 
 require 'flt/support'
