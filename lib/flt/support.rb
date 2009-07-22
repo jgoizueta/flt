@@ -970,7 +970,7 @@ module Flt
                       ((round_mode == :up) ||
                       (@round_up == :hi) ||
                       ((@round_up == :tie) &&
-                       ((round_mode==:half_up) || ((round_mode==:half_even) && ((digits.last % 2)==1)))))
+                       ((round_mode==:half_up) || ((round_mode==:half_even) && ((@digits.last % 2)==1)))))
           # increment = (@round_up == :tie) || (@round_up == :hi) # old behaviour (:half_up)
           if increment
             base = @output_b
