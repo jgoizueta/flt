@@ -52,7 +52,8 @@ class TestNumConstructor < Test::Unit::TestCase
 
   def test_literal_free_base
 
-    assert_equal [1, 13, -2], DecNum('0.1E-2', :free, :base=>2).split
+    assert_equal [1, 12, -2], DecNum('0.1E-2', :free, :base=>2).split
+    assert_equal [1, 13, -2], DecNum('0.1E-2', :free, :base=>2, :rounding=>:half_up).split
     assert_equal [1, 1250, -4], DecNum('0.1000000E-2', :free, :base=>2).split
     assert_equal [1, 125, -3], DecNum('0.1000000E-2', :free_shortest, :base=>2).split
 
@@ -122,7 +123,8 @@ class TestNumConstructor < Test::Unit::TestCase
     assert_equal [1, 1, -1], BinNum('0.1', :base=>2).split
     assert_equal [1, 8, -4], BinNum('0.1000', :base=>2).split
     # base conversion
-    assert_equal [1, 13, -2], DecNum('0.1E-2', :base=>2).split
+    assert_equal [1, 12, -2], DecNum('0.1E-2', :base=>2, :rounding=>:half_even).split
+    assert_equal [1, 13, -2], DecNum('0.1E-2', :base=>2, :rounding=>:half_up).split
     assert_equal [1, 26, -8], BinNum('0.1').split
     assert_equal [1, 13107, -17], BinNum('0.1000').split
   end
