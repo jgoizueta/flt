@@ -335,6 +335,25 @@ module Flt
       end
     end
 
+    module_function
+    # replace :ceiling and :floor rounding modes by :up/:down (depending on sign of the number to be rounded)
+    def simplified_round_mode(round_mode, negative)
+      if negative
+        if round_mode == :ceiling
+          round_mode = :floor
+        elsif round_mode == :floor
+          round_mode = :ceiling
+        end
+      end
+      if round_mode == :ceiling
+        round_mode = :up
+      elsif round_mode == :floor
+        round_mode = :down
+      end
+      round_mode
+    end
+
+
     # Floating-point reading and printing (from/to text literals).
     #
     # Here are methods for floating-point reading using algorithms by William D. Clinger and
@@ -446,13 +465,7 @@ module Flt
           alg ||= :A
           case alg
           when :M, :R
-            if sign == -1
-              if round_mode == :ceiling
-                round_mode = :floor
-              elsif round_mode == :floor
-                round_mode = :ceiling
-              end
-            end
+            round_mode = Support.simplified_round_mode(round_mode, sign == -1)
             case alg
             when :M
               _alg_m(context, round_mode, sign, f, e, eb, n)
@@ -536,9 +549,6 @@ module Flt
         @z = z0
         @r = context.num_class.radix
         @rp_n_1 = context.num_class.int_radix_power(n-1)
-        # simplify rounding (we're handling only positive numbers here)
-        round_mode = :up if round_mode == :ceiling
-        round_mode = :down if round_mode == :floor
         @round_mode = round_mode
 
         ret = nil
@@ -740,9 +750,9 @@ module Flt
         v_r = v-r
         z = context.Num(+1,q,k)
         exact = (r==0)
-        if (round_mode == :down || round_mode == :floor)
+        if round_mode == :down
           # z = z
-        elsif (round_mode == :up || round_mode == :ceiling) && r>0
+        elsif (round_mode == :up) && r>0
           z = z.next_plus(context)
         elsif r<v_r
           # z = z
@@ -750,8 +760,7 @@ module Flt
           z = z.next_plus(context)
         else
           # tie
-          if (round_mode == :half_down) || (round_mode == :half_even && ((q%2)==0)) ||
-             (round_mode == :down) || (round_mode == :floor)
+          if (round_mode == :half_down) || (round_mode == :half_even && ((q%2)==0)) || (round_mode == :down)
              # z = z
           else
             z = z.next_plus(context)
@@ -819,8 +828,17 @@ module Flt
         @b = input_b
         @min_e = input_min_e
         @output_b = output_b
-        @round_up = nil
+        # result of last operation
         @adjusted_digits = @digits = nil
+        # for "all-digits" mode results (which are truncated, rather than rounded),
+        # round_up contains information to round the result:
+        # * it is nil if the rest of digits are zero (the result is exact)
+        # * it is :lo if there exist non-zero digits beyond the significant ones (those returned), but
+        #   the value is below the tie (the value must be rounded up only for :up rounding mode)
+        # * it is :tie if there exists exactly one nonzero digit after the significant and it is radix/2,
+        #   for round-to-nearest it is atie.
+        # * it is :hi otherwise (the value should be rounded-up except for the :down mode)
+        @round_up = nil
       end
 
       # This method converts v = f*b**e into a sequence of output_b-base digits,
@@ -843,7 +861,8 @@ module Flt
       # formatting '0.1' (as a decimal floating-point number) in base 2 with :down rounding
       #
       # When the +all+ parameters is used the result is not rounded, and the round_up flag is set
-      # to indicate that the last digits should be rounded up.
+      # to indicate that nonzero digits exists beyond the returned digits (so, under :up the result should
+      # be rounded up)
       #
       # Note that the round_mode here is not the rounding mode applied to the output;
       # it is the rounding mode that applied to *input* preserves the original floating-point
@@ -860,24 +879,18 @@ module Flt
         p ||= v.class.context.precision
 
         # adjust the rounding mode to work only with positive numbers
-        if @minus
-          if @round_mode == :ceiling
-            @round_mode = :floor
-          elsif @round_mode == :floor
-            @round_mode = :ceiling
-          end
-        end
+        @round_mode = Support.simplified_round_mode(@round_mode, @minus)
 
         # determine the high,low inclusion flags of the rounding limits
         case @round_mode
           when :half_even
             # rounding rage is (v-m-,v+m+) if v is odd and [v+m-,v+m+] if even
             @round_l = @round_h = ((@f%2)==0)
-          when :up, :ceiling
+          when :up
             # rounding rage is (v-,v]
             # ceiling is treated here assuming f>0
             @round_l, @round_h = false, true
-          when :down, :floor
+          when :down
             # rounding rage is [v,v+)
             # floor is treated here assuming f>0
             @round_l, @round_h = true, false
@@ -923,11 +936,11 @@ module Flt
         # The value to be formatted is @v=@r/@s; m- = @m_m/@s = (@v - v-)/@s; m+ = @m_p/@s = (v+ - @v)/@s
         # Now adjust @m_m, @m_p so that they define the rounding range
         case @round_mode
-        when :up, :ceiling
+        when :up
           # ceiling is treated here assuming @f>0
           # rounding range is -v,@v
           @m_m, @m_p = @m_m*2, 0
-        when :down, :floor
+        when :down
           # floor is treated here assuming #f>0
           # rounding range is @v,v+
           @m_m, @m_p = 0, @m_p*2
@@ -948,14 +961,22 @@ module Flt
 
       attr_reader :round_up
 
+
       # Access rounded result of format operation: scaling (position of radix point) and digits
-      def adjusted_digits
+      def adjusted_digits(round_mode)
+        round_mode = Support.simplified_round_mode(round_mode, @minus)
         if @adjusted_digits.nil? && !@digits.nil?
-          if @round_up
+          increment = (@round_up && (round_mode != :down)) &&
+                      ((round_mode == :up) ||
+                      (@round_up == :hi) ||
+                      ((@round_up == :tie) &&
+                       ((round_mode==:half_up) || ((round_mode==:half_even) && ((digits.last % 2)==1)))))
+          # increment = (@round_up == :tie) || (@round_up == :hi) # old behaviour (:half_up)
+          if increment
             base = @output_b
             dec_pos = @k
             digits = @digits.dup
-            # carry = roundup ? 1 : 0
+            # carry = increment ? 1 : 0
             # digits = digits.reverse.map{|d| d += carry; d>=base ? 0 : (carry=0;d)}.reverse
             # if carry != 0
             #   digits.unshift carry
@@ -1064,7 +1085,16 @@ module Flt
           tc2 = @round_h ? (r+m_p >= s) : (r+m_p > s)
 
           if tc1 && tc2
-            @round_up = true if r*2 >= s
+            if r != 0
+              r *= 2
+              if r > s
+                @round_up = :hi
+              elsif r == s
+                @round_up = :tie
+              else
+                @rund_up = :lo
+              end
+            end
             break
           end
         end

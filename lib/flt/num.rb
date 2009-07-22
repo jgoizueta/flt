@@ -3282,6 +3282,11 @@ class Num < Numeric
   # arbitrarily change its value and preserve the parsed value of the
   # floating point number.
   #
+  # :output_rounding implies :all_digits; it defines the rounding mode for the output,
+  # that will show all significant digits rounded.
+  # If it is not passed and :all_digits is true, then :rounding or the context rounding mode
+  # will be used.
+  #
   # Note that when :base=>10 (the default) we're regarding the binary number x
   # as an approximation with x.number_of_digits precision and showing that
   # inexact value in decimal without introducing additional precision.
@@ -3294,6 +3299,8 @@ class Num < Numeric
     rounding = options[:rounding]
     all_digits = options[:all_digits]
     eng = options[:eng]
+    output_rounding = options[:output_rounding]
+    all_digits ||= output_rounding
 
     sgn = @sign<0 ? '-' : ''
     if special?
@@ -3309,13 +3316,14 @@ class Num < Numeric
     context = define_context(num_context)
     inexact = true
     rounding ||= context.rounding
+    output_rounding ||= rounding
     x = self
 
     p = self.number_of_digits # context.precision
 
     formatter = Flt::Support::Formatter.new(num_class.radix, context.etiny, output_radix)
     formatter.format(x, @coeff, @exp, rounding, p, all_digits)
-    dec_pos,digits = formatter.adjusted_digits
+    dec_pos,digits = formatter.adjusted_digits(output_rounding)
 
     ds = digits.map{|d| d.to_s(output_radix)}.join
     n_ds = ds.size
@@ -4153,7 +4161,7 @@ class Num < Numeric
       rounding ||= context.rounding unless
       formatter = Flt::Support::Formatter.new(x.num_class.radix, num_class.context.etiny, num_class.radix)
       formatter.format(x, f, e, rounding, p, all_digits)
-      dec_pos,digits = formatter.adjusted_digits
+      dec_pos,digits = formatter.adjusted_digits(rounding)
 
       # f = digits.map{|d| d.to_s(num_class.radix)}.join.to_i(num_class.radix)
       f = digits.inject(0){|a,b| a*num_class.radix + b}
