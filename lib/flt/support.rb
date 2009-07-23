@@ -387,7 +387,7 @@ module Flt
       #   in this case the result can be converted back to the original number (with the same precision)
       #   a rounding mode for the back conversion may be passed; otherwise any round-to-nearest is assumed.
       #   (to increase the precision of the result the input precision must be increased --adding trailing zeros)
-      # * :free_shortest is like :free, but the minumum number of digits that preserve the original value
+      # * :short is like :free, but the minumum number of digits that preserve the original value
       #   are generated (with :free, all significant digits are generated)
       #
       # For the fixed mode there are three conversion algorithms available that can be selected with the
@@ -422,7 +422,7 @@ module Flt
         @exact = true
 
         case @mode
-        when :free, :free_shortest
+        when :free, :short
           all_digits = (@mode == :free)
           # for free mode, (any) :nearest rounding is used by default
           Num.convert(Num[eb].Num(sign, f, e), context.num_class, :rounding=>round_mode||:nearest, :all_digits=>all_digits)

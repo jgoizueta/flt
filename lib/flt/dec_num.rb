@@ -109,7 +109,7 @@ class DecNum < Num
   #   Otherwise, all significative digits that can be derived from the literal are generanted, significative
   #   meaning here that if the digit is changed and the value converted back to a literal of the same base and
   #   precision, the original literal will not be obtained.
-  # * :free_shortest is a variation of :free in which only the minimun number of digits that are necessary to
+  # * :short is a variation of :free in which only the minimun number of digits that are necessary to
   #   produce the original literal when the value is converted back with the same original precision.
   # * :fixed will round and normalize the value to the precision specified by the context (normalize meaning
   #   that exaclty the number of digits specified by the precision will be generated, even if the original
@@ -124,12 +124,12 @@ class DecNum < Num
   #   DecNum('0.1000')                                  # -> 0.1000
   #   DecNum('0.12345')                                 # -> 0.12345
   #   DecNum('1.2345E-1')                               # -> 0.12345
-  #   DecNum('0.1000', :free_shortest)                  # -> 0.1000
+  #   DecNum('0.1000', :short)                          # -> 0.1000
   #   DecNum('0.1000',:fixed, :precision=>20)           # -> 0.10000000000000000000
   #   DecNum('0.12345',:fixed, :precision=>20)          # -> 0.12345000000000000000
   #   DecNum('0.100110E3', :base=>2)                    # -> 4.8
   #   DecNum('0.1E-5', :free, :base=>2)                 # -> 0.016
-  #   DecNum('0.1E-5', :free_shortest, :base=>2)        # -> 0.02
+  #   DecNum('0.1E-5', :short, :base=>2)                # -> 0.02
   #   DecNum('0.1E-5', :fixed, :base=>2, :exact=>true)  # -> 0.015625
   #   DecNum('0.1E-5', :fixed, :base=>2)                # -> 0.01562500000000000000000000000
   def initialize(*args)

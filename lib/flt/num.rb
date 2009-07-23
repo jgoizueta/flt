@@ -1233,7 +1233,7 @@ class Num < Numeric
   #   Otherwise, all significative digits that can be derived from the literal are generanted, significative
   #   meaning here that if the digit is changed and the value converted back to a literal of the same base and
   #   precision, the original literal will not be obtained.
-  # * :free_shortest is a variation of :free in which only the minimun number of digits that are necessary to
+  # * :short is a variation of :free in which only the minimun number of digits that are necessary to
   #   produce the original literal when the value is converted back with the same original precision.
   # * :fixed will round and normalize the value to the precision specified by the context (normalize meaning
   #   that exaclty the number of digits specified by the precision will be generated, even if the original
@@ -1326,7 +1326,7 @@ class Num < Numeric
             mode ||= :free
           end
 
-          if [:free, :free_shortest].include?(mode) && base == num_class.radix
+          if [:free, :short].include?(mode) && base == num_class.radix
             # simple case, the job is already done
           else
             rounding = context.rounding
