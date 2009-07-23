@@ -129,9 +129,9 @@ class Float
   # Sign: -1 for minus, +1 for plus, nil for nan (note that Float zero is signed)
   def sign
     if nan?
-      nilg
+      nil
     elsif self==0
-      self.to_s[0,1] == "-" ? -1 : +1
+      self.to_s[0,1] == "-" ? -1 : +1 # (1/self < 0) ? -1 : +1
     else
       self < 0 ? -1 : +1
     end
@@ -179,16 +179,13 @@ class Float
     [sign, coeff, exp]
   end
 
-  def int_exp
-  end
-
   # Return the value of the number as an signed integer and a scale.
   def to_int_scale
     if special?
       nil
     else
       coeff,exp = Math.frexp(self)
-      coeff = coeff.abs
+      coeff = coeff
       if exp < MIN_EXP
         # denormalized number
         coeff = Math.ldexp(coeff, exp-MIN_EXP+MANT_DIG).to_i
