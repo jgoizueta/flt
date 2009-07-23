@@ -59,7 +59,6 @@
 #
 # Float::MAX_F : Maximum significand
 #
-
 class Float
 
   DECIMAL_DIG = (MANT_DIG*Math.log(RADIX)/Math.log(10)).ceil+1
