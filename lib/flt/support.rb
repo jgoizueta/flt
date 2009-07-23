@@ -853,16 +853,26 @@ module Flt
       # while preserving the parsed value of the floating point number. Since the digits are not rounded
       # more digits may be needed to assure round-trip value preservation.
       # This is useful to reflect the precision of the floating point value in the output; in particular
-      # trailing significant zeros are shown.
+      # trailing significant zeros are shown. But note that, for directed rounding and base conversion
+      # this may need to produce an infinite number of digits, in which case an exception will be raised.
+      # This is specially frequent for the :up rounding mode, in which any number with a finite number
+      # of nonzero digits equal to or less than the precision will haver and infinite sequence of zero
+      # significant digits.
       #
       # With :down rounding (truncation) this could be used to show the exact value of the floating
       # point but beware: when used with directed rounding, if the value has not an exact representation
       # in the output base this will lead to an infinite loop.
       # formatting '0.1' (as a decimal floating-point number) in base 2 with :down rounding
       #
-      # When the +all+ parameters is used the result is not rounded, and the round_up flag is set
-      # to indicate that nonzero digits exists beyond the returned digits (so, under :up the result should
-      # be rounded up)
+      # When the +all+ parameters is used the result is not rounded (is truncated), and the round_up flag
+      # is set to indicate that nonzero digits exists beyond the returned digits; the possible values
+      # of the round_up flag are:
+      # * nil : the rest of digits are zero (the result is exact)
+      # * :lo : there exist non-zero digits beyond the significant ones (those returned), but
+      #   the value is below the tie (the value must be rounded up only for :up rounding mode)
+      # * :tie : there exists exactly one nonzero digit after the significant and it is radix/2,
+      #   for round-to-nearest it is atie.
+      # * :hi : the value is closer to the rounded-up value (incrementing the last significative digit.)
       #
       # Note that the round_mode here is not the rounding mode applied to the output;
       # it is the rounding mode that applied to *input* preserves the original floating-point
