@@ -344,10 +344,15 @@ The result is independent of the context precision.
   puts DecNum(0.1)                                # -> 0.1
   puts DecNum(1.0/3)                              # -> 0.3333333333333333
 
-This conversion gives the results expected most of the time when the Float value is define by a
-decimal literal, care must be taken:
+This conversion gives the results expected most of the time, but it must be noticed that
+there must be some compromise, because different decimal literals convert to the same Float value:
 
   puts DecNum(0.10000000000000001)                 # -> 0.1
+
+There's also some uncertainty because the way the Ruby interpreter parses Float literals
+may not be well specified; in the usual case (IEEE Double Floats and round-to-even)
+the results will be as expected (correctly rounded Floats), but some platforms may
+behave differently.
 
 The BinNum also a instance method +to_decimal_exact+ to perform the previous 'exact' conversion, that
 could have be written:
@@ -371,7 +376,8 @@ This file defines +D+ as a synonym for +DecNum+:
 
 == Error analysis
 
-The DecNum#ulp() method returns the value of a "unit in the last place" for a given number
+The DecNum#ulp() method returns the value of a "unit in the last place" for a given number under
+the current context.
 
   D.context.precision = 4
   puts D('1.5').ulp                                # -> 0.001
