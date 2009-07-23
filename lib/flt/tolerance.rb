@@ -356,7 +356,7 @@ module Flt
           r
         elsif @radix==10
           # assert x.class==BinNum
-          # TODO: optimize (implement log10, power for BinNum)
+          # TODO: optimize (implement log10 for BinNum)
           exp = xs.map do |x|
             x = x.to_decimal_exact(:exact=>true).normalize
             exp = x.adjusted_exponent

@@ -90,7 +90,7 @@
 #       * keep the kind of ulp in the context
 #       also, note that Tolerance uses only the Muller king of ulp.
 # TODO: move the exception classes from Flt::Num to Flt ? move also Flt::Num::ContextBas to Flt ?
-# TODO: find better name for :all_digits (:preserve_precision, :mantain_precision, ...)
+# TODO: find better name for :all_digits (:preserve_precision, :mantain_precision, ...) ?
 # TODO: should the context determine the mode for cross-base literal-to-Num conversion (:free, :fixed)?
 #           BinNum.context.input = :fixed; x = BinNum('0.1')
 # TODO: We're being very intrusive with the Float extensions; is there a better way?
@@ -2302,8 +2302,6 @@ class Num < Numeric
   end
 
   def inspect
-    # TODO: depending on the final naming of module and classes, it may or may not be desiderable to
-    # remove the class name qualifier
     class_name = num_class.to_s.split('::').last
     if $DEBUG
       "#{class_name}('#{self}') [coeff:#{@coeff.inspect} exp:#{@exp.inspect} s:#{@sign.inspect} radix:#{num_class.radix}]"
@@ -3292,9 +3290,8 @@ class Num < Numeric
   # inexact value in decimal without introducing additional precision.
   # If the exact value of the number expressed in decimal is desired (we consider
   # the Flt an exact number), this can be done with Num.convert_exact.
-  #
-  # TODO: support options (base, all_digits, any_rounding, eng) and context options in the same hash
   def format(num_context, options={})
+    # TODO: support options (base, all_digits, any_rounding, eng) and context options in the same hash
     output_radix = options[:base] || 10
     rounding = options[:rounding]
     all_digits = options[:all_digits]
@@ -3330,7 +3327,7 @@ class Num < Numeric
     exp = dec_pos - n_ds
     leftdigits = dec_pos
 
-    # TODO: DRY (this code is duplicated in DecNum#to_s)
+    # TODO: DRY (this code is duplicated in DecNum#format)
     if exp<=0 && leftdigits>-6
       dotplace = leftdigits
     elsif !eng

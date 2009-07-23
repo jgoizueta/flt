@@ -592,7 +592,6 @@ module Flt
       end
 
       def compare(m, x, y, context)
-        # TODO: refactor to simplify logic
         ret = nil
         d = x-y
         d2 = 2*m*d.abs
