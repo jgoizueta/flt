@@ -309,7 +309,7 @@ As another example consider conversion from Float to DecNum, which is not define
 default because it can be defined in different ways depending on the purpose.
 
 A Float constant such as 0.1 defines a Float object which has a numerical value close to,
-but not exactly 1/10. When converting that Float to DecNum we could decide to preserver
+but not exactly 1/10. When converting that Float to DecNum we could decide to preserve
 the exact numerical value of the number or try to find a simple decimal expression within
 a given tolerance. If we take the first approach we can define this conversion:
 
