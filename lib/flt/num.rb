@@ -2154,9 +2154,8 @@ class Num < Numeric
   # Note that the number is also rounded (precision is reduced) if it had more precision than the context.
   def normalize(context=nil)
     context = define_context(context)
-    return Num(self) if self.special? || self.zero?
+    return Num(self) if self.special? || self.zero? || context.exact?
     sign, coeff, exp = self._fix(context).split
-    return context.exception(InvalidOperation, "Normalize in exact context") if context.exact?
     if self.subnormal?
       context.exception Subnormal
       if exp > context.etiny
