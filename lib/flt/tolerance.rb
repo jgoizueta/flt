@@ -347,7 +347,7 @@ module Flt
           exp = xs.map do |x|
             x = x.normalize
             exp = x.adjusted_exponent
-            exp -= 1 if x.coefficient == x.class.context.minimum_normalized_coefficient # if :low mode
+            exp -= 1 if x.coefficient == x.num_class.context.minimum_normalized_coefficient # if :low mode
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
@@ -360,7 +360,7 @@ module Flt
           exp = xs.map do |x|
             x = x.to_decimal_exact(:exact=>true).normalize
             exp = x.adjusted_exponent
-            exp -= 1 if x.coefficient == x.class.context.minimum_normalized_coefficient # if :low mode
+            exp -= 1 if x.coefficient == x.num_class.context.minimum_normalized_coefficient # if :low mode
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
@@ -430,7 +430,7 @@ module Flt
       "#{@ulps} ulp#{(!@ulps.kind_of?(Numeric) || (@ulps > 1)) ? 's' : ''}"
     end
     def relative_to(x)
-      n = x.class.Num(@ulps)
+      n = x.num_class.Num(@ulps)
       x.ulp*n
     end
     def relative_to_many(mode, *xs)

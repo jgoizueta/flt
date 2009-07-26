@@ -59,9 +59,37 @@
 #
 # Float::MAX_F : Maximum significand
 #
+
 class Float
 
   DECIMAL_DIG = (MANT_DIG*Math.log(RADIX)/Math.log(10)).ceil+1
+
+  # Minimum normalized number == MAX_D.next
+  MIN_N = Math.ldexp(0.5,Float::MIN_EXP) # == nxt(MAX_D) == Float::MIN
+
+  # Maximum denormal number == MIN_N.prev
+  MAX_D = Math.ldexp(Math.ldexp(1,Float::MANT_DIG-1)-1,Float::MIN_EXP-Float::MANT_DIG)
+
+  # Minimum non zero positive denormal number == 0.0.next
+  MIN_D = Math.ldexp(1,Float::MIN_EXP-Float::MANT_DIG);
+
+  # Maximum significand  == Math.ldexp(Math.ldexp(1,Float::MANT_DIG)-1,-Float::MANT_DIG)
+  MAX_F = Math.frexp(Float::MAX)[0]   == Math.ldexp(Math.ldexp(1,Float::MANT_DIG)-1,-Float::MANT_DIG)
+
+end
+
+require 'delegate'
+
+
+module Flt::FloatExtensions
+
+  def self.included(base)
+    base.extend(ClassMethods)
+  end
+
+  def num_class
+    self.class
+  end
 
   # Compute the adjacent floating point values: largest value not larger than
   # this and smallest not smaller.
@@ -165,14 +193,14 @@ class Float
     else
       coeff,exp = Math.frexp(self)
       coeff = coeff.abs
-      if exp < MIN_EXP
+      if exp < Float::MIN_EXP
         # denormalized number
-        coeff = Math.ldexp(coeff, exp-MIN_EXP+MANT_DIG).to_i
-        exp = MIN_EXP-MANT_DIG
+        coeff = Math.ldexp(coeff, exp-Float::MIN_EXP+Float::MANT_DIG).to_i
+        exp = Float::MIN_EXP-Float::MANT_DIG
       else
         # normalized number
-        coeff = Math.ldexp(coeff, MANT_DIG).to_i
-        exp -= MANT_DIG
+        coeff = Math.ldexp(coeff, Float::MANT_DIG).to_i
+        exp -= Float::MANT_DIG
       end
     end
     [sign, coeff, exp]
@@ -185,44 +213,33 @@ class Float
     else
       coeff,exp = Math.frexp(self)
       coeff = coeff
-      if exp < MIN_EXP
+      if exp < Float::MIN_EXP
         # denormalized number
-        coeff = Math.ldexp(coeff, exp-MIN_EXP+MANT_DIG).to_i
-        exp = MIN_EXP-MANT_DIG
+        coeff = Math.ldexp(coeff, exp-Float::MIN_EXP+Float::MANT_DIG).to_i
+        exp = Float::MIN_EXP-Float::MANT_DIG
       else
         # normalized number
-        coeff = Math.ldexp(coeff, MANT_DIG).to_i
-        exp -= MANT_DIG
+        coeff = Math.ldexp(coeff, Float::MANT_DIG).to_i
+        exp -= Float::MANT_DIG
       end
       [coeff, exp]
     end
   end
 
-  # Minimum normalized number == MAX_D.next
-  MIN_N = Math.ldexp(0.5,Float::MIN_EXP) # == nxt(MAX_D) == Float::MIN
-
-  # Maximum denormal number == MIN_N.prev
-  MAX_D = Math.ldexp(Math.ldexp(1,Float::MANT_DIG-1)-1,Float::MIN_EXP-Float::MANT_DIG)
-
-  # Minimum non zero positive denormal number == 0.0.next
-  MIN_D = Math.ldexp(1,Float::MIN_EXP-Float::MANT_DIG);
-
-  # Maximum significand  == Math.ldexp(Math.ldexp(1,Float::MANT_DIG)-1,-Float::MANT_DIG)
-  MAX_F = Math.frexp(Float::MAX)[0]   == Math.ldexp(Math.ldexp(1,Float::MANT_DIG)-1,-Float::MANT_DIG)
 
   # ulp (unit in the last place) according to the definition proposed by J.M. Muller in
   # "On the definition of ulp(x)" INRIA No. 5504
   def ulp(mode=:low)
     return self if nan?
     x = abs
-    if x < Math.ldexp(1,MIN_EXP) # x < RADIX*MIN_N
-      Math.ldexp(1,MIN_EXP-MANT_DIG) # res = MIN_D
-    elsif x > MAX # x > Math.ldexp(1-Math.ldexp(1,-MANT_DIG),MAX_EXP)
-      Math.ldexp(1,MAX_EXP-MANT_DIG) # res = MAX - MAX.prev
+    if x < Math.ldexp(1,Float::MIN_EXP) # x < Float::RADIX*Float::MIN_N
+      Math.ldexp(1,Float::MIN_EXP-Float::MANT_DIG) # res = Float::MIN_D
+    elsif x > Float::MAX # x > Math.ldexp(1-Math.ldexp(1,-Float::MANT_DIG),Float::MAX_EXP)
+      Math.ldexp(1,Float::MAX_EXP-Float::MANT_DIG) # res = Float::MAX - Float::MAX.prev
     else
       f,e = Math.frexp(x)
       e -= 1 if f==Math.ldexp(1,-1) if mode==:low # assign the smaller ulp to radix powers
-      Math.ldexp(1,e-MANT_DIG)
+      Math.ldexp(1,e-Float::MANT_DIG)
     end
   end
 
@@ -234,7 +251,7 @@ class Float
     if special? || zero?
       false
     else
-      self.abs >= MIN_N
+      self.abs >= Float::MIN_N
     end
   end
 
@@ -242,11 +259,11 @@ class Float
     if special? || zero?
       false
     else
-      self.abs < MIN_N
+      self.abs < Float::MIN_N
     end
   end
 
-  class <<self
+  module ClassMethods
 
     def radix
       Float::RADIX
@@ -288,7 +305,7 @@ class Float
     # We have:
     #   Float.epsilon == (1.0.next-1.0)
     def epsilon(sign=+1)
-      (sign < 0) ? -EPSILON : EPSILON
+      (sign < 0) ? -Float::EPSILON : Float::EPSILON
     end
 
     # The strict epsilon is the smallest value that produces something different from 1.0
@@ -307,17 +324,17 @@ class Float
         eps
       else
         f,e = Math.frexp(1)
-        eps = Math.ldexp(f.next,e-MANT_DIG)
+        eps = Math.ldexp(f.next,e-Float::MANT_DIG)
         if (1.0+eps) > 1.0
           eps
         else
-          eps = Math.ldexp(f,e-MANT_DIG)
+          eps = Math.ldexp(f,e-Float::MANT_DIG)
           if (1.0+eps) > 1.0
             eps
           else
             puts "here"
-            puts "f=#{f} e=#{e} exp=#{e-MANT_DIG} => #{Math.ldexp(f,e-MANT_DIG)} eps = #{epsilon}"
-            Math.ldexp(f,e-MANT_DIG+1)
+            puts "f=#{f} e=#{e} exp=#{e-Float::MANT_DIG} => #{Math.ldexp(f,e-Float::MANT_DIG)} eps = #{epsilon}"
+            Math.ldexp(f,e-Float::MANT_DIG+1)
           end
         end
       end
@@ -332,34 +349,30 @@ class Float
     def half_epsilon(sign=+1)
       # 0.5*epsilon(sign)
       f,e = Math.frexp(1)
-      Math.ldexp(f, e-MANT_DIG)
+      Math.ldexp(f, e-Float::MANT_DIG)
     end
 
     # minimum normal Float value (with specified sign)
     def minimum_normal(sign=+1)
-      (sign < 0) ? -MIN_N : MIN_N
+      (sign < 0) ? -Float::MIN_N : Float::MIN_N
     end
 
     # maximum subnormal (denormalized) Float value (with specified sign)
     def maximum_subnormal(sign=+1)
-      (sign < 0) ? -MAX_D : MAX_D
+      (sign < 0) ? -Float::MAX_D : Float::MAX_D
     end
 
     # minimum (subnormal) nonzero Float value, with specified sign
     def minimum_nonzero(sign=+1)
-      (sign < 0) ? -MIN_D : MIN_D
+      (sign < 0) ? -Float::MIN_D : Float::MIN_D
     end
 
     # maximum finite Float value, with specified sign
     def maximum_finite(sign=+1)
-      (sign < 0) ? -MAX : MAX
+      (sign < 0) ? -Float::MAX : Float::MAX
     end
 
-    def build(sign, coeff, exp)
-      Math.ldexp(sign*coeff, exp)
-    end
-
-    def new(*args)
+    def Num(*args)
       args = *args if args.size==1 && args.first.is_a?(Array)
       if args.size==3
         Math.ldexp(args[0]*args[1],args[2])
@@ -370,12 +383,8 @@ class Float
       end
     end
 
-    def Num(*args)
-      self.new(*args)
-    end
-
     def precision
-      MANT_DIG
+      Float::MANT_DIG
     end
 
     def exact?
@@ -388,21 +397,30 @@ class Float
     end
 
     def emin
-      MIN_EXP-1
+      Float::MIN_EXP-1
     end
 
     def emax
-      MAX_EXP-1
+      Float::MAX_EXP-1
     end
 
     def etiny
-      MIN_EXP - MANT_DIG
+      Float::MIN_EXP - Float::MANT_DIG
     end
 
     def etop
-      MAX_EXP - MANT_DIG
+      Float::MAX_EXP - Float::MANT_DIG
     end
 
   end
 
+end
+
+def Flt.FloatNum(*args)
+  #Flt::FloatNum.new(*args)
+  Float.Num(*args)
+end
+
+class Float
+  include Flt::FloatExtensions
 end

@@ -1374,6 +1374,7 @@ class Num < Numeric
   private :Num
 
   class <<self
+    # Num is the general constructor that can be invoked on specific Flt::Num-derived classes.
     def Num(*args)
       if args.size==1 && args.first.instance_of?(self)
         args.first
@@ -4167,5 +4168,11 @@ class Num < Numeric
   end
 
 end # Num
+
+  # Num can be invoked to convert a Float value to a class that is (partially) compatible with Flt::Num
+  def Flt.Num(num)
+    num.instance_of?(Float) ? Flt.FloatNum(num) : num
+  end
+
 
 end # Flt

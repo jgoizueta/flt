@@ -885,7 +885,7 @@ module Flt
         @e = e
         @round_mode = round_mode
         @all_digits = all
-        p ||= v.class.context.precision
+        p ||= v.num_class.context.precision
 
         # adjust the rounding mode to work only with positive numbers
         @round_mode = Support.simplified_round_mode(@round_mode, @minus)
@@ -1200,7 +1200,7 @@ module Flt
         # 1.3 more rough Float aproximation
           # TODO: optimize denominator, correct numerator for more precision with first digit or part
           # of the coefficient (like _log_10_lb)
-        estimated_scale ||= (v.adjusted_exponent.to_f * Math.log(v.class.radix) * log_b).ceil
+        estimated_scale ||= (v.adjusted_exponent.to_f * Math.log(v.num_class.radix) * log_b).ceil
 
         if estimated_scale >= 0
           @k = estimated_scale
