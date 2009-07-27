@@ -78,7 +78,7 @@ class TestBinArithmetic < Test::Unit::TestCase
           ok = false
         end
       end
-      assert ok, "#{x}**#{y} (#{x.split.inspect}**#{y.split.inspect}) Incorrect: #{zz.split.inspect} instead of #{zzz && zzz.split.inspect}"
+      assert ok, "#{x}**#{y} (#{Flt.Num(x).split.inspect}**#{Flt.Num(y).split.inspect}) Incorrect: #{zz.split.inspect} instead of #{zzz && zzz.split.inspect}"
     end
   end
 

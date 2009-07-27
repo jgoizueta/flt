@@ -35,21 +35,7 @@ module Flt::BigDecimalExtensions
   module ClassMethods
 
     def Num(*args)
-      if args.size==3
-        build *args
-      elsif args.size==2
-        build +1, *args
-      elsif args.size==1
-        arg = args.first
-        case arg
-        when Rational
-          BigDecimal.new(arg.numerator.to_s)/BigDecimal.new(arg.denominator.to_s)
-        else
-          BigDecimal.new(arg.to_s)
-        end
-      else
-        raise ArgumentError, "wrong number of arguments (#{args.size} for 1, 2 or 3)"
-      end
+      Flt.BigDecimalNum(*args)
     end
 
     def radix
@@ -69,16 +55,43 @@ module Flt::BigDecimalExtensions
 
 end
 
-def Flt.BigDecimalNum(*args)
-  #Flt::BigDecimalNum.new(*args)
-  if args.size==1 && args.first.is_a?(BigDecimal)
-    args.first
-  else
-    BigDecimal.new(*args)
+class Flt::BigDecimalNum  < DelegateClass(BigDecimal)
+
+  include Flt::BigDecimalExtensions
+
+  def initialize(*args)
+    super BigDecimal.new(*args)
   end
+
 end
 
-class BigDecimal
-  include Flt::BigDecimalExtensions
+def Flt.extend_big_decimal
+  BigDecimal.send :include, Flt::BigDecimalExtensions unless BigDecimal < Flt::BigDecimalExtensions
 end
+
+def Flt.BigDecimalNum(*args)
+  if args.size==3
+    x = BigDecimal.new("#{args[0]*args[1]}E#{args[2]}")
+  elsif args.size==2
+    x = BigDecimal.new("#{args[0]}E#{args[1]}")
+  elsif args.size==1
+    arg = args.first
+    case arg
+    when BigDecimal
+      x = arg
+    when Rational
+      x = BigDecimal.new(arg.numerator.to_s)/BigDecimal.new(arg.denominator.to_s)
+    else
+      x = BigDecimal.new(arg.to_s)
+    end
+  else
+    raise ArgumentError, "wrong number of arguments (#{args.size} for 1, 2 or 3)"
+  end
+  BigDecimal < Flt::BigDecimalExtensions ? x : Flt::BigDecimalNum.new(x)
+end
+
+def Flt.BigDecimalNumClass
+  BigDecimal < Flt::BigDecimalExtensions ? BigDecimal : Flt::BigDecimalExtensions
+end
+Flt.extend_big_decimal
 

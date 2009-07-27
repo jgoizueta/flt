@@ -39,6 +39,7 @@ def random_dec_num
 end
 
 def random_num(num_class)
+  num_class = Flt.NumClass(num_class)
   if rand(20)==0
     # generate 5% of subnormals
     f = rand(num_class.radix**(num_class.context.precision-1))
@@ -62,10 +63,12 @@ def random_num(num_class)
 end
 
 def special_nums(num_class)
+  num_class = Flt.NumClass(num_class)
   [num_class.nan, num_class.infinity, -num_class.infinity]
 end
 
 def singular_nums(num_class)
+  num_class = Flt.NumClass(num_class)
   nums = [num_class.zero(-1), num_class.zero(+1), num_class.minimum_nonzero, -num_class.minimum_nonzero,
     num_class.minimum_nonzero.next_plus, -num_class.minimum_nonzero.next_plus,
     num_class.maximum_subnormal.next_minus, -num_class.maximum_subnormal.next_minus,

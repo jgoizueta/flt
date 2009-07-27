@@ -19,7 +19,7 @@ class TestBinfloatConversion < Test::Unit::TestCase
         x = random_float
         txt = BinNum(x).to_s
         y = BinNum(txt, :fixed).to_f
-        assert_equal x, y, "FAIL #{x.split.inspect} #{rounding} #{y.split.inspect} #{x.class}"
+        assert_equal x, y, "FAIL #{Flt.Num(x).split.inspect} #{rounding} #{Flt.Num(y).split.inspect} #{x.class}"
       end
     end
   end

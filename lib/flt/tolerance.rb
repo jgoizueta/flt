@@ -201,7 +201,7 @@ module Flt
     # can be redefined to allow for values which change in value or precision depending
     # on the numeric class or context.
     def cast_value(num_class)
-      num_class.Num(@value)
+      Flt.NumClass(num_class).Num(@value)
     end
 
     # Description of the reference value (can be specialized in derived classes)
@@ -382,7 +382,7 @@ module Flt
             exp -= 1 if f==FloatingTolerance.float_minimum_normalized_fraction # if :low mode
             exp -= FloatingTolerance.ref_adjusted_exp
           end.send(mode)
-          Math.ldexp(v, exp)
+          Math.ldexp(v.to_f, exp)
         else
           # assert @radix==10
           exp = xs.map do |x|
@@ -422,6 +422,7 @@ module Flt
     def initialize(n=nil, num_class=nil)
       @ulps = n || 1
       num_class ||= Float
+      num_class = Flt.NumClass(num_class)
       unit = num_class.Num(1)
       n = num_class.Num(@ulps)
       super(unit.ulp*n)
