@@ -336,7 +336,7 @@ module Flt
     def relative_to_many(mode, *xs)
       exp = nil
 
-      num_class = xs.first.class
+      num_class = Flt.Num(xs.first).num_class
       xs = xs.map{|x| num_class.Num(x)} if xs.size>1
       v = cast_value(num_class)
 

@@ -56,7 +56,7 @@ class TestDefineConversions < Test::Unit::TestCase
     end
 
     assert_raise(TypeError) { DecNum('0') == BigDecimal.new('0') }
-    unless Num.ancestors.include?(Numeric)
+    unless Num < Numeric
       # BigDecimal#eql? is weird
       assert_not_equal BigDecimal.new('0'), DecNum('0')
       assert_not_equal BigDecimal.new('1.2345'), DecNum('1.2345')
