@@ -4,12 +4,35 @@ require 'flt'
 require 'bigdecimal'
 require 'bigdecimal/math'
 
-class BigDecimal
+module Flt::BigDecimalExtensions
 
-  class <<self
-    def build(sign, coeff, exp)
-      BigDecimal.new("#{sign*coeff}E#{exp}")
+  def self.included(base)
+    base.extend(ClassMethods)
+  end
+
+  def num_class
+    self.class
+  end
+
+  def ulp(mode=:low)
+    if self.nan?
+      return self
+    elsif self.infinite?
+      return nil
+    elsif self.zero?
+      return nil
+    else
+      if BigDecimal.limit != 0
+        prec = BigDecimal.limit
+      else
+        prec = [self.precs[0], Float::DIG].max
+      end
+      exp = self.exponent - (prec-1)
+      BigDecimal.new "1E#{exp}"
     end
+  end
+
+  module ClassMethods
 
     def Num(*args)
       if args.size==3
@@ -40,26 +63,22 @@ class BigDecimal
 
   end
 
-  def ulp(mode=:low)
-    if self.nan?
-      return self
-    elsif self.infinite?
-      return nil
-    elsif self.zero?
-      return nil
-    else
-      if BigDecimal.limit != 0
-        prec = BigDecimal.limit
-      else
-        prec = [self.precs[0], Float::DIG].max
-      end
-      exp = self.exponent - (prec-1)
-      BigDecimal.new "1E#{exp}"
-    end
-  end
-
-  module Math
-    extend BigMath
-  end
+  # module Math
+  #   extend BigMath
+  # end
 
 end
+
+def Flt.BigDecimalNum(*args)
+  #Flt::BigDecimalNum.new(*args)
+  if args.size==1 && args.first.is_a?(BigDecimal)
+    args.first
+  else
+    BigDecimal.new(*args)
+  end
+end
+
+class BigDecimal
+  include Flt::BigDecimalExtensions
+end
+

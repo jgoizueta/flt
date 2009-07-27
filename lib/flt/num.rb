@@ -4171,7 +4171,14 @@ end # Num
 
   # Num can be invoked to convert a Float value to a class that is (partially) compatible with Flt::Num
   def Flt.Num(num)
-    num.instance_of?(Float) ? Flt.FloatNum(num) : num
+    case num
+    when Float
+      Flt.FloatNum(num)
+    when BigDecimal
+      Flt.BigDecimalNum(num)
+    else
+      num
+    end
   end
 
 
