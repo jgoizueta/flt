@@ -85,6 +85,9 @@ module Flt::FloatExtensions
 
   def self.included(base)
     base.extend(ClassMethods)
+    base.math_functions :log, :log10, :exp, :sqrt,
+                   :sin, :cos, :tan, :asin, :acos, :atan,
+                   :sinh, :cosh, :tanh, :asinh, :acosh, :atanh
   end
 
   def num_class
@@ -402,6 +405,14 @@ module Flt::FloatExtensions
       Float::MAX_EXP - Float::MANT_DIG
     end
 
+    def math_functions(*methods)
+      methods.each do |method|
+        define_method(method) do
+          Math.send(method, self.to_f)
+        end
+      end
+    end
+
   end
 
 end
@@ -434,7 +445,7 @@ class Flt::FloatNum  < DelegateClass(Float)
   end
 
   returns_num :abs, :+, :-, :*, :/, :**, :-@
-  math_functions :log, :log10, :exp, :sqrt,
+  returns_num :log, :log10, :exp, :sqrt,
                  :sin, :cos, :tan, :asin, :acos, :atan,
                  :sinh, :cosh, :tanh, :asinh, :acosh, :atanh
 
