@@ -419,6 +419,7 @@ module Flt
       # in :free mode it specifies what rounding would be used to convert back the output to the
       # input base eb (using the same precision that f has).
       def read(context, round_mode, sign, f, e, eb=10)
+        context = Flt.NumContext(context)
         @exact = true
 
         case @mode
@@ -534,9 +535,11 @@ module Flt
             z0 = Float(ff)*Float(eb)**ee
           end
 
-          if z0 && context.num_class != Float
+          if z0 && context.num_class != Flt.NumClass(Float)
             @good_approx = false
             z0 = context.num_class.Num(z0).plus(context)
+          else
+            z0 = Flt.Num(z0)
           end
         end
 
@@ -878,6 +881,7 @@ module Flt
       # value (with the same precision as input).
       # should be rounded-up.
       def format(v, f, e, round_mode, p=nil, all=false)
+        v = Flt.Num(v)
         # TODO: consider removing parameters f,e and using v.split instead
         @minus = (v < 0)
         @v = v.copy_sign(+1) # don't use v.abs because it rounds (and may overflow also)

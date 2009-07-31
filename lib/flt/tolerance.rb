@@ -375,7 +375,7 @@ module Flt
           v*num_class.Num(2)**exp
         end
       when Float
-        if @radix == :native || @radix == Float.context.radix
+        if @radix == :native || @radix == Float::RADIX
           exp = xs.map do |x|
             f,e = Math.frexp(x)
             exp = e-1

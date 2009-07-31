@@ -86,7 +86,7 @@ class TestBinArithmetic < Test::Unit::TestCase
     float_emulation_context
     @test_float_data.each do |x|
       x = x.abs
-      z = Math.sqrt(x)
+      z = x.sqrt # Math.sqrt(x)
       assert_equal z, BinNum(x).sqrt.to_f
     end
   end

@@ -414,6 +414,30 @@ class Flt::FloatNum  < DelegateClass(Float)
     super Float(*args)
   end
 
+  class <<self
+    def returns_num(*methods)
+      methods.each do |method|
+        original_method = self.instance_method(method)
+        define_method(method) do |*args|
+          FloatNum.Num(original_method.bind(self).call(*args))
+        end
+      end
+    end
+
+    def math_functions(*methods)
+      methods.each do |method|
+        define_method(method) do
+          FloatNum.Num(Math.send(method, self.to_f))
+        end
+      end
+    end
+  end
+
+  returns_num :abs, :+, :-, :*, :/, :**, :-@
+  math_functions :log, :log10, :exp, :sqrt,
+                 :sin, :cos, :tan, :asin, :acos, :atan,
+                 :sinh, :cosh, :tanh, :asinh, :acosh, :atanh
+
 end
 
 # Load extensions into Float class (otherwise a proxy FloatNum is used that acts like a Num and delegates to Float)
