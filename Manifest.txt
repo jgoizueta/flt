@@ -16,6 +16,7 @@ lib/flt/tolerance.rb
 lib/flt/tolerance/sugar.rb
 lib/flt/d.rb
 lib/flt/b.rb
+lib/flt/sugar/b.rb
 setup.rb
 test/all_tests.rb
 test/helper.rb

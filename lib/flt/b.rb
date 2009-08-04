@@ -1,4 +1,4 @@
-require 'flt'
+require 'flt/bin_num'
 
 B = Flt::BinNum
 def B(*args)
