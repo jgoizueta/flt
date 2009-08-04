@@ -338,7 +338,7 @@ module Flt
       exp = nil
 
       num_class = Flt.Num(xs.first).num_class
-      xs = xs.map{|x| num_class.Num(x)} if xs.size>1
+      xs = xs.map{|x| num_class.Num(x)}
       v = cast_value(num_class)
 
       case xs.first

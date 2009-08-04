@@ -4183,9 +4183,9 @@ end # Num
 
   def Flt.NumClass(num_class)
     if num_class==Float
-      Flt::FloatNum
+      Flt.FloatNumClass
     elsif num_class==BigDecimal
-      Flt::BigDecimalNum
+      Flt.BigDecimalNumClass
     else
       num_class
     end
