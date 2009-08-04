@@ -14,23 +14,23 @@ module Flt::BigDecimalExtensions
     self.class
   end
 
-  def ulp(mode=:low)
-    if self.nan?
-      return self
-    elsif self.infinite?
-      return nil
-    elsif self.zero?
-      return nil
-    else
-      if BigDecimal.limit != 0
-        prec = BigDecimal.limit
-      else
-        prec = [self.precs[0], Float::DIG].max
-      end
-      exp = self.exponent - (prec-1)
-      BigDecimal.new "1E#{exp}"
-    end
-  end
+  # def ulp(mode=:low)
+  #   if self.nan?
+  #     return self
+  #   elsif self.infinite?
+  #     return nil
+  #   elsif self.zero?
+  #     return nil
+  #   else
+  #     if BigDecimal.limit != 0
+  #       prec = BigDecimal.limit
+  #     else
+  #       prec = [self.precs[0], Float::DIG].max
+  #     end
+  #     exp = self.exponent - (prec-1)
+  #     BigDecimal.new "1E#{exp}"
+  #   end
+  # end
 
   module ClassMethods
 
@@ -60,7 +60,11 @@ class Flt::BigDecimalNum  < DelegateClass(BigDecimal)
   include Flt::BigDecimalExtensions
 
   def initialize(*args)
-    super BigDecimal.new(*args)
+    if  args.size==1 && args.first.is_a?(BigDecimal)
+      super args.first
+    else
+      super BigDecimal.new(*args)
+    end
   end
 
 end
@@ -93,5 +97,5 @@ end
 def Flt.BigDecimalNumClass
   BigDecimal < Flt::BigDecimalExtensions ? BigDecimal : Flt::BigDecimalExtensions
 end
-Flt.extend_big_decimal
+#Flt.extend_big_decimal
 
