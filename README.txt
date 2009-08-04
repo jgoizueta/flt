@@ -245,7 +245,7 @@ set until cleared) and a exception is raised if the corresponding trap has the v
 
 ==Numerical conversion
 
-By default, DecNum is interoperable with Integer, Rational and BigDecimal.
+By default, DecNum is interoperable with Integer and Rational.
 Conversion happens automatically to operands:
 
   puts DecNum('0.1') + 1                          # -> 1.1
@@ -285,8 +285,7 @@ and the result of an operation between DecNum and Float will be of type Float.
   puts (DecNum('1.1') + 2.0).class                  # -> Float
   puts (2.0 + DecNum('1.1')).class                  # -> Float
 
-The conversion system is extensible. For example, if BigDecimal was not
-among DecNum's default compatible types, we could include it
+The conversion system is extensible. For example, we can include BigDecimal into it
 by defining suitable conversion procedures:
 
   DecNum.context.define_conversion_from(BigDecimal) do |x, context|
@@ -296,8 +295,8 @@ by defining suitable conversion procedures:
     BigDecimal.new(x.to_s)
   end
 
-Which allows mixing the new type and Decimals in expressions and convert from DecNum
-to it:
+Now we can mix BigDecimals and Decimals in expressions and convert from DecNum
+to BigDecimal:
 
   puts BigDecimal.new('1.1') + DecNum('2.2')      # -> 3.3
   puts DecNum('1.1').convert_to(BigDecimal)       # -> 0.11E1

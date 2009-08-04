@@ -29,24 +29,6 @@ class DecNum < Num
     def int_div_radix_power(x,n)
       x / (10**n)
     end
-
-    def base_coercible_types
-      unless defined? @base_coercible_types
-        @base_coercible_types = super.merge(
-          BigDecimal=>lambda{|x, context| Num(x.to_s)}
-        )
-      end
-      @base_coercible_types
-    end
-    def base_conversions
-      unless defined? @base_conversions
-        @base_conversions = super.merge(
-          BigDecimal=>lambda{|x| BigDecimal.new(x.to_s)}
-        )
-      end
-      @base_conversions
-    end
-
   end
 
   # This is the Context class for Flt::DecNum.
