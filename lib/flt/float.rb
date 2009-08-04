@@ -1,5 +1,19 @@
-# Native Ruby Float extemsions
-# Here we add some of the methods available in BinNum to Float.
+# Native Ruby Float extensions
+# Here we add some of the methods available in BinNum to Float to allow writing code that works
+# either with Float or Flt::Num values.
+#
+# Float extensions can be loaded into the Float class (intrusively) or used through a class Flt::FloatNum
+# that behaves like Float, to avoid bringing-in changes to the Float class and avoid possible conflicts.
+#
+# Loading the extensions into Float is performed by calling Flt.extend_float! and allows better performance
+# than the use of the FloatNum class. The method Flt.extened_float? can be used to determine if the extensions
+# have been loaded.
+#
+# The extensions can be used without requiring the Float extension by using the methods:
+# Flt.Num() on any argument that can be a Float to convert it to an extended class (Float or FloatNum).
+# This adds some overhead with respect to using directly Float extensions when they are loaed, but not as much
+# as always using FloatNum. Other methods help with writing code that works in both extenion modes:
+# Flt.NumClass() and Flt.NumContext()
 #
 # The set of constants with Float metadata is also augmented.
 # The built-in contantas are:
@@ -58,8 +72,6 @@
 # Float::MIN_D : Minimum non zero positive denormal number == 0.0.next
 #
 # Float::MAX_F : Maximum significand
-#
-
 class Float
 
   DECIMAL_DIG = (MANT_DIG*Math.log(RADIX)/Math.log(10)).ceil+1
@@ -453,8 +465,12 @@ class Flt::FloatNum  < DelegateClass(Float)
 end
 
 # Load extensions into Float class (otherwise a proxy FloatNum is used that acts like a Num and delegates to Float)
-def Flt.extend_float
+def Flt.extend_float!
   Float.send :include, Flt::FloatExtensions unless Float < Flt::FloatExtensions
+end
+
+def Flt.extended_float?
+  Float < Flt::FloatExtensions
 end
 
 def Flt.FloatNum(*args)
@@ -466,9 +482,9 @@ def Flt.FloatNum(*args)
   elsif args.size==1
     x = Float(*args)
   end
-  Float < Flt::FloatExtensions ? x : Flt::FloatNum.new(x)
+  extended_float? ? x : Flt::FloatNum.new(x)
 end
 
 def Flt.FloatNumClass
-  Float < Flt::FloatExtensions ? Float : Flt::FloatNum
+  extended_float? ? Float : Flt::FloatNum
 end
