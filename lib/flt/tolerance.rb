@@ -238,7 +238,7 @@ module Flt
       # Define a tolerance magnitude in relation to the 'epsilon' of the floating-point type and context.
       # A multiplier may be specified to scale the epsilon.
       def epsilon(num_class, mult=1)
-        num_class.context.epsilon*mult
+        Flt.NumClass(num_class).context.epsilon*mult
       end
 
       # Define a tolerance magnitude in relation to the 'big epsilon' of the floating-point type and context.
@@ -246,6 +246,7 @@ module Flt
       #
       # This is a tolerance that makes multiplication associative when used with FloatingTolerance.
       def big_epsilon(num_class, mult=1)
+        num_class = Flt.NumClass(num_class)
         e0 = num_class.context.epsilon
         # we could compute with round-up instead of using next_plus, but we can't do that with Float
         den = (num_class.Num(1)-e0/2)
@@ -374,7 +375,7 @@ module Flt
           end.send(mode)
           v*num_class.Num(2)**exp
         end
-      when Float
+      when Float, Flt::FloatNum
         if @radix == :native || @radix == Float::RADIX
           exp = xs.map do |x|
             f,e = Math.frexp(x)

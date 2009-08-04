@@ -429,8 +429,9 @@ class Flt::FloatNum  < DelegateClass(Float)
     def returns_num(*methods)
       methods.each do |method|
         original_method = self.instance_method(method)
+        undef_method method # avoid warning
         define_method(method) do |*args|
-          FloatNum.Num(original_method.bind(self).call(*args))
+          Flt::FloatNum.Num(original_method.bind(self).call(*args))
         end
       end
     end
@@ -438,7 +439,7 @@ class Flt::FloatNum  < DelegateClass(Float)
     def math_functions(*methods)
       methods.each do |method|
         define_method(method) do
-          FloatNum.Num(Math.send(method, self.to_f))
+          Flt::FloatNum.Num(Math.send(method, self.to_f))
         end
       end
     end

@@ -1,5 +1,4 @@
 require File.dirname(__FILE__) + '/helper.rb'
-require File.dirname(__FILE__) + '/../lib/flt/float'
 require File.dirname(__FILE__) + '/../lib/flt/bigdecimal'
 require File.dirname(__FILE__) + '/../lib/flt/tolerance'
 

@@ -1,5 +1,4 @@
 require File.dirname(__FILE__) + '/helper.rb'
-require File.dirname(__FILE__) + '/../lib/flt/float'
 
 # These tests assume that Float arithmetic is correctly rounded
 # Random tests using Float as a reference
