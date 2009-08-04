@@ -419,7 +419,6 @@ module Flt
       # in :free mode it specifies what rounding would be used to convert back the output to the
       # input base eb (using the same precision that f has).
       def read(context, round_mode, sign, f, e, eb=10)
-        context = Flt.NumContext(context)
         @exact = true
 
         case @mode
@@ -459,7 +458,7 @@ module Flt
           # for fixed mode, use the context rounding by default
           round_mode ||= context.rounding
           alg = @algorithm
-          if (context.num_class.radix == 2 && alg.nil?) || alg==:R
+          if (context.radix == 2 && alg.nil?) || alg==:R
             z0 =  _alg_r_approx(context, round_mode, sign, f, e, eb, n)
             alg = z0 && :R
           end
@@ -501,7 +500,7 @@ module Flt
 
       def _alg_r_approx(context, round_mode, sign, f, e, eb, n)
 
-        return nil if context.num_class.radix != Float::RADIX || context.exact? || context.precision > Float::MANT_DIG
+        return nil if context.radix != Float::RADIX || context.exact? || context.precision > Float::MANT_DIG
 
         # Compute initial approximation; if Float uses IEEE-754 binary arithmetic, the approximation
         # is good enough to be adjusted in just one step.
@@ -535,28 +534,27 @@ module Flt
             z0 = Float(ff)*Float(eb)**ee
           end
 
-          if z0 && context.num_class != Flt.NumClass(Float)
+          if z0 && context.num_class != Float
             @good_approx = false
-            z0 = context.num_class.Num(z0).plus(context)
+            z0 = context.Num(z0).plus(context) # context.plus(z0) ?
           else
-            z0 = Flt.Num(z0)
+            z0 = context.Num(z0)
           end
         end
 
-        z0
       end
 
       def _alg_r(z0, context, round_mode, sign, f, e, eb, n) # Fast for Float
         #raise InvalidArgument, "Reader Algorithm R only supports base 2" if context.radix != 2
 
         @z = z0
-        @r = context.num_class.radix
-        @rp_n_1 = context.num_class.int_radix_power(n-1)
+        @r = context.radix
+        @rp_n_1 = context.int_radix_power(n-1)
         @round_mode = round_mode
 
         ret = nil
         loop do
-          m, k = @z.to_int_scale
+          m, k = context.to_int_scale(@z)
           # TODO: replace call to compare by setting the parameters in local variables,
           #       then insert the body of compare here;
           #       then eliminate innecesary instance variables
@@ -571,7 +569,7 @@ module Flt
           end
           break if ret
         end
-        ret && ret.copy_sign(sign) # TODO: normalize?
+        ret && context.copy_sign(ret, sign) # TODO: normalize?
       end
 
       @float_min_max_exp_values = {
@@ -616,7 +614,7 @@ module Flt
               # eps < 1
               ret = @z
             else
-              @z = @z.next_minus(context)
+              @z = context.next_minus(@z)
             end
           else # @round_mode==:up ? (d > 0) : (d >= 0)
             # v >(=) z
@@ -624,7 +622,7 @@ module Flt
               # eps < 1
               ret = @z
             else
-              @z = @z.next_plus(context)
+              @z = context.next_plus(@z)
             end
           end
         else
@@ -635,7 +633,7 @@ module Flt
               # and @r*eps > 1/2
               # On the left of z the ulp is 1/@r than the ulp on the right; if v < z we
               # must require an error @r times smaller.
-              @z = @z.next_minus(context)
+              @z = context.next_minus(@z)
             else
               # unambiguous nearest
               ret = @z
@@ -648,39 +646,39 @@ module Flt
                 if (m == @rp_n_1) && (d < 0)
                   # z is power of @r and v < z; this wasn't really a tie because
                   # there are closer values on the left
-                  @z = @z.next_minus(context)
+                  @z = context.next_minus(@z)
                 else
                   # m is even => round tie to z
                   ret = @z
                 end
               elsif d < 0
                 # m is odd, v < z => round tie to prev
-                ret = @z.next_minus
+                ret = context.next_minus(@z)
               elsif d > 0
                 # m is odd, v > z => round tie to next
-                ret = @z.next_plus
+                ret = context.next_plus(@z)
               end
             elsif @round_mode == :half_up
               if d < 0
                 # v < z
                 if (m == @rp_n_1)
                   # this was not really a tie
-                  @z = @z.next_minus
+                  @z = context.next_minus(@z)
                 else
                   ret = @z
                 end
               else # d > 0
                 # v >= z
-                ret = @z.next_plus
+                ret = context.next_plus(@z)
               end
             else # @round_mode == :half_down
               if d < 0
                 # v < z
                 if (m == @rp_n_1)
                   # this was not really a tie
-                  @z = @z.next_minus
+                  @z = context.next_minus(@z)
                 else
-                  ret = @z.next_minus
+                  ret = context.next_minus(@z)
                 end
               else # d < 0
                 # v > z
@@ -688,9 +686,9 @@ module Flt
               end
             end
           elsif d < 0 # eps > 1/2 and v < z
-            @z = @z.next_minus
+            @z = context.next_minus(@z)
           elsif d > 0 # eps > 1/2 and v > z
-            @z = @z.next_plus
+            @z = context.next_plus(@z)
           end
         end
 
@@ -711,9 +709,9 @@ module Flt
         end
         min_e = context.etiny
         max_e = context.etop
-        rp_n = context.num_class.int_radix_power(n)
-        rp_n_1 = context.num_class.int_radix_power(n-1)
-        r = context.num_class.radix
+        rp_n = context.int_radix_power(n)
+        rp_n_1 = context.int_radix_power(n-1)
+        r = context.radix
         loop do
            x = u.div(v) # bottleneck
            if (x>=rp_n_1 && x<rp_n) || k==min_e || k==max_e
@@ -755,17 +753,17 @@ module Flt
         if round_mode == :down
           # z = z
         elsif (round_mode == :up) && r>0
-          z = z.next_plus(context)
+          z = context.next_plus(z)
         elsif r<v_r
           # z = z
         elsif r>v_r
-          z = z.next_plus(context)
+          z = context.next_plus(z)
         else
           # tie
           if (round_mode == :half_down) || (round_mode == :half_even && ((q%2)==0)) || (round_mode == :down)
              # z = z
           else
-            z = z.next_plus(context)
+            z = context.next_plus(z)
           end
         end
         return z, exact
@@ -881,15 +879,15 @@ module Flt
       # value (with the same precision as input).
       # should be rounded-up.
       def format(v, f, e, round_mode, p=nil, all=false)
-        v = Flt.Num(v)
+        context = v.class.context
         # TODO: consider removing parameters f,e and using v.split instead
-        @minus = (v < 0)
-        @v = v.copy_sign(+1) # don't use v.abs because it rounds (and may overflow also)
+        @minus = (context.sign(v)==-1)
+        @v = context.copy_sign(v, +1) # don't use context.abs(v) because it rounds (and may overflow also)
         @f = f.abs
         @e = e
         @round_mode = round_mode
         @all_digits = all
-        p ||= v.num_class.context.precision
+        p ||= context.precision
 
         # adjust the rounding mode to work only with positive numbers
         @round_mode = Support.simplified_round_mode(@round_mode, @minus)
@@ -924,7 +922,7 @@ module Flt
             @round_l = @round_h = false
         end
 
-        # TODO: use next_minus, next_plus instead of direct computing, don't require min_e & p
+        # TODO: use context.next_minus, next_plus instead of direct computing, don't require min_e & ps
         # Now compute the working quotients @r/@s, @m_p/@s = (v+ - @v), @m_m/@s = (@v - v-) and scale them.
         if @e >= 0
           if @f != b_power(p-1)
@@ -943,6 +941,7 @@ module Flt
           end
         end
         @k = 0
+        @context = context
         scale_optimized!
 
 
@@ -1159,13 +1158,14 @@ module Flt
       #       or use the general scale! for fixing (but remembar to multiply by exptt(...))
       #       (determine when Math.log is aplicable, etc.)
       def scale_optimized!
-        return scale! if @v.zero?
+        context = @context # @v.class.context
+        return scale! if context.zero?(@v)
 
         # 1. compute estimated_scale
 
         # 1.1. try to use Float logarithms (Math.log)
         v = @v
-        v_abs = v.copy_sign(+1) # don't use v.abs because it rounds (and may overflow also)
+        v_abs = context.copy_sign(v, +1) # don't use v.abs because it rounds (and may overflow also)
         v_flt = v_abs.to_f
         b = @output_b
         log_b = ESTIMATE_FLOAT_LOG_B[b]
@@ -1204,7 +1204,7 @@ module Flt
         # 1.3 more rough Float aproximation
           # TODO: optimize denominator, correct numerator for more precision with first digit or part
           # of the coefficient (like _log_10_lb)
-        estimated_scale ||= (v.adjusted_exponent.to_f * Math.log(v.num_class.radix) * log_b).ceil
+        estimated_scale ||= (v.adjusted_exponent.to_f * Math.log(v.class.context.radix) * log_b).ceil
 
         if estimated_scale >= 0
           @k = estimated_scale

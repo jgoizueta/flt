@@ -77,15 +77,16 @@ class TestBinArithmetic < Test::Unit::TestCase
           ok = false
         end
       end
-      assert ok, "#{x}**#{y} (#{Flt.Num(x).split.inspect}**#{Flt.Num(y).split.inspect}) Incorrect: #{zz.split.inspect} instead of #{zzz && zzz.split.inspect}"
+      assert ok, "#{x}**#{y} (#{Float.context.split(x).inspect}**#{Float.context.split(y).inspect}) Incorrect: #{zz.split.inspect} instead of #{zzz && zzz.split.inspect}"
     end
   end
 
   def test_sqrt
     float_emulation_context
     @test_float_data.each do |x|
-      x = x.abs
-      z = x.sqrt # Math.sqrt(x)
+      context = x.class.context
+      x = context.abs(x)
+      z = context.sqrt(x)
       assert_equal z, BinNum(x).sqrt.to_f
     end
   end

@@ -201,7 +201,7 @@ module Flt
     # can be redefined to allow for values which change in value or precision depending
     # on the numeric class or context.
     def cast_value(num_class)
-      Flt.NumClass(num_class).Num(@value)
+      num_class.context.Num(@value)
     end
 
     # Description of the reference value (can be specialized in derived classes)
@@ -238,7 +238,7 @@ module Flt
       # Define a tolerance magnitude in relation to the 'epsilon' of the floating-point type and context.
       # A multiplier may be specified to scale the epsilon.
       def epsilon(num_class, mult=1)
-        Flt.NumClass(num_class).context.epsilon*mult
+        num_class.context.epsilon*mult
       end
 
       # Define a tolerance magnitude in relation to the 'big epsilon' of the floating-point type and context.
@@ -246,11 +246,11 @@ module Flt
       #
       # This is a tolerance that makes multiplication associative when used with FloatingTolerance.
       def big_epsilon(num_class, mult=1)
-        num_class = Flt.NumClass(num_class)
-        e0 = num_class.context.epsilon
+        context = num_class.context
+        e0 = context.epsilon
         # we could compute with round-up instead of using next_plus, but we can't do that with Float
-        den = (num_class.Num(1)-e0/2)
-        big_eps = (e0*2/(den*den)).next_plus
+        den = (context.Num(1)-e0/2)
+        big_eps = context.next_plus(e0*2/(den*den))
         big_eps*mult
       end
 
@@ -337,10 +337,12 @@ module Flt
     def relative_to_many(mode, *xs)
       exp = nil
 
-      num_class = Flt.Num(xs.first).num_class
-      xs = xs.map{|x| num_class.Num(x)}
+      num_class = xs.first.class
+      context = num_class.context
+      xs = xs.map{|x| context.Num(x)}
       v = cast_value(num_class)
 
+      # TODO: simplify using context
       case xs.first
       when Flt::Num
         # TODO: handle special values
@@ -375,7 +377,7 @@ module Flt
           end.send(mode)
           v*num_class.Num(2)**exp
         end
-      when Float, Flt::FloatNum
+      when Float
         if @radix == :native || @radix == Float::RADIX
           exp = xs.map do |x|
             f,e = Math.frexp(x)
@@ -411,7 +413,7 @@ module Flt
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
-          num_class.Num(v)*num_class.Num(2)**exp
+          context.Num(v)*context.Num(2)**exp
         end
       end
     end
@@ -423,17 +425,18 @@ module Flt
     def initialize(n=nil, num_class=nil)
       @ulps = n || 1
       num_class ||= Float
-      num_class = Flt.NumClass(num_class)
-      unit = num_class.Num(1)
-      n = num_class.Num(@ulps)
-      super(unit.ulp*n)
+      context = num_class.context
+      unit = context.Num(1)
+      n = context.Num(@ulps)
+      super(context.ulp(unit)*n)
     end
     def to_s
       "#{@ulps} ulp#{(!@ulps.kind_of?(Numeric) || (@ulps > 1)) ? 's' : ''}"
     end
     def relative_to(x)
-      n = x.num_class.Num(@ulps)
-      x.ulp*n
+      context = x.class.context
+      n = context.Num(@ulps)
+      context.ulp(x)*n
     end
     def relative_to_many(mode, *xs)
       xs.map{|x| relative_to(x)}.send(mode)

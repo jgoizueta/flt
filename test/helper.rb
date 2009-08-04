@@ -39,49 +39,50 @@ def random_dec_num
 end
 
 def random_num(num_class)
-  num_class = Flt.NumClass(num_class)
+  context = num_class.context
   if rand(20)==0
     # generate 5% of subnormals
-    f = rand(num_class.radix**(num_class.context.precision-1))
-    e = num_class.context.etiny
+    f = rand(context.radix**(context.precision-1))
+    e = context.etiny
   elsif rand(20)==0
     # and some singular values too
     if rand(1) == 0
-      f = num_class.radix**num_class.context.precision - 1
+      f = context.radix**context.precision - 1
       f -= rand(3)
     else
-      f = num_class.radix**(num_class.context.precision - 1)
+      f = context.radix**(context.precision - 1)
       f += rand(3)
     end
-    e = random_integer(num_class.context.etiny, num_class.context.etop)
+    e = random_integer(context.etiny, context.etop)
   else
-    f = rand(num_class.radix**num_class.context.precision)
-    e = random_integer(num_class.context.etiny, num_class.context.etop)
+    f = rand(context.radix**context.precision)
+    e = random_integer(context.etiny, context.etop)
   end
   f = -f if rand(1)==0
-  num_class.Num(f, e)
+  context.Num(f, e)
 end
 
 def special_nums(num_class)
-  num_class = Flt.NumClass(num_class)
-  [num_class.nan, num_class.infinity, -num_class.infinity]
+  context = num_class.context
+  [context.nan, context.infinity, -context.infinity]
 end
 
 def singular_nums(num_class)
-  num_class = Flt.NumClass(num_class)
-  nums = [num_class.zero(-1), num_class.zero(+1), num_class.minimum_nonzero, -num_class.minimum_nonzero,
-    num_class.minimum_nonzero.next_plus, -num_class.minimum_nonzero.next_plus,
-    num_class.maximum_subnormal.next_minus, -num_class.maximum_subnormal.next_minus,
-    num_class.maximum_subnormal, -num_class.maximum_subnormal,
-    num_class.minimum_normal, -num_class.minimum_normal,
-    num_class.minimum_normal.next_plus, -num_class.minimum_normal.next_plus,
-    num_class.maximum_finite.next_minus, -num_class.maximum_finite.next_minus,
-    num_class.maximum_finite, -num_class.maximum_finite]
+  context = num_class.context
+  nums = [context.zero(-1), context.zero(+1), context.minimum_nonzero, -context.minimum_nonzero,
+    context.next_plus(context.minimum_nonzero), -context.next_plus(context.minimum_nonzero),
+    context.next_minus(context.maximum_subnormal), -context.next_minus(context.maximum_subnormal),
+    context.maximum_subnormal, -context.maximum_subnormal,
+    context.minimum_normal, -context.minimum_normal,
+    context.next_plus(context.minimum_normal), -context.next_plus(context.minimum_normal),
+    context.next_minus(context.maximum_finite), -context.next_minus(context.maximum_finite),
+    context.maximum_finite, -context.maximum_finite]
   xs = [1,3,5]
-  xs += [num_class.radix, num_class.radix**2, num_class.radix**5, num_class.radix**10]
-  xs += [10,100,100000,10000000000] if num_class.radix!=10
-  xs += [2,4,32,1024] if num_class.radix!=2
-  nums += xs.map{|x| n = num_class.Num(x); [n,-n,n.next_minus,-n.next_minus,n.next_plus,-n.next_plus] }.flatten
+  xs += [context.radix, context.radix**2, context.radix**5, context.radix**10]
+  xs += [10,100,100000,10000000000] if context.radix!=10
+  xs += [2,4,32,1024] if context.radix!=2
+  nums += xs.map{|x| n = context.Num(x); [n,-n,context.next_minus(n),-context.next_minus(n),
+                                          context.next_plus(n),-context.next_plus(n)] }.flatten
   nums
 end
 

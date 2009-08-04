@@ -1020,6 +1020,40 @@ class Num < Numeric
       end
     end
 
+    # Simply calls x.split; implemented to ease handling Float and BigDecimal as Nums withoug
+    # having to add methods like split to those classes.
+    def split(x)
+      _convert(x).split
+    end
+
+    def to_int_scale(x)
+      _convert(x).to_int_scale
+    end
+
+    def sign(x)
+      _convert(x).sign
+    end
+
+    def coefficient(x)
+      _convert(x).coefficient
+    end
+
+    def exponent(x)
+      _convert(x).exponent
+    end
+
+    def nan?(x)
+      _convert(x).nan?
+    end
+
+    def infinite?(x)
+      _convert(x).infinite?
+    end
+
+    def zero?(x)
+      _convert(x).zero?
+    end
+
     private
 
     def _convert(x)
@@ -4168,31 +4202,5 @@ class Num < Numeric
   end
 
 end # Num
-
-  # Num can be invoked to convert a Float value to a class that is (partially) compatible with Flt::Num
-  def Flt.Num(num)
-    case num
-    when Float
-      Flt.FloatNum(num)
-    when BigDecimal
-      Flt.BigDecimalNum(num)
-    else
-      num
-    end
-  end
-
-  def Flt.NumClass(num_class)
-    if num_class==Float
-      Flt.FloatNumClass
-    elsif num_class==BigDecimal
-      Flt.BigDecimalNumClass
-    else
-      num_class
-    end
-  end
-
-  def Flt.NumContext(context)
-    Flt.NumClass(context)
-  end
 
 end # Flt

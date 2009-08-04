@@ -76,21 +76,9 @@ class BinNum < Num
             elsif x.zero?
               BinNum.zero((x.to_s[0,1].strip=="-") ? -1 : +1)
             else
-              Num(*Flt.Num(x).split)
+              Float.context.split(x)
             end
           }
-        ).merge(
-        Flt::FloatNum=>lambda{|x, context|
-          if x.nan?
-            BinNum.nan
-          elsif x.infinite?
-            BinNum.infinity(x<0 ? -1 : +1)
-          elsif x.zero?
-            BinNum.zero((x.to_s[0,1].strip=="-") ? -1 : +1)
-          else
-            Num(*x.split)
-          end
-        }
         )
       end
       @base_coercible_types

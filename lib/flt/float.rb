@@ -1,19 +1,4 @@
-# Native Ruby Float extensions
-# Here we add some of the methods available in BinNum to Float to allow writing code that works
-# either with Float or Flt::Num values.
-#
-# Float extensions can be loaded into the Float class (intrusively) or used through a class Flt::FloatNum
-# that behaves like Float, to avoid bringing-in changes to the Float class and avoid possible conflicts.
-#
-# Loading the extensions into Float is performed by calling Flt.extend_float! and allows better performance
-# than the use of the FloatNum class. The method Flt.extened_float? can be used to determine if the extensions
-# have been loaded.
-#
-# The extensions can be used without requiring the Float extension by using the methods:
-# Flt.Num() on any argument that can be a Float to convert it to an extended class (Float or FloatNum).
-# This adds some overhead with respect to using directly Float extensions when they are loaed, but not as much
-# as always using FloatNum. Other methods help with writing code that works in both extenion modes:
-# Flt.NumClass() and Flt.NumContext()
+# Support classes for homogeneous treatment of Float and Num values.
 #
 # The set of constants with Float metadata is also augmented.
 # The built-in contantas are:
@@ -90,104 +75,196 @@ class Float
 
 end
 
-require 'delegate'
+require 'singleton'
 
+class FloatContext
 
-module Flt::FloatExtensions
-
-  def self.included(base)
-    base.extend(ClassMethods)
-    base.math_functions :log, :log10, :exp, :sqrt,
-                   :sin, :cos, :tan, :asin, :acos, :atan,
-                   :sinh, :cosh, :tanh, :asinh, :acosh, :atanh
-  end
+  include Singleton
 
   def num_class
-    self.class
+    Float
   end
 
-  # Compute the adjacent floating point values: largest value not larger than
-  # this and smallest not smaller.
-  def neighbours
-    f,e = Math.frexp(self.to_f)
-    e = Float::MIN_EXP if f==0
-    e = [Float::MIN_EXP,e].max
-    dx = Math.ldexp(1,e-Float::MANT_DIG) #Math.ldexp(Math.ldexp(1.0,-Float::MANT_DIG),e)
-
-    min_f = 0.5 #0.5==Math.ldexp(2**(bits-1),-Float::MANT_DIG)
-    max_f = 1.0 - Math.ldexp(1,-Float::MANT_DIG)
-
-    if f==max_f
-      high = self + dx*2
-    elsif f==-min_f && e!=Float::MIN_EXP
-      high = self + dx/2
-    else
-      high = self + dx
+  def Num(*args)
+    args = *args if args.size==1 && args.first.is_a?(Array)
+    if args.size==3
+      Math.ldexp(args[0]*args[1],args[2])
+    elsif args.size==2
+      Math.ldexp(args[0],args[1])
+    elsif args.size==1
+      Float(*args)
     end
-    if e==Float::MIN_EXP || f!=min_f
-      low = self - dx
-    elsif f==-max_f
-      high = self - dx*2
-    else
-      low = self - dx/2
+  end
+
+  def radix
+    Float::RADIX
+  end
+
+  # NaN (not a number value)
+  def nan
+    0.0/0.0
+  end
+
+  # zero value with specified sign
+  def zero(sign=+1)
+    (sign < 0) ? -0.0 : 0.0
+  end
+
+  # infinity value with specified sign
+  def infinity(sign=+1)
+    (sign < 0) ? -1.0/0.0 : 1.0/0.0
+  end
+
+  def int_radix_power(n)
+    1 << n
+  end
+
+  # This is the difference between 1.0 and the smallest floating-point
+  # value greater than 1.0, radix_power(1-significand_precision)
+  #
+  # We have:
+  #   Float.epsilon == (1.0.next-1.0)
+  def epsilon(sign=+1)
+    (sign < 0) ? -Float::EPSILON : Float::EPSILON
+  end
+
+  # The strict epsilon is the smallest value that produces something different from 1.0
+  # wehen added to 1.0. It may be smaller than the general epsilon, because
+  # of the particular rounding rules used with the floating point format.
+  # This is only meaningful when well-defined rules are used for rounding the result
+  # of floating-point addition.
+  #
+  # We have:
+  #   (Float.strict_epsilon+1.0) == 1.0.next
+  #   (Float.strict_epsilon.prev+1.0) == 1.0
+  def strict_epsilon(sign=+1, round=nil)
+    # We don't rely on Float::ROUNDS
+    eps = minimum_nonzero
+    unless (1.0+eps) > 1.0
+      f,e = Math.frexp(1)
+      eps = Math.ldexp(f.next,e-Float::MANT_DIG)
+      if (1.0+eps) > 1.0
+        eps
+      else
+        eps = Math.ldexp(f,e-Float::MANT_DIG)
+        unless (1.0+eps) > 1.0
+        else
+          eps = Math.ldexp(f,e-Float::MANT_DIG+1)
+        end
+      end
     end
-    [Flt.FloatNum(low), Flt.FloatNum(high)]
+    eps
   end
 
-  # Previous floating point value
-  def prev
-     neighbours[0]
-  end
-
-  # Next floating point value; e.g. 1.0.next == 1.0+Float::EPSILON
-  def next
-     neighbours[1]
-  end
-
-  # Synonym of next, named in the style of DecNum (GDA)
+  # This is the maximum relative error corresponding to 1/2 ulp:
+  #  (radix/2)*radix_power(-significand_precision) == epsilon/2
+  # This is called "machine epsilon" in [Goldberg]
+  # We have:
   #
-  # The context parameters, which is not used, is for compatibility with Flt classes
-  def next_plus(context=nil)
-    Flt.FloatNum(self.next)
+  #  Float.half_epsilon == 0.5*Float.epsilon
+  def half_epsilon(sign=+1)
+    # 0.5*epsilon(sign)
+    f,e = Math.frexp(1)
+    Math.ldexp(f, e-Float::MANT_DIG)
   end
 
-  # Synonym of prev, named in the style of DecNum (GDA)
-  #
-  # The context parameters, which is not used, is for compatibility with Flt classes
-  def next_minus(context=nil)
-    Flt.FloatNum(self.prev)
+  # minimum normal Float value (with specified sign)
+  def minimum_normal(sign=+1)
+    (sign < 0) ? -Float::MIN_N : Float::MIN_N
   end
 
-  def next_toward(other)
-    comparison = self <=> other
-    return self.copy_sign(other) if comparison == 0
+  # maximum subnormal (denormalized) Float value (with specified sign)
+  def maximum_subnormal(sign=+1)
+    (sign < 0) ? -Float::MAX_D : Float::MAX_D
+  end
+
+  # minimum (subnormal) nonzero Float value, with specified sign
+  def minimum_nonzero(sign=+1)
+    (sign < 0) ? -Float::MIN_D : Float::MIN_D
+  end
+
+  # maximum finite Float value, with specified sign
+  def maximum_finite(sign=+1)
+    (sign < 0) ? -Float::MAX : Float::MAX
+  end
+
+  def precision
+    Float::MANT_DIG
+  end
+
+  def maximum_coefficient
+    int_radix_power(precision)-1
+  end
+
+  def minimum_normalized_coefficient
+    num_class.int_radix_power(precision-1)
+  end
+
+  def exact?
+    false
+  end
+
+  # detect actual rounding mode
+  def rounding
+    Flt::Support::AuxiliarFunctions.detect_float_rounding
+  end
+
+  def emin
+    Float::MIN_EXP-1
+  end
+
+  def emax
+    Float::MAX_EXP-1
+  end
+
+  def etiny
+    Float::MIN_EXP - Float::MANT_DIG
+  end
+
+  def etop
+    Float::MAX_EXP - Float::MANT_DIG
+  end
+
+  def next_plus(x)
+    FloatContext.neighbours(x).last
+  end
+
+  def next_minus(x)
+    FloatContext.neighbours(x).first
+  end
+
+  def next_toward(x, y)
+    x, y = x.to_f, y.to_f
+    comparison = x <=> y
+    return x.copy_sign(y) if comparison == 0
     if comparison == -1
-      result = self.next_plus(context)
+      result = x.next_plus(context)
     else # comparison == 1
-      result = self.next_minus(context)
+      result = x.next_minus(context)
     end
   end
 
   # Sign: -1 for minus, +1 for plus, nil for nan (note that Float zero is signed)
-  def sign
-    if nan?
+  def sign(x)
+    x = x.to_f
+    if x.nan?
       nil
-    elsif self==0
-      self.to_s[0,1] == "-" ? -1 : +1 # (1/self < 0) ? -1 : +1
+    elsif x.zero?
+      x.to_s[0,1] == "-" ? -1 : +1 # (1/x < 0) ? -1 : +1
     else
-      self < 0 ? -1 : +1
+      x < 0 ? -1 : +1
     end
   end
 
-  # Return copy of self with the sign of other
-  def copy_sign(other)
-    self_sign = self.sign
-    other_sign = other.is_a?(Integer) ? (other < 0 ? -1 : +1) : other.sign
+  # Return copy of x with the sign of y
+  def copy_sign(x, y)
+    self_sign = sign(x)
+    other_sign = y.is_a?(Integer) ? (y < 0 ? -1 : +1) : sign(y)
     if self_sign && other_sign
       if self_sign == other_sign
-        Flt.FloatNum(self)
+        x.to_f
       else
-        Flt.FloatNum(-self)
+        -x.to_f
       end
     else
       nan
@@ -199,14 +276,15 @@ module Flt::FloatExtensions
   # * a coefficient (significand) which is a nonnegative integer
   # * an exponent (an integer) or :inf, :nan or :snan for special values
   # The value of non-special numbers is sign*coefficient*10^exponent
-  def split
-    sign = self.sign
-    if nan?
+  def split(x)
+    x = x.to_f
+    sign = sign(x)
+    if x.nan?
       exp = :nan
-    elsif infinite?
+    elsif x.infinite?
       exp = :inf
     else
-      coeff,exp = Math.frexp(self.to_f)
+      coeff,exp = Math.frexp(x)
       coeff = coeff.abs
       if exp < Float::MIN_EXP
         # denormalized number
@@ -222,11 +300,12 @@ module Flt::FloatExtensions
   end
 
   # Return the value of the number as an signed integer and a scale.
-  def to_int_scale
-    if special?
+  def to_int_scale(x)
+    x = x.to_f
+    if special?(x)
       nil
     else
-      coeff,exp = Math.frexp(self.to_f)
+      coeff,exp = Math.frexp(x)
       coeff = coeff
       if exp < Float::MIN_EXP
         # denormalized number
@@ -241,12 +320,12 @@ module Flt::FloatExtensions
     end
   end
 
-
   # ulp (unit in the last place) according to the definition proposed by J.M. Muller in
   # "On the definition of ulp(x)" INRIA No. 5504
-  def ulp(mode=:low)
-    return self if nan?
-    x = abs
+  def ulp(x, mode=:low)
+    x = x.to_f
+    return x if x.nan?
+    x = x.abs
     if x < Math.ldexp(1,Float::MIN_EXP) # x < Float::RADIX*Float::MIN_N
       x = Math.ldexp(1,Float::MIN_EXP-Float::MANT_DIG) # res = Float::MIN_D
     elsif x > Float::MAX # x > Math.ldexp(1-Math.ldexp(1,-Float::MANT_DIG),Float::MAX_EXP)
@@ -256,235 +335,108 @@ module Flt::FloatExtensions
       e -= 1 if f==Math.ldexp(1,-1) if mode==:low # assign the smaller ulp to radix powers
       x = Math.ldexp(1,e-Float::MANT_DIG)
     end
-    Flt.FloatNum(x)
+    x
   end
 
-  def special?
-    nan? || infinite?
+  def special?(x)
+    x.nan? || x.infinite?
   end
 
-  def normal?
-    if special? || zero?
+  def normal?(x)
+    if x.special? || x.zero?
       false
     else
-      self.abs >= Float::MIN_N
+      x.abs >= Float::MIN_N
     end
   end
 
   def subnormal?
-    if special? || zero?
+    if x.special? || x.zero?
       false
     else
-      self.abs < Float::MIN_N
+      x.abs < Float::MIN_N
     end
   end
 
-  module ClassMethods
+  def plus(x)
+    x.to_f
+  end
 
-    def radix
-      Float::RADIX
+  def minus(x)
+    -x.to_f
+  end
+
+  class << self
+    # Compute the adjacent floating point values: largest value not larger than
+    # this and smallest not smaller.
+    def neighbours(x)
+      f,e = Math.frexp(x.to_f)
+      e = Float::MIN_EXP if f==0
+      e = [Float::MIN_EXP,e].max
+      dx = Math.ldexp(1,e-Float::MANT_DIG) #Math.ldexp(Math.ldexp(1.0,-Float::MANT_DIG),e)
+
+      min_f = 0.5 #0.5==Math.ldexp(2**(bits-1),-Float::MANT_DIG)
+      max_f = 1.0 - Math.ldexp(1,-Float::MANT_DIG)
+
+      if f==max_f
+        high = x + dx*2
+      elsif f==-min_f && e!=Float::MIN_EXP
+        high = x + dx/2
+      else
+        high = x + dx
+      end
+      if e==Float::MIN_EXP || f!=min_f
+        low = x - dx
+      elsif f==-max_f
+        high = x - dx*2
+      else
+        low = x - dx/2
+      end
+      [low, high]
     end
 
-    # NaN (not a number value)
-    def nan
-      Flt.FloatNum(0.0/0.0)
-    end
-
-    # zero value with specified sign
-    def zero(sign=+1)
-      Flt.FloatNum((sign < 0) ? -0.0 : 0.0)
-    end
-
-    # infinity value with specified sign
-    def infinity(sign=+1)
-      Flt.FloatNum((sign < 0) ? -1.0/0.0 : 1.0/0.0)
-    end
-
-    # This provides an common interface (with Flt classes) to precision, rounding, etc.
-    def context
-      self
-    end
-
-    # This is for further compatibility with Flt classes; it allows Float.context to act
-    # more like a context.
-    def num_class
-      self
-    end
-
-    def int_radix_power(n)
-      1 << n
-    end
-
-    # This is the difference between 1.0 and the smallest floating-point
-    # value greater than 1.0, radix_power(1-significand_precision)
-    #
-    # We have:
-    #   Float.epsilon == (1.0.next-1.0)
-    def epsilon(sign=+1)
-      Flt.FloatNum((sign < 0) ? -Float::EPSILON : Float::EPSILON)
-    end
-
-    # The strict epsilon is the smallest value that produces something different from 1.0
-    # wehen added to 1.0. It may be smaller than the general epsilon, because
-    # of the particular rounding rules used with the floating point format.
-    # This is only meaningful when well-defined rules are used for rounding the result
-    # of floating-point addition.
-    #
-    # We have:
-    #   (Float.strict_epsilon+1.0) == 1.0.next
-    #   (Float.strict_epsilon.prev+1.0) == 1.0
-    def strict_epsilon(sign=+1, round=nil)
-      # We don't rely on Float::ROUNDS
-      eps = minimum_nonzero
-      unless (1.0+eps) > 1.0
-        f,e = Math.frexp(1)
-        eps = Math.ldexp(f.next,e-Float::MANT_DIG)
-        if (1.0+eps) > 1.0
-          eps
+    def float_method(*methods)
+      methods.each do |method|
+        if method.is_a?(Array)
+          float_method, context_method = method
         else
-          eps = Math.ldexp(f,e-Float::MANT_DIG)
-          unless (1.0+eps) > 1.0
-          else
-            eps = Math.ldexp(f,e-Float::MANT_DIG+1)
-          end
+          float_method = context_method = method
+        end
+        define_method(context_method) do |x|
+          x.to_f.send float_method
         end
       end
-      Flt.FloatNum(eps)
     end
 
-    # This is the maximum relative error corresponding to 1/2 ulp:
-    #  (radix/2)*radix_power(-significand_precision) == epsilon/2
-    # This is called "machine epsilon" in [Goldberg]
-    # We have:
-    #
-    #  Float.half_epsilon == 0.5*Float.epsilon
-    def half_epsilon(sign=+1)
-      # 0.5*epsilon(sign)
-      f,e = Math.frexp(1)
-      Flt.FloatNum(Math.ldexp(f, e-Float::MANT_DIG))
+    def float_binary_operator(method, op)
+      define_method(method) do |x,y|
+        x.to_f.send(op,y)
+      end
     end
 
-    # minimum normal Float value (with specified sign)
-    def minimum_normal(sign=+1)
-      Flt.FloatNum((sign < 0) ? -Float::MIN_N : Float::MIN_N)
-    end
-
-    # maximum subnormal (denormalized) Float value (with specified sign)
-    def maximum_subnormal(sign=+1)
-      Flt.FloatNum((sign < 0) ? -Float::MAX_D : Float::MAX_D)
-    end
-
-    # minimum (subnormal) nonzero Float value, with specified sign
-    def minimum_nonzero(sign=+1)
-      Flt.FloatNum((sign < 0) ? -Float::MIN_D : Float::MIN_D)
-    end
-
-    # maximum finite Float value, with specified sign
-    def maximum_finite(sign=+1)
-      Flt.FloatNum((sign < 0) ? -Float::MAX : Float::MAX)
-    end
-
-    def Num(*args)
-      Flt.FloatNum(*args)
-    end
-
-    def precision
-      Float::MANT_DIG
-    end
-
-    def exact?
-      false
-    end
-
-    # detect actual rounding mode
-    def rounding
-      Flt::Support::AuxiliarFunctions.detect_float_rounding
-    end
-
-    def emin
-      Float::MIN_EXP-1
-    end
-
-    def emax
-      Float::MAX_EXP-1
-    end
-
-    def etiny
-      Float::MIN_EXP - Float::MANT_DIG
-    end
-
-    def etop
-      Float::MAX_EXP - Float::MANT_DIG
-    end
-
-    def math_functions(*methods)
+    def math_function(*methods)
       methods.each do |method|
-        define_method(method) do
-          Math.send(method, self.to_f)
+        define_method(method) do |x|
+          Math.send(method, x.to_f)
         end
       end
     end
 
   end
 
+  float_method :nan?, :infinite?, :zero?, :abs
+  float_binary_operator :add, :+
+  float_binary_operator :subtract, :-
+  float_binary_operator :multiply, :*
+  float_binary_operator :divide, :/
+  float_binary_operator :power, :**
+
+  math_function :log, :log10, :exp, :sqrt,
+                :sin, :cos, :tan, :asin, :acos, :atan,
+                :sinh, :cosh, :tanh, :asinh, :acosh, :atanh
 end
 
-class Flt::FloatNum  < DelegateClass(Float)
-
-  include Flt::FloatExtensions
-
-  def initialize(*args)
-    super Float(*args)
-  end
-
-  class <<self
-    def returns_num(*methods)
-      methods.each do |method|
-        original_method = self.instance_method(method)
-        undef_method method # avoid warning
-        define_method(method) do |*args|
-          Flt::FloatNum.Num(original_method.bind(self).call(*args))
-        end
-      end
-    end
-
-    def math_functions(*methods)
-      methods.each do |method|
-        define_method(method) do
-          Flt::FloatNum.Num(Math.send(method, self.to_f))
-        end
-      end
-    end
-  end
-
-  returns_num :abs, :+, :-, :*, :/, :**, :-@
-  returns_num :log, :log10, :exp, :sqrt,
-                 :sin, :cos, :tan, :asin, :acos, :atan,
-                 :sinh, :cosh, :tanh, :asinh, :acosh, :atanh
-
-end
-
-# Load extensions into Float class (otherwise a proxy FloatNum is used that acts like a Num and delegates to Float)
-def Flt.extend_float!
-  Float.send :include, Flt::FloatExtensions unless Float < Flt::FloatExtensions
-end
-
-def Flt.extended_float?
-  Float < Flt::FloatExtensions
-end
-
-def Flt.FloatNum(*args)
-  args = *args if args.size==1 && args.first.is_a?(Array)
-  if args.size==3
-    x = Math.ldexp(args[0]*args[1],args[2])
-  elsif args.size==2
-    x = Math.ldexp(args[0],args[1])
-  elsif args.size==1
-    x = Float(*args)
-  end
-  extended_float? ? x : Flt::FloatNum.new(x)
-end
-
-def Flt.FloatNumClass
-  extended_float? ? Float : Flt::FloatNum
+# This is the only 'intrusion' into class Float
+def Float.context
+  FloatContext.instance
 end
