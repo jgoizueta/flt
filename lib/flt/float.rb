@@ -2,7 +2,9 @@
 #
 # The set of constants with Float metadata is also augmented.
 
-require 'flt'
+require 'flt/num'
+require 'singleton'
+
 
 # Float constants.
 #
@@ -78,8 +80,6 @@ class Float
   MAX_F = Math.frexp(Float::MAX)[0]   == Math.ldexp(Math.ldexp(1,Float::MANT_DIG)-1,-Float::MANT_DIG)
 
 end
-
-require 'singleton'
 
 # Context class with some of the Flt::Num context functionality, to allow the use of Float numbers
 # similarly to other Num values; this eases the implementation of functions compatible with either

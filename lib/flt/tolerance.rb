@@ -85,8 +85,9 @@
 #   puts tol.equal_to?(3.14159, Math::PI)
 #
 
-require 'flt'
+require 'flt/num'
 require 'flt/float'
+require 'flt/bigdecimal'
 
 module Flt
 

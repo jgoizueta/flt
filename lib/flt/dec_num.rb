@@ -1,4 +1,5 @@
 require 'flt/num'
+require 'flt/bigdecimal'
 
 module Flt
 

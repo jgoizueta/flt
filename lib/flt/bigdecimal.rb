@@ -1,9 +1,9 @@
 # Support classes for homogeneous treatment of BigDecimal and Num values by defining BigDecimal.context
 
-require 'flt'
+require 'flt/num'
+
 require 'bigdecimal'
 require 'bigdecimal/math'
-
 require 'singleton'
 
 # Context class with some of the Flt::Num context functionality, to allow the use of BigDecimal numbers
