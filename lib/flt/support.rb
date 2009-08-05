@@ -483,9 +483,9 @@ module Flt
                 float = true
                 context = BinNum::FloatContext
               end
-              x = context.num_class.context(context) do |context|
-                context.rounding = round_mode
-                Num.convert_exact(Num[eb].Num(sign, f, e), context.num_class, context)
+              x = context.num_class.context(context) do |loca_context|
+                local_context.rounding = round_mode
+                Num.convert_exact(Num[eb].Num(sign, f, e), local_context.num_class, local_context)
               end
               if float
                 x = x.to_f
@@ -593,7 +593,7 @@ module Flt
             min_exp = (e*Math.log(Float::RADIX)/Math.log(base)).ceil
             @float_min_max_exp_values[k] = min_max = [min_exp, max_exp]
           end
-          min_max.map{|e| e - 1} # adjust
+          min_max.map{|exp| exp - 1} # adjust
         end
       end
 
