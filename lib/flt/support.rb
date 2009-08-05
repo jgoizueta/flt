@@ -518,13 +518,13 @@ module Flt
           else
             ff = f
             ee = e
-            # for eb==10 we could use Float("#{f}E#{e}")
-            if e <= min_exp
+            min_exp_norm, max_exp_norm = Reader.float_min_max_adj_exp(eb, true)
+            if e <= min_exp_norm
+              # avoid loss of precision due to gradual underflow
+              return nil if e <= min_exp
               @good_approx = false
-              ff = Float(f)*Float(eb)**(e-min_exp-1)
-              ee = min_exp + 1
-            # elsif e >= max_exp
-            #   ff = Float(f)*...
+              ff = Float(f)*Float(eb)**(e-min_exp_norm-1)
+              ee = min_exp_norm + 1
             end
             # if ee < 0
             #   z0 = Float(ff)/Float(eb**(-ee))
