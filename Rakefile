@@ -20,7 +20,7 @@ PROJ.description = "Floating Point Numbers"
 PROJ.authors = 'Javier Goizueta'
 PROJ.email = 'javier@goizueta.info'
 PROJ.version = Flt::VERSION::STRING
-PROJ.rubyforge.name = 'ruby-decimal'
+PROJ.rubyforge.name = 'flt'
 PROJ.url = "http://#{PROJ.rubyforge.name}.rubyforge.org"
 PROJ.rdoc.opts = [
   "--main", "README.txt",

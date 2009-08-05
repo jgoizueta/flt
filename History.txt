@@ -6,6 +6,7 @@
   - Arbitrary base support; Flt::DecNum replaces Decimal; new classes BinNum, Num[b].
   - Tolerance objects to define floating-point tolerances.
   - Free and fixed input/output formats.
+  - Contexts for Float and BigDecimal compatibility with Flt::Num
 
 == 0.2.2 2009-07-21
 
