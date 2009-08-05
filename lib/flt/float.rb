@@ -250,7 +250,9 @@ class FloatContext
     if x.nan?
       nil
     elsif x.zero?
-      x.to_s[0,1] == "-" ? -1 : +1 # (1/x < 0) ? -1 : +1
+      # Note that (x.to_s[0,1] == "-" ? -1 : +1) fails under mswin32
+      # because in that platform (-0.0).to_s == '0.0'
+      (1/x < 0) ? -1 : +1
     else
       x < 0 ? -1 : +1
     end
@@ -439,4 +441,10 @@ end
 # This is the only 'intrusion' into class Float
 def Float.context
   FloatContext.instance
+end
+
+# Is Float('...') correctly rounded, even for subnormal numbers?
+def Flt.float_correctly_rounded?
+  # That doesn't seem to be the case for mswin32
+  @float_correctly_rounded ||= RUBY_PLATFORM.match(/mswin32/).nil?
 end

@@ -74,7 +74,7 @@ class BinNum < Num
             elsif x.infinite?
               BinNum.infinity(x<0 ? -1 : +1)
             elsif x.zero?
-              BinNum.zero((x.to_s[0,1].strip=="-") ? -1 : +1)
+              BinNum.zero(Float.context.sign(x))
             else
               Float.context.split(x)
             end

@@ -25,20 +25,21 @@ class TestBin < Test::Unit::TestCase
     assert_equal Float::MAX, BinNum.context.maximum_finite
     assert_equal Float::MIN, BinNum.context.minimum_normal
 
-    %w{
-      0.12343749827397239423432
+    numbers = %w{
       0.123437
       0.123437E57
       0.1
       0.1111111111111111111111111
       0.1E56
       0.5 0.125 7333 0.126
-      3423322.345
       1069756.78125
       106975678125E-5
       2.1E6
       3E20
-    }.each do |n|
+    }
+    numbers += %w{0.12343749827397239423432 3423322.345} if Flt.float_correctly_rounded?
+
+    numbers.each do |n|
       assert_equal Float(n), BinNum(n, :fixed).to_f
     end
 
