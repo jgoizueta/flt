@@ -3347,18 +3347,24 @@ class Num < Numeric
     inexact = true
     rounding ||= context.rounding
     output_rounding ||= rounding
-    x = self
 
-    p = self.number_of_digits # context.precision
+    if output_radix == num_class.radix && !all_digits
+      # show exactly inner representation and precision
+      ds = @coeff.to_s(output_radix)
+      n_ds = ds.size
+      exp = integral_exponent
+      leftdigits = exp + n_ds
+    else
+      p = self.number_of_digits # context.precision
+      formatter = Flt::Support::Formatter.new(num_class.radix, context.etiny, output_radix)
+      formatter.format(self, @coeff, @exp, rounding, p, all_digits)
+      dec_pos,digits = formatter.adjusted_digits(output_rounding)
 
-    formatter = Flt::Support::Formatter.new(num_class.radix, context.etiny, output_radix)
-    formatter.format(x, @coeff, @exp, rounding, p, all_digits)
-    dec_pos,digits = formatter.adjusted_digits(output_rounding)
-
-    ds = digits.map{|d| d.to_s(output_radix)}.join
-    n_ds = ds.size
-    exp = dec_pos - n_ds
-    leftdigits = dec_pos
+      ds = digits.map{|d| d.to_s(output_radix)}.join
+      n_ds = ds.size
+      exp = dec_pos - n_ds
+      leftdigits = dec_pos
+    end
 
     # TODO: DRY (this code is duplicated in DecNum#format)
     if exp<=0 && leftdigits>-6
