@@ -55,7 +55,11 @@ class BigDecimalContext
   end
 
   def exact?
-    true
+    BigDecimal.limit == 0
+  end
+
+  def precision
+    BigDecimal.limit
   end
 
   ROUNDING_MODES = {
