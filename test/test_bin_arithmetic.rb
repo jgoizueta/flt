@@ -10,6 +10,13 @@ class TestBinArithmetic < Test::Unit::TestCase
     @test_float_data ||= Array.new(1000){random_num(Float)} + singular_nums(Float) # + special_nums(Float)
   end
 
+  # TODO: some of these tests may fail under some OSs due to the rounding of subnormal results.
+  #       On OSX, linux, etc. the rounding of subnormal Float results seems to be as performed by BinNum:
+  #       as if the exact result is rounded to the number of bits of the subnormal result.
+  #       But on Windows OSs (even under Cygwin) subnormal results seem to be rounded first to the
+  #       full Float precision (53 bits).
+  #       Consider avoid testing with subnormal results, at least on Winddows.
+
   def test_addition
     float_emulation_context
     each_pair(@test_float_data) do |x, y|
