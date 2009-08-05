@@ -15,7 +15,8 @@ class TestBinArithmetic < Test::Unit::TestCase
   #       as if the exact result is rounded to the number of bits of the subnormal result.
   #       But on Windows OSs (even under Cygwin) subnormal results seem to be rounded first to the
   #       full Float precision (53 bits).
-  #       Consider avoid testing with subnormal results, at least on Winddows.
+  #       Consider avoid testing with subnormal results, at least on Winddows, or preparing test data,
+  #       including results, in a reliable machine.
 
   def test_addition
     float_emulation_context
