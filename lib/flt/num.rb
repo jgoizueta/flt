@@ -93,7 +93,6 @@
 # TODO: find better name for :all_digits (:preserve_precision, :mantain_precision, ...) ?
 # TODO: should the context determine the mode for cross-base literal-to-Num conversion (:free, :fixed)?
 #           BinNum.context.input = :fixed; x = BinNum('0.1')
-# TODO: We're being very intrusive with the Float extensions; is there a better way?
 #++
 
 require 'flt/support'
