@@ -1,13 +1,15 @@
-# This eases handling BigDecimals as DecNums
+# Support classes for homogeneous treatment of BigDecimal and Num values by defining BigDecimal.context
 
 require 'flt'
 require 'bigdecimal'
 require 'bigdecimal/math'
 
-
 require 'singleton'
 
-class BigDecimalContext
+# Context class with some of the Flt::Num context functionality, to allow the use of BigDecimal numbers
+# similarly to other Num values; this eases the implementation of functions compatible with either
+# Num or BigDecimal values.
+class Flt::BigDecimalContext
 
   include Singleton
   # TODO: Context class with precision, rounding, etc. (no singleton)
@@ -141,8 +143,9 @@ class BigDecimalContext
 
 end
 
-# This is the only 'intrusion' into class BigDecimal
+# Return a (limited) context object for BigDecimal.
+# This eases the implementation of functions compatible with either Num or BigDecimal values.
 def BigDecimal.context
-  BigDecimalContext.instance
+  Flt::BigDecimalContext.instance
 end
 
