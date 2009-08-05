@@ -1231,7 +1231,7 @@ class DecNum < Num
   def format(context, options={})
     base = options[:base] || 10
     eng = options[:eng]
-    if special? || base!=10
+    if special? || base!=10 || options[:all_digits]
       super
     else
       context = define_context(context)
