@@ -2,7 +2,7 @@
 
 * First release of the new Flt project (derived from the former Ruby-Decimal.)
   - New gem name: flt
-  - New organization in Flt¡ namespace
+  - New organization in Flt namespace
   - Arbitrary base support; Flt::DecNum replaces Decimal; new classes BinNum, Num[b].
   - Tolerance objects to define floating-point tolerances.
   - Free and fixed input/output formats.
