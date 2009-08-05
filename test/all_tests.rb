@@ -1,18 +1,23 @@
-require File.dirname(__FILE__) + '/test_flags.rb'
-require File.dirname(__FILE__) + '/test_basic.rb'
-require File.dirname(__FILE__) + '/test_dectest.rb'
-require File.dirname(__FILE__) + '/test_exact.rb'
-require File.dirname(__FILE__) + '/test_round.rb'
-require File.dirname(__FILE__) + '/test_multithreading.rb'
-require File.dirname(__FILE__) + '/test_comparisons.rb'
-require File.dirname(__FILE__) + '/test_coercion.rb'
-require File.dirname(__FILE__) + '/test_to_int.rb'
-require File.dirname(__FILE__) + '/test_to_rf.rb'
-require File.dirname(__FILE__) + '/test_define_conversions.rb'
-require File.dirname(__FILE__) + '/test_odd_even.rb'
-require File.dirname(__FILE__) + '/test_odd_epsilon.rb'
-require File.dirname(__FILE__) + '/test_ulp.rb'
-require File.dirname(__FILE__) + '/test_bin.rb'
-require File.dirname(__FILE__) + '/test_binfloat_conversion.rb'
-require File.dirname(__FILE__) + '/test_bin_arithmetic.rb'
-require File.dirname(__FILE__) + '/test_num_constructor.rb'
+%{
+ test_flags.rb
+ test_basic.rb
+ test_basic.rb
+ test_exact.rb
+ test_round.rb
+ test_multithreading.rb
+ test_comparisons.rb
+ test_coercion.rb
+ test_to_int.rb
+ test_to_rf.rb
+ test_define_conversions.rb
+ test_odd_even.rb
+ test_odd_epsilon.rb
+ test_ulp.rb
+ test_bin.rb
+ test_binfloat_conversion.rb
+ test_bin_arithmetic.rb
+ test_num_constructor.rb
+}.each do |tst|
+  require File.expand_path(File.join(File.dirname(__FILE__), tst))
+end
+

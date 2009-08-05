@@ -2,7 +2,7 @@
 # Must be explicitely executed, e.g. with
 #  rake test TEST=test/reader.rb
 
-require File.dirname(__FILE__) + '/helper.rb'
+require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 class TestReader < Test::Unit::TestCase
 

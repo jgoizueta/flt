@@ -1,5 +1,5 @@
 require 'test/unit'
-require File.dirname(__FILE__) + '/../lib/flt'
+require File.expand_path(File.join(File.dirname(__FILE__),'/../lib/flt'))
 require 'enumerator'
 include Flt
 

@@ -1,6 +1,6 @@
-require File.dirname(__FILE__) + '/helper.rb'
-require File.dirname(__FILE__) + '/../lib/flt/bigdecimal'
-require File.dirname(__FILE__) + '/../lib/flt/tolerance'
+require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
+require File.expand_path(File.join(File.dirname(__FILE__),'/../lib/flt/bigdecimal'))
+require File.expand_path(File.join(File.dirname(__FILE__),'/../lib/flt/tolerance'))
 
 
 class TestBinfloatConversion < Test::Unit::TestCase

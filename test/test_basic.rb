@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/helper.rb'
+require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 def exp(x,c=nil)
   i, lasts, s, fact, num = 0, 0, 1, 1, 1
