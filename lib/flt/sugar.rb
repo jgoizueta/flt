@@ -42,7 +42,7 @@ class Float
   end
 
   class <<self
-    def _sugar_context_method(*methods)
+    def _sugar_context_method(*methods) #:nodoc:
       methods.each do |method|
         define_method(method) do
           Float.context.send(method, self)
@@ -50,7 +50,7 @@ class Float
       end
     end
 
-    def _sugar_math_method(*methods)
+    def _sugar_math_method(*methods) #:nodoc:
       methods.each do |method|
         define_method(method) do
           Math.send(method, self)

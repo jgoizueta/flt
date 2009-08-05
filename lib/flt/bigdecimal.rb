@@ -124,7 +124,7 @@ class Flt::BigDecimalContext
 
   class << self
 
-    def big_decimal_method(*methods)
+    def big_decimal_method(*methods) #:nodoc:
       methods.each do |method|
         if method.is_a?(Array)
           float_method, context_method = method

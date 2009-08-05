@@ -1,29 +1,28 @@
 = Introduction
 
 This library provides arbitrary precision floating-point types for Ruby. All types and
-functions are within a namespace called +Flt+. Decimal and Binary floating point numbers
-are implemented in classes +Flt::DecNum+ and +Flt::BinNum+. These types are completely
+functions are within a namespace called Flt. Decimal and Binary floating point numbers
+are implemented in classes Flt::DecNum and Flt::BinNum. These types are completely
 written in Ruby using the multiple precision native integers. The performance
 could be improved in the future by using a C extension based on the decNumber libray.
 
 The Flt::Tolerance classes and the Flt.Tolerance() constructor handle floating point
 tolerances defined in flexible ways.
 
-Some extensions to +Float+ and +Bigdecimal+ are available in the files
+Context classes are define in the files
 flt/float.rb[link:files/lib/flt/float_rb.html] and
-flt/bigdecimal.rb[link:files/lib/flt/bigdecial_rb.html]
-that aid to the interchangeability of floating point types.
+flt/bigdecimal.rb[link:files/lib/flt/bigdecimal_rb.html]
+for Float and BigDecimal numbers that aid to the interchangeability of floating point types. This
+represent the only definition of identifiers outside the Flt namespace: the methods
+Float.context() and BigDecimal.context() and some contants in Float.
 
 This library is the successor of the ruby-decimal gem, that defined the Decimal class
 for decimal floating point; that class has been renamed to Flt::DecNum and support
 has been added for binary floating point and tolerances.
 
-FIXME: The a new flt project will probably be open in RubyForge, and a fork
-of the github repository.
+The documentation for this package is available at http://flt.rubyforge.org/
 
-The documentation for this package is available at http://ruby-decimal.rubyforge.org/
-
-The code is at http://github.com/jgoizueta/ruby-decimal/
+The code is at http://github.com/jgoizueta/flt/
 
 = DecNum
 
@@ -47,7 +46,7 @@ Then require the library in your code (if it fails you may need to <tt>require '
 
 Now we can use the DecNum class simply like this:
 
-  puts DecNum(1)/DecNum(3)                       # -> 0.3333333333333333333333333333
+  puts DecNum(1)/DecNum(3)                         # -> 0.3333333333333333333333333333
 
 DecNum() is a constructor that can be used instead of DecNum.new()
 
@@ -59,32 +58,32 @@ for exponents.
 
 Each thread has an active context that can be accessed like this:
 
-  puts DecNum.context.precision                   # -> 28
+  puts DecNum.context.precision                    # -> 28
 
 The active context can be globally for the current thread:
 
   DecNum.context.precision = 2
-  puts DecNum.context.precision                   # -> 2
-  puts DecNum(1)/DecNum(3)                       # -> 0.33
+  puts DecNum.context.precision                    # -> 2
+  puts DecNum(1)/DecNum(3)                         # -> 0.33
   DecNum.context.precision += 7
-  puts DecNum.context.precision                   # -> 9
-  puts DecNum(1)/DecNum(3)                       # -> 0.333333333
+  puts DecNum.context.precision                    # -> 9
+  puts DecNum(1)/DecNum(3)                         # -> 0.333333333
 
 Or it can be altered locally inside a block:
 
   DecNum.context do
     DecNum.context.precision = 5
-    puts DecNum.context.precision
-  end                                              # -> 5
-  puts DecNum.context.precision                   # -> 9
+    puts DecNum.context.precision                  # -> 5
+  end
+  puts DecNum.context.precision                    # -> 9
 
 The block for a local context can be passed the current context as an argument:
 
   DecNum.context do |local_context|
     local_context.precision = 5
-    puts DecNum.context.precision
-  end                                              # -> 5
-  puts DecNum.context.precision                   # -> 9
+    puts DecNum.context.precision                  # -> 5
+  end
+  puts DecNum.context.precision                    # -> 9
 
 A context object can be used to define the local context:
 
@@ -95,12 +94,13 @@ A context object can be used to define the local context:
 
 And individual parameters can be assigned like this:
 
-  puts DecNum.context.precision                   # -> 9
-  puts DecNum.context.rounding                    # -> half_even
+  puts DecNum.context.precision                    # -> 9
+  puts DecNum.context.rounding                     # -> half_even
   DecNum.context(:rounding=>:down) do |context|
     puts context.precision                         # -> 9
     puts context.rounding                          # -> down
   end
+
 
 Contexts created with the DecNum::Context() constructor
 inherit from DecNum::DefaultContext.
@@ -109,7 +109,7 @@ that object:
 
   DecNum::DefaultContext.precision = 10
   DecNum.context = DecNum::Context(:rounding=>:half_up)
-  puts DecNum.context.precision                   # -> 10
+  puts DecNum.context.precision                    # -> 10
 
 Note that a context object assigned to DecNum.context is copied,
 so it is not altered through DecNum.context:
@@ -125,12 +125,12 @@ Methods that use a context have an optional parameter to override
 the active context (DecNum.context) :
 
   DecNum.context.precision = 3
-  puts DecNum(1).divide(3)                        # -> 0.333
-  puts DecNum(1).divide(3, my_context)            # -> 0.33333333333333333333
+  puts DecNum(1).divide(3)                         # -> 0.333
+  puts DecNum(1).divide(3, my_context)             # -> 0.33333333333333333333
 
 Individual context parameters can also be overriden:
 
-  puts DecNum(1).divide(3, :precision=>6)         # -> 0.333333
+  puts DecNum(1).divide(3, :precision=>6)          # -> 0.333333
 
 There are two additional predefined contexts DecNum::ExtendedContext
 and DecNum::BasicContext that are not meant to be modified; they
@@ -141,8 +141,8 @@ DecNum::ExtendedContext in the following examples:
 
 Most decimal operations can be executed by using either Context or DecNum methods:
 
-  puts DecNum.context.exp(1)                      # -> 2.71828183
-  puts DecNum(1).exp                              # -> 2.71828183
+  puts DecNum.context.exp(1)                       # -> 2.71828183
+  puts DecNum(1).exp                               # -> 2.71828183
 
 If using Context methods, values are automatically converted as if the DecNum() constructor
 was used.
@@ -153,12 +153,12 @@ Results are normally rounded using the precision (number of significant digits)
 and rounding mode defined in the context.
 
   DecNum.context.precision = 4
-  puts DecNum(1)/DecNum(3)                       # -> 0.3333
-  puts DecNum('1E20')-DecNum('1E-20')            # -> 1.000E+20
+  puts DecNum(1)/DecNum(3)                         # -> 0.3333
+  puts DecNum('1E20')-DecNum('1E-20')              # -> 1.000E+20
   DecNum.context.rounding = :half_up
-  puts +DecNum('100.05')                          # -> 100.1
+  puts +DecNum('100.05')                           # -> 100.1
   DecNum.context.rounding = :half_even
-  puts +DecNum('100.05')                          # -> 100.0
+  puts +DecNum('100.05')                           # -> 100.0
 
 Note that input values are not rounded, only results; we use
 the plus operator to force rounding here:
@@ -174,30 +174,30 @@ are never rounded and results that have an infinite number of
 digits trigger the DecNum::Inexact exception.
 
   DecNum.context.exact = true
-  puts DecNum('1E20')-DecNum('1E-20')            # -> 99999999999999999999.99999999999999999999
-  puts DecNum(16).sqrt                            # -> 4
-  puts DecNum(16)/DecNum(4)                      # -> 4
-  puts DecNum(1)/DecNum(3)                       # -> Exception : Flt::Num::Inexact
+  puts DecNum('1E20')-DecNum('1E-20')              # -> 99999999999999999999.99999999999999999999
+  puts DecNum(16).sqrt                             # -> 4
+  puts DecNum(16)/DecNum(4)                        # -> 4
+  puts DecNum(1)/DecNum(3)                         # -> Exception : Flt::Num::Inexact
 
   DecNum.context.precision = 5
-  puts DecNum('1E20')-DecNum('1E-20')            # -> 1.0000E+20
-  puts DecNum(16).sqrt                            # -> 4
-  puts DecNum(16)/DecNum(4)                      # -> 4
-  puts DecNum(1)/DecNum(3)                       # -> 0.33333
+  puts DecNum('1E20')-DecNum('1E-20')              # -> 1.0000E+20
+  puts DecNum(16).sqrt                             # -> 4
+  puts DecNum(16)/DecNum(4)                        # -> 4
+  puts DecNum(1)/DecNum(3)                         # -> 0.33333
 
 There are also some methods for explicit rounding that provide
 an interface compatible with the Ruby interface of Float:
 
-  puts DecNum('101.5').round                      # -> 102
-  puts DecNum('101.5').round(0)                   # -> 102
-  puts DecNum('101.12345').round(2)               # -> 101.12
-  puts DecNum('101.12345').round(-1)              # -> 1.0E+2
-  puts DecNum('101.12345').round(:places=>2)      # -> 101.12
-  puts DecNum('101.12345').round(:precision=>2)   # -> 1.0E+2
-  puts DecNum('101.5').round(:rounding=>:half_up) # -> 102
-  puts DecNum('101.5').ceil                       # -> 102
-  puts DecNum('101.5').floor                      # -> 101
-  puts DecNum('101.5').truncate                   # -> 101
+  puts DecNum('101.5').round                       # -> 102
+  puts DecNum('101.5').round(0)                    # -> 102
+  puts DecNum('101.12345').round(2)                # -> 101.12
+  puts DecNum('101.12345').round(-1)               # -> 1.0E+2
+  puts DecNum('101.12345').round(:places=>2)       # -> 101.12
+  puts DecNum('101.12345').round(:precision=>2)    # -> 1.0E+2
+  puts DecNum('101.5').round(:rounding=>:half_up)  # -> 102
+  puts DecNum('101.5').ceil                        # -> 102
+  puts DecNum('101.5').floor                       # -> 101
+  puts DecNum('101.5').truncate                    # -> 101
 
 ==Special values
 
@@ -248,34 +248,34 @@ set until cleared) and a exception is raised if the corresponding trap has the v
 By default, DecNum is interoperable with Integer and Rational.
 Conversion happens automatically to operands:
 
-  puts DecNum('0.1') + 1                          # -> 1.1
-  puts 7 + DecNum('0.2')                          # -> 7.2
-  puts Rational(5,2) + DecNum('3')                # -> 5.5
+  puts DecNum('0.1') + 1                           # -> 1.1
+  puts 7 + DecNum('0.2')                           # -> 7.2
+  puts Rational(5,2) + DecNum('3')                 # -> 5.5
 
 Conversion can also be done explicitely with
 the DecNum constructor:
 
-   puts DecNum(7)                                 # -> 7
-   puts DecNum(Rational(1,10))                    # -> 0.1
+   puts DecNum(7)                                  # -> 7
+   puts DecNum(Rational(1,10))                     # -> 0.1
 
 Converting a DecNum to other numerical types can be done with specific Ruby-style methods.
 
-  puts DecNum('1.1').to_i                         # -> 1
-  puts DecNum('1.1').to_r                         # -> 11/10
+  puts DecNum('1.1').to_i                          # -> 1
+  puts DecNum('1.1').to_r                          # -> 11/10
 
 (note the truncated result of to_i)
 Or with a generic method:
-  puts DecNum('1.1').convert_to(Integer)          # -> 1
-  puts DecNum('1.1').convert_to(Rational)         # -> 11/10
+  puts DecNum('1.1').convert_to(Integer)           # -> 1
+  puts DecNum('1.1').convert_to(Rational)          # -> 11/10
 
 Thera are also GDAS style conversion operations:
 
-    puts DecNum('1.1').to_integral_value            # -> 1
+  puts DecNum('1.1').to_integral_value             # -> 1
 
 And conversion is also possible to Float:
-  puts DecNum('1.1').to_f                         # -> 1.1
-  puts DecNum('1.1').convert_to(Float)            # -> 1.1
-  puts Float(DecNum('1.1'))                       # -> 1.1
+  puts DecNum('1.1').to_f                          # -> 1.1
+  puts DecNum('1.1').convert_to(Float)             # -> 1.1
+  puts Float(DecNum('1.1'))                        # -> 1.1
 
 Types with predefined bidirectional conversion (Integer and Rational)
 can be operated with DecNum on either side of an operator, and the result will be a DecNum.
@@ -298,8 +298,8 @@ by defining suitable conversion procedures:
 Now we can mix BigDecimals and Decimals in expressions and convert from DecNum
 to BigDecimal:
 
-  puts BigDecimal.new('1.1') + DecNum('2.2')      # -> 3.3
-  puts DecNum('1.1').convert_to(BigDecimal)       # -> 0.11E1
+  puts BigDecimal.new('1.1') + DecNum('2.2')       # -> 3.3
+  puts DecNum('1.1').convert_to(BigDecimal)        # -> 0.11E1
 
 Note that the conversions are defined in a Context object and will be available only
 when that context applies. That way we can define conversions for specific purposes
@@ -341,8 +341,8 @@ The BinNum class has a method to perform this kind of conversion, so we will use
 
 The result is independent of the context precision.
 
-  puts DecNum(0.1)                                # -> 0.1
-  puts DecNum(1.0/3)                              # -> 0.3333333333333333
+  puts DecNum(0.1)                                 # -> 0.1
+  puts DecNum(1.0/3)                               # -> 0.3333333333333333
 
 This conversion gives the results expected most of the time, but it must be noticed that
 there must be some compromise, because different decimal literals convert to the same Float value:
@@ -374,6 +374,17 @@ This file defines +D+ as a synonym for +DecNum+:
   D.context.precision = 3
   puts +D('1.234')                                 # -> 1.23
 
+Some convenient methods are added to numeric classes by requiring the optional
+flt/sugar.rb[link:files/lib/flt/sugar_rb.html]. This must be explicitely required
+because it could cause conflicts with other extensions of these classes.
+
+  require 'flt/sugar'
+
+  puts 34.odd?                                     # -> false
+  puts 34.even?                                    # -> true
+  puts 0.1.split.inspect                           # -> [1, 7205759403792794, -56]
+  puts (-0.1).sign                                 # -> -1
+
 == Error analysis
 
 The DecNum#ulp() method returns the value of a "unit in the last place" for a given number under
@@ -389,14 +400,14 @@ Whe can compute the error in ulps of an approximation +aprx+ to correclty rounde
     (aprx-exct).abs/exct.ulp
   end
 
-  puts ulps(DecNum('0.5000'), DecNum('0.5003'))  # -> 3
-  puts ulps(DecNum('0.5000'), DecNum('0.4997'))  # -> 3
+  puts ulps(DecNum('0.5000'), DecNum('0.5003'))    # -> 3
+  puts ulps(DecNum('0.5000'), DecNum('0.4997'))    # -> 3
 
-  puts ulps(DecNum('0.1000'), DecNum('0.1003'))  # -> 3E+1
-  puts ulps(DecNum('0.1000'), DecNum('0.0997'))  # -> 3E+1
+  puts ulps(DecNum('0.1000'), DecNum('0.1003'))    # -> 3E+1
+  puts ulps(DecNum('0.1000'), DecNum('0.0997'))    # -> 3E+1
 
-  puts ulps(DecNum(1), DecNum(10).next_minus)    # -> 8.999E+4
-  puts ulps(DecNum(1), DecNum(10).next_plus)     # -> 9.01E+4
+  puts ulps(DecNum(1), DecNum(10).next_minus)      # -> 8.999E+4
+  puts ulps(DecNum(1), DecNum(10).next_plus)       # -> 9.01E+4
 
 Note that in the definition of ulps we use exct.ulp. If we had use aprx.ulp DecNum(10).next_plus
 would seem to be a better approximation to DecNum(1) than DecNum(10).next_minus. (Admittedly,
@@ -405,49 +416,71 @@ such bad approximations should not be common.)
 == BinNum Input/Output
 
 BinNum can be defined with a decimal string literal and converted to one with to_s, as DecNum,
-but in this case these are inexact operations subject to some specific precision limits.
+but since this involves a change of base these are inexact operations subject to some specific precision limits.
 
-On input, e.g. BinNum('0.1'), the context precision is used to define the precision of the result,
-i.e. the produced number is rounded to the context precision, unlike DecNum.
+If we define the number with a binary literal, no base conversion is involved and the result is exactly defined;
+here we define a number with just one bit of precision:
 
-On output the number's precision (number_of_digits) is used, so that the output converts back to
-the same number if the same precision is used; the context is ignored.
-
-If we define a number with the sign-coefficient-exponent constructor, the context precision is ignored
-as with DecNum. The next produces a number with just 1-bit of precision:
-
-  x = BinNum(+1, 1, -3)
+  x = BinNum('0.001', :base=>2)
   puts x.number_of_digits                          # -> 1
+  puts x.to_s(:base=>2)                            # -> 0.001
 
-Now, if we convert it to a decimal string, the internal precision (1 bit) is used, so it contains little
-information:
+Note that we could have defined it with more precision, e.g.
+
+  y = BinNum('0.001000', :base=>2)
+  puts y.number_of_digits                          # -> 4
+  puts y.to_s(:base=>2)                            # -> 0.001000
+
+But let's get back to our one bit quantity, x, and convert it to a decimal string. Since the internal precision
+is only one bit it contains very little information:
 
   puts x                                           # -> 0.1
 
-Let's convert that output back to another BinNum. Note that the new number will be rendered
-exactly as the original number in decimal, but has been defined with the context precision, so:
+We can obtain more digits with the :all_digits option which show all the decimal digits that are significative
+for the given precision of 1 bit:
+
+  puts x.to_s(:all_digits=>true)                     # -> 0.12
+
+We can also obtain the exact value of x by using the Num.convert_exact method to convert it to decimal (base 10):
+
+  puts Num.convert_exact(x,10)                     # -> 0.125
+
+Let's convert the default decimal output back to another BinNum which will preserve its precision:
 
   y = BinNum(x.to_s)
+
+The result may seem ok:
+
+  puts y                                            # -> 0.1
+
+But is not exactly what we originally had:
+
+  puts y==x                                        # -> false
   puts y                                           # -> 0.1
-  puts BinNum(x.to_s) == x                       # -> false
-  puts y.number_of_digits                          # -> 53
+  puts y.number_of_digits                          # -> 5
+  puts y.to_s(:base=>2)                            # -> 0.00011010
 
-Both numbers are not equal. If we show them in binary with to_s(:base=>2) no conversion is needed
-and the exact values are shown and we see the difference:
+The new value y has gained some digits because of the intermediate conversion to decimal: one decimal digit
+contains more information than one bit, and the result shows that.
 
-  puts x.to_s(:base=>2)                            # -> 0.001
-  puts y.to_s(:base=>2)                            # -> 1.100110011001100110011001100110011001100110011001101E-4
+If we wanted to preserve exactly the number we should have done this:
 
-If we wanted to convert back the decimal value to the original value we had to use the original
-precision for the conversion:
+  y = BinNum(x.to_s, :fixed, :precision=>x.number_of_digits)
+  puts y==x                                         # -> true
 
-  y = BinNum(x.to_s, :precision=>x.number_of_digits)
-  puts x == y                                      # -> true
+To preserve the value we had to explicitly determine how many bits should y have.
+
+With the :fixed options the number produced by BinNum is rounded to the context precision (which can be
+overriden as in the example by other options):
+
+  puts BinNum(x.to_s, :fixed, :precision=>32).to_s(:base=>2) # -> 0.00011001100110011001100110011001101
+  puts BinNum(x.to_s, :fixed, :precision=>1).to_s(:base=>2)  # -> 0.001
 
 Note also that if we normalize a value we will change it's precision to that of the context:
 
   puts x.number_of_digits                          # -> 1
   puts x.normalize.number_of_digits                # -> 53
+  puts x.normalize.to_s                            # -> 0.125
 
 == More Information
 
@@ -518,8 +551,7 @@ EXPAND+
 
 = Roadmap
 
-* Version 0.2.0: First released version of the new flt gem.
-* Version 0.3.0: Implement the missing GDA functions:
+* Version 1.0.0: First released version of the new flt gem.
+* Version 1.1.0: Implement the missing GDA functions:
   rotate, shift, trim, and, or, xor, invert,
   max, min, maxmag, minmag, comparetotal, comparetotmag
-

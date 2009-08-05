@@ -4,65 +4,64 @@
 
 require 'flt'
 
+# Float constants.
+#
+# Note that this uses the "fractional significand" interpretation,
+# i.e. the significand has the radix point before its first digit.
+#
+# Float::RADIX : b = Radix of exponent representation,2
+#
+# Float::MANT_DIG : p = bits (base-RADIX digits) in the significand
+#
+# Float::DIG : q = Number of decimal digits such that any floating-point number with q
+#              decimal digits can be rounded into a floating-point number with p radix b
+#              digits and back again without change to the q decimal digits,
+#                 q = p * log10(b)			if b is a power of 10
+#               	q = floor((p - 1) * log10(b))	otherwise
+#              ((Float::MANT_DIG-1)*Math.log(FLoat::RADIX)/Math.log(10)).floor
+#
+# Float::MIN_EXP : emin = Minimum int x such that Float::RADIX**(x-1) is a normalized float
+#
+# Float::MIN_10_EXP : Minimum negative integer such that 10 raised to that power is in the
+#                    range of normalized floating-point numbers,
+#                      ceil(log10(b) * (emin - 1))
+#
+# Float::MAX_EXP : emax = Maximum int x such that Float::RADIX**(x-1) is a representable float
+#
+# Float::MAX_10_EXP : Maximum integer such that 10 raised to that power is in the range of
+#                     representable finite floating-point numbers,
+#                       floor(log10((1 - b**-p) * b**emax))
+#
+# Float::MAX : Maximum representable finite floating-point number
+#                (1 - b**-p) * b**emax
+#
+# Float::EPSILON : The difference between 1 and the least value greater than 1 that is
+#                  representable in the given floating point type
+#                    b**(1-p)
+#                  Math.ldexp(*Math.frexp(1).collect{|e| e.kind_of?(Integer) ? e-(Float::MANT_DIG-1) : e})
+#
+# Float::MIN  : Minimum normalized positive floating-point number
+#                  b**(emin - 1).
+#
+# Float::ROUNDS : Addition rounds to 0: zero, 1: nearest, 2: +inf, 3: -inf, -1: unknown.
+#
+# Additional contants defined here:
+#
+# Float::DECIMAL_DIG :  Number of decimal digits, n, such that any floating-point number can be rounded
+#                       to a floating-point number with n decimal digits and back again without
+#                       change to the value,
+#                         pmax * log10(b)			if b is a power of 10
+#                         ceil(1 + pmax * log10(b))	otherwise
+#                       DECIMAL_DIG = (MANT_DIG*Math.log(RADIX)/Math.log(10)).ceil+1
+#
+# Float::MIN_N : Minimum normalized number == MAX_D.next == MIN
+#
+# Float::MAX_D : Maximum denormal number == MIN_N.prev
+#
+# Float::MIN_D : Minimum non zero positive denormal number == 0.0.next
+#
+# Float::MAX_F : Maximum significand
 class Float
-
-  # Float constants.
-  #
-  # Note that this uses the "fractional significand" interpretation,
-  # i.e. the significand has the radix point before its first digit.
-  #
-  # Float::RADIX : b = Radix of exponent representation,2
-  #
-  # Float::MANT_DIG : p = bits (base-RADIX digits) in the significand
-  #
-  # Float::DIG : q = Number of decimal digits such that any floating-point number with q
-  #              decimal digits can be rounded into a floating-point number with p radix b
-  #              digits and back again without change to the q decimal digits,
-  #                 q = p * log10(b)			if b is a power of 10
-  #               	q = floor((p - 1) * log10(b))	otherwise
-  #              ((Float::MANT_DIG-1)*Math.log(FLoat::RADIX)/Math.log(10)).floor
-  #
-  # Float::MIN_EXP : emin = Minimum int x such that Float::RADIX**(x-1) is a normalized float
-  #
-  # Float::MIN_10_EXP : Minimum negative integer such that 10 raised to that power is in the
-  #                    range of normalized floating-point numbers,
-  #                      ceil(log10(b) * (emin - 1))
-  #
-  # Float::MAX_EXP : emax = Maximum int x such that Float::RADIX**(x-1) is a representable float
-  #
-  # Float::MAX_10_EXP : Maximum integer such that 10 raised to that power is in the range of
-  #                     representable finite floating-point numbers,
-  #                       floor(log10((1 - b**-p) * b**emax))
-  #
-  # Float::MAX : Maximum representable finite floating-point number
-  #                (1 - b**-p) * b**emax
-  #
-  # Float::EPSILON : The difference between 1 and the least value greater than 1 that is
-  #                  representable in the given floating point type
-  #                    b**(1-p)
-  #                  Math.ldexp(*Math.frexp(1).collect{|e| e.kind_of?(Integer) ? e-(Float::MANT_DIG-1) : e})
-  #
-  # Float::MIN  : Minimum normalized positive floating-point number
-  #                  b**(emin - 1).
-  #
-  # Float::ROUNDS : Addition rounds to 0: zero, 1: nearest, 2: +inf, 3: -inf, -1: unknown.
-  #
-  # Additional contants defined here:
-  #
-  # Float::DECIMAL_DIG :  Number of decimal digits, n, such that any floating-point number can be rounded
-  #                       to a floating-point number with n decimal digits and back again without
-  #                       change to the value,
-  #                         pmax * log10(b)			if b is a power of 10
-  #                         ceil(1 + pmax * log10(b))	otherwise
-  #                       DECIMAL_DIG = (MANT_DIG*Math.log(RADIX)/Math.log(10)).ceil+1
-  #
-  # Float::MIN_N : Minimum normalized number == MAX_D.next == MIN
-  #
-  # Float::MAX_D : Maximum denormal number == MIN_N.prev
-  #
-  # Float::MIN_D : Minimum non zero positive denormal number == 0.0.next
-  #
-  # Float::MAX_F : Maximum significand
 
   DECIMAL_DIG = (MANT_DIG*Math.log(RADIX)/Math.log(10)).ceil+1
 
@@ -405,7 +404,7 @@ class Flt::FloatContext
       [low, high]
     end
 
-    def float_method(*methods)
+    def float_method(*methods) #:nodoc:
       methods.each do |method|
         if method.is_a?(Array)
           float_method, context_method = method
@@ -418,13 +417,13 @@ class Flt::FloatContext
       end
     end
 
-    def float_binary_operator(method, op)
+    def float_binary_operator(method, op) #:nodoc:
       define_method(method) do |x,y|
         x.to_f.send(op,y)
       end
     end
 
-    def math_function(*methods)
+    def math_function(*methods) #:nodoc:
       methods.each do |method|
         define_method(method) do |x|
           Math.send(method, x.to_f)
