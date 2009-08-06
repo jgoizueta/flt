@@ -3,17 +3,18 @@
 # Tolerance can be used to allow for a tolerance in floating-point comparisons.
 #
 # A Tolerance can be defined independently of the type (floating-point numeric class)
-# it will be used with; The actual tolerance value will be compute for a particular reference value:
+# it will be used with; The actual tolerance value will be compute for a particular reference value, and
+# for some kinds of tolerance (e.g. epsilon) a value is not available without a reference:
 #
 #   tol = Tolerance(3, :decimals)
-#   puts tol.value(DecNum('10.0')).inspect
-#   puts tol.value(10.0).inspect
-#   puts tol.value.inspect
+#   puts tol.value(DecNum('10.0')).inspect        # -> DecNum('0.0005')
+#   puts tol.value(10.0).inspect                  # ->  0.0005
+#   puts tol.value.inspect                        # -> Rational(1, 2000)
 #
 #   tol = Tolerance(:epsilon)
-#   puts tol.value(DecNum('10.0')).inspect
-#   puts tol.value(10.0).inspect
-#   puts tol.value.inspect
+#   puts tol.value(DecNum('10.0')).inspect        # -> DecNum('1.00E-26')
+#   puts tol.value(10.0).inspect                  # -> 2.22044604925031e-15
+#   puts tol.value.inspect                        # -> nil
 #
 # Tolerances can be:
 # * Absolute: the tolerance value is a fixed value independent of the values to be compared.
@@ -57,33 +58,32 @@
 # Examples:
 #
 #   tol = Tolerance(100, :absolute)
-#   puts tol.value(1.0)
-#   puts tol.value(1.5)
-#   puts tol.value(1.0E10)
-#   puts tol.eq?(11234.0, 11280.0)
+#   puts tol.value(1.0)                                   # -> 100.0
+#   puts tol.value(1.5)                                   # -> 100.0
+#   puts tol.value(1.0E10)                                # -> 100.0
+#   puts tol.eq?(11234.0, 11280.0)                        # -> true
 #
 #   tol = Tolerance(100, :relative)
-#   puts tol.value(1.0)
-#   puts tol.value(1.5)
-#   puts tol.value(1.0E10)
-#   puts tol.eq?(11234.0, 11280.0)
+#   puts tol.value(1.0)                                   # -> 100.0
+#   puts tol.value(1.5)                                   # -> 150.0
+#   puts tol.value(1.0E10)                                # -> 1000000000000.0
+#   puts tol.eq?(11234.0, 11280.0)                        # -> true
 #
 #   tol = Tolerance(100, :floating)
-#   puts tol.value(1.0)
-#   puts tol.value(1.5)
-#   puts tol.value(1.0E10)
-#   puts tol.eq?(11234.0, 11280.0)
+#   puts tol.value(1.0)                                   # -> 100.0
+#   puts tol.value(1.5)                                   # -> 200.0
+#   puts tol.value(1.0E10)                                # -> 1717986918400.0
+#   puts tol.eq?(11234.0, 11280.0)                        # -> true
 #
 #   tol = Tolerance(3, :sig_decimals)
-#   puts tol.eq?(1.234,1.23)
+#   puts tol.eq?(1.234,1.23)                              # -> true
 #
 #   tol = Tolerance(1, :ulps)
-#   puts tol.eq?(3.3433, 3.3433.next)
-#   puts tol.eq?(DecNum('1.1'), DecNum('1.1').next)
+#   puts tol.eq?(3.3433, 3.3433.next_plus)                # -> true
+#   puts tol.eq?(DecNum('1.1'), DecNum('1.1').next_plus)  # -> true
 #
 #   tol = Tolerance(1, :percent)
-#   puts tol.equal_to?(3.14159, Math::PI)
-#
+#   puts tol.equal_to?(3.14159, Math::PI)                 # -> true#
 
 require 'flt/num'
 require 'flt/float'

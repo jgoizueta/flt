@@ -58,9 +58,9 @@ class MimickIRB < RubyLex
 end
 
 # TO DO: output of blocks is gathered and shown at the end of the block
-# when lines in a block have ->, they should be rememberd, and when
+# when lines in a block have # -> markers, they should be rememberd, and when
 # output is generated when closing the block, each output line should
-# be appended to the in-block -> lines before showing lines after the block.
+# be appended to the in-block # -> lines before showing lines after the block.
 
 
 class ExampleExpander
