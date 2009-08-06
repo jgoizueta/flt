@@ -413,6 +413,21 @@ class Num < Numeric
 
     end
 
+    # Evalute a block under a context (set up the context as a local context)
+    #
+    # When we have a context object we can use this instead of using the context method of the
+    # numeric class, e.g.:
+    #   DecNum.context(context) { ... }
+    # This saves verbosity, specially when numeric class is not fixed, in which case
+    # we would have to write:
+    #   context.num_class.context(context) { ... }
+    # With this method, we simply write:
+    #   context.eval { ... }
+    def eval(&blk)
+      # TODO: consider other names for this method; use ? apply ? local ? with ?
+      num_class.context(self, &blk)
+    end
+
     # This gives access to the numeric class (Flt::Num-derived) this context is for.
     def num_class
       @num_class

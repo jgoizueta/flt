@@ -88,6 +88,10 @@ class Flt::FloatContext
 
   include Singleton
 
+  def eval
+    yield self
+  end
+
   def num_class
     Float
   end

@@ -14,6 +14,10 @@ class Flt::BigDecimalContext
   include Singleton
   # TODO: Context class with precision, rounding, etc. (no singleton)
 
+  def eval
+    yield self
+  end
+
   def num_class
     BigDecimal
   end
