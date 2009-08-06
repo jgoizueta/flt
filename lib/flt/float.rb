@@ -447,6 +447,11 @@ class Flt::FloatContext
   math_function :log, :log10, :exp, :sqrt,
                 :sin, :cos, :tan, :asin, :acos, :atan,
                 :sinh, :cosh, :tanh, :asinh, :acosh, :atanh
+
+  def ln(x)
+    log(x)
+  end
+
 end
 
 # Return a (limited) context object for Float.
