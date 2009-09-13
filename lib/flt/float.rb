@@ -429,9 +429,14 @@ class Flt::FloatContext
 
     def math_function(*methods) #:nodoc:
       methods.each do |method|
-        define_method(method) do |x|
-          Math.send(method, x.to_f)
+        define_method(method) do |*args|
+          x = args.shift.to_f
+          Math.send(method, x, *args)
         end
+        # TODO: consider injecting the math methods into Float
+        # Float.send(:define_method, method) do |*args|
+        #   Math.send(method, self, *args)
+        # end
       end
     end
 
@@ -445,12 +450,30 @@ class Flt::FloatContext
   float_binary_operator :power, :**
 
   math_function :log, :log10, :exp, :sqrt,
-                :sin, :cos, :tan, :asin, :acos, :atan,
+                :sin, :cos, :tan, :asin, :acos, :atan, :atan2,
                 :sinh, :cosh, :tanh, :asinh, :acosh, :atanh
 
   def ln(x)
     log(x)
   end
+
+  def pi
+    Float::PI
+  end
+
+  def eval
+    yield self
+  end
+
+  def math(*parameters, &blk)
+    if parameters.empty?
+      self.instance_eval &blk
+    else
+      # needs instance_exe (available in Ruby 1.9, ActiveRecord; TODO: include implementation here)
+      self.instance_exec *parameters, &blk
+    end
+  end
+
 
 end
 

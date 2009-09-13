@@ -1330,6 +1330,25 @@ module Flt
   end # Support
 
 
-
-
 end # Flt
+
+# The math method of context needs instance_exec to pass parameters to the blocks evaluated
+# with a modified self (pointing to a context object.) intance_exec is available in Ruby 1.9.1 and
+# is also defined by ActiveRecord. Here we use Mauricio Fernández implementation if it is not
+# available.
+class Object
+  unless defined? instance_exec
+    module InstanceExecHelper; end
+    include InstanceExecHelper
+    def instance_exec(*args, &block) # !> method redefined; discarding old instance_exec
+      mname = "__instance_exec_#{Thread.current.object_id.abs}_#{object_id.abs}"
+      InstanceExecHelper.module_eval{ define_method(mname, &block) }
+      begin
+        ret = send(mname, *args)
+      ensure
+        InstanceExecHelper.module_eval{ undef_method(mname) } rescue nil
+      end
+      ret
+    end
+  end
+end

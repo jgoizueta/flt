@@ -61,6 +61,34 @@ module Flt
         return +s
       end
 
+      def tan(x)
+        sin(x)/cos(x)
+      end
+
     end # Math
+
+    class <<self
+      private
+      # declare math functions and inject them into the context class
+      def math_function(*functions)
+        functions.each do |f|
+          # TODO: consider injecting the math methods into the numeric class
+          # define_method(f) do |*args|
+          #   Math.send(f, self, *args)
+          # end
+          Num::ContextBase.send :define_method,f do |*args|
+            x = Num(args.shift)
+            Math.send(f, x, *args)
+          end
+        end
+      end
+    end
+
+    math_function :sin, :cos, :tan
+
+    def pi
+      Math.pi(precision)
+    end
+
   end # DecNum
 end # Flt

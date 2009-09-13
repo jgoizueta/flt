@@ -413,7 +413,7 @@ class Num < Numeric
 
     end
 
-    # Evalute a block under a context (set up the context as a local context)
+    # Evaluate a block under a context (set up the context as a local context)
     #
     # When we have a context object we can use this instead of using the context method of the
     # numeric class, e.g.:
@@ -426,6 +426,23 @@ class Num < Numeric
     def eval(&blk)
       # TODO: consider other names for this method; use ? apply ? local ? with ?
       num_class.context(self, &blk)
+    end
+
+    # Evalute a block under a context (set up the context as a local context) and inject the
+    # context methods (math and otherwise) into the block scope.
+    #
+    # This allows the use of regular algebraic notations for math functions,
+    # e.g. exp(x) instead of x.exp
+    def math(*parameters, &blk)
+      # TODO: consider renaming this to eval
+      num_class.context(self) do
+        if parameters.empty?
+          num_class.context.instance_eval &blk
+        else
+          # needs instance_exe (available in Ruby 1.9, ActiveRecord; TODO: include implementation here)
+          num_class.context.instance_exec *parameters, &blk
+        end
+      end
     end
 
     # This gives access to the numeric class (Flt::Num-derived) this context is for.
