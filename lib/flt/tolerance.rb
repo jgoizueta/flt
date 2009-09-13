@@ -340,7 +340,7 @@ module Flt
 
       num_class = xs.first.class
       context = num_class.context
-      xs = xs.map{|x| context.Num(x)}
+      xs = xs.map{|x| x = context.Num(x); x.zero? ? context.minimum_normal(context.sign(x)) : x}
       v = cast_value(num_class)
 
       # TODO: simplify using context
