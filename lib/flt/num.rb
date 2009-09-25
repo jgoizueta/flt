@@ -1264,11 +1264,11 @@ class Num < Numeric
     end
 
     def int_mult_radix_power(x,n)
-      x * self.radix**n
+      n < 0 ? (x / self.radix**(-n)) : (x * self.radix**n)
     end
 
     def int_div_radix_power(x,n)
-      x / self.radix**n
+      n < 0 ? (x * self.radix**(-n) ) : (x / self.radix**n)
     end
   end
 
