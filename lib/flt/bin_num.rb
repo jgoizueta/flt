@@ -19,13 +19,13 @@ class BinNum < Num
     # Multiply by an integral power of the base: x*(radix**n) for x,n integer;
     # returns an integer.
     def int_mult_radix_power(x,n)
-      x * ((n < 0) ? (2**n) : (1<<n))
+      n < 0 ? (x / (1<<(-n))) : (x * (1<<n))
     end
 
     # Divide by an integral power of the base: x/(radix**n) for x,n integer;
     # returns an integer.
     def int_div_radix_power(x,n)
-      x / ((n < 0) ? (2**n) : (1<<n))
+      n < 0 ? (x * (1<<(-n))) : (x / (1<<n))
     end
   end
 

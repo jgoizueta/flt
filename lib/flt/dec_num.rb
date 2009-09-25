@@ -22,13 +22,13 @@ class DecNum < Num
     # Multiply by an integral power of the base: x*(radix**n) for x,n integer;
     # returns an integer.
     def int_mult_radix_power(x,n)
-      x * (10**n)
+      n < 0 ? (x / (10**(-n))) : (x * (10**n))
     end
 
     # Divide by an integral power of the base: x/(radix**n) for x,n integer;
     # returns an integer.
     def int_div_radix_power(x,n)
-      x / (10**n)
+      n < 0 ? (x * (10**(-n))) : (x / (10**n))
     end
   end
 
