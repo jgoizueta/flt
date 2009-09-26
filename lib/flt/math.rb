@@ -1,6 +1,7 @@
 require 'flt/dec_num'
 
 # TODO: convert arguments as Context#_convert does, to accept non DecNum arguments
+# TODO: tests!
 
 module Flt
   class DecNum
@@ -114,41 +115,41 @@ module Flt
         end
       end
 
+      # Inverse trigonometric functions 1: reference implementation (accurate enough)
 
-      # this was slower
-      # def atan(x)
-      #   s = nil
-      #   DecNum.context do |local_context|
-      #     local_context.precision += 2
-      #     if x == 0
-      #       return DecNum.zero
-      #     elsif x.abs > 1
-      #       if x.infinite?
-      #         s = pi / DecNum(x.sign, 2, 0)
-      #         break
-      #       else
-      #         c = (pi / 2).copy_sign(x)
-      #         x = 1 / x
-      #       end
-      #     end
-      #     local_context.precision += 2
-      #     x_squared = x ** 2
-      #     y = x_squared / (1 + x_squared)
-      #     y_over_x = y / x
-      #     i = DecNum.zero; lasts = 0; s = y_over_x; coeff = 1; num = y_over_x
-      #     while s != lasts
-      #       lasts = s
-      #       i += 2
-      #       coeff *= i / (i + 1)
-      #       num *= y
-      #       s += coeff * num
-      #     end
-      #     if c && c!= 0
-      #       s = c - s
-      #     end
-      #   end
-      #   return +s
-      # end
+      def atan(x)
+        s = nil
+        DecNum.context do |local_context|
+          local_context.precision += 2
+          if x == 0
+            return DecNum.zero
+          elsif x.abs > 1
+            if x.infinite?
+              s = pi / DecNum(x.sign, 2, 0)
+              break
+            else
+              c = (pi / 2).copy_sign(x)
+              x = 1 / x
+            end
+          end
+          local_context.precision += 2
+          x_squared = x ** 2
+          y = x_squared / (1 + x_squared)
+          y_over_x = y / x
+          i = DecNum.zero; lasts = 0; s = y_over_x; coeff = 1; num = y_over_x
+          while s != lasts
+            lasts = s
+            i += 2
+            coeff *= i / (i + 1)
+            num *= y
+            s += coeff * num
+          end
+          if c && c!= 0
+            s = c - s
+          end
+        end
+        return +s
+      end
 
       def atan2(y, x)
           abs_y = y.abs
@@ -176,87 +177,69 @@ module Flt
           end
       end
 
-      # def asin(x)
-      #   return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
-      #
-      #     if x == -1:
-      #         return pi / -2
-      #     elsif x == 0
-      #         return DecNum.zero
-      #     elsif x == 1
-      #         return pi / 2
-      #     end
-      #
-      #     return atan2(x, (DecNum(1)-x**2).sqrt)
-      # end
-      #
-      # def acos(x)
-      #   return DecNum.context.exception(Num::InvalidOperation, 'acos needs -1 <= x <= 1') if x.abs > 1
-      #
-      #     if x == -1:
-      #         return pi
-      #     elsif x == 0
-      #         return pi / 2
-      #     elsif x == 1
-      #         return DecNum.zero
-      #     end
-      #
-      #     return pi/2 - atan2(x, (DecNum(1)-x**2).sqrt)
-      # end
-
-
-      # def asin(x)
-      #   return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
-      #   z = nil
-      #   DecNum.context do |local_context|
-      #     local_context.precision += 2
-      #     y = x
-      #
-      #     # scale argument for faster convergence
-      #
-      #     z = nil
-      #     3.times do
-      #       z = (1 - DecNum.context.sqrt(1-y*y))/2
-      #       y = DecNum.context.sqrt(z)
-      #     end
-      #     n = 1
-      #
-      #     z = y/DecNum.context.sqrt(n - z)
-      #
-      #     y = z
-      #
-      #     ok = true
-      #     while ok
-      #       z = -z
-      #       n += 2
-      #
-      #       next_y = y + (z**n)/n # the ** is slow!
-      #
-      #       ok = (y != next_y)
-      #       y = next_y
-      #     end
-      #
-      #     z = y*8
-      #     z = -z if x <= y
-      #   end
-      #   +z
-      #
-      # end
 
       def asin(x)
         return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
+
+          if x == -1:
+              return pi / -2
+          elsif x == 0
+              return DecNum.zero
+          elsif x == 1
+              return pi / 2
+          end
+
+          DecNum.context do |local_context|
+            local_context.precision += 3
+            x = x/(1-x*x).sqrt
+          end
+          atan(x)
+      end
+
+      def acos(x)
+        return DecNum.context.exception(Num::InvalidOperation, 'acos needs -1 <= x <= 1') if x.abs > 1
+
+          if x == -1:
+              return pi
+          elsif x == 0
+              return pi / 2
+          elsif x == 1
+              return DecNum.zero
+          end
+
+          DecNum.context do |local_context|
+            local_context.precision += 3
+            x = x/(1-x*x).sqrt
+          end
+
+          pi/2 - atan(x) # should use extra precision for this?
+      end
+
+      # Inverse trigonometric functions 2: experimental optimizations
+
+      # twice as fast, but slightly less precise in some cases
+      def asin_(x)
+        return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
         z = nil
         DecNum.context do |local_context|
-          local_context.precision += 2
+          local_context.precision += 3
           y = x
 
           # scale argument for faster convergence
 
-          z = nil
-          3.times do
-            z = (1 - DecNum.context.sqrt(1-y*y))/2
-            y = DecNum.context.sqrt(z)
+          exp = x.adjusted_exponent
+          if exp <= -2
+            nt = 0
+          else
+            nt = 3
           end
+
+          z = y*y
+          nt.times do
+            #z = (1 - DecNum.context.sqrt(1-z))/2
+            z = (- DecNum.context.sqrt(-z+1) + 1)/2
+          end
+          y = DecNum.context.sqrt(z)
           n = 1
 
           z = y/DecNum.context.sqrt(n - z)
@@ -272,28 +255,32 @@ module Flt
             y = next_y
           end
 
-          z = y*8
-          z = -z if x <= y
+          if nt==3
+            z = y*8
+            z = -z if x <= y
+          else
+            z = y
+          end
         end
         +z
 
       end
 
-      def atan(x)
+      def atan_(x) # bad precision for large x absolute value
         DecNum.context do |local_context|
-          local_context.precision += 2
+          local_context.precision += 3
           x = x/(1+x*x).sqrt
         end
-        asin(x)
+        asin_(x)
       end
 
-      def acos(x)
+      def acos_(x)
         return DecNum.context.exception(Num::InvalidOperation, 'acos needs -1 <= x <= 2') if x.abs > 1
         DecNum.context do |local_context|
           local_context.precision += 2
           x = (1-x*x).sqrt
         end
-        asin(x)
+        asin_(x)
       end
 
       # TODO: degrees mode or radians/degrees conversion
