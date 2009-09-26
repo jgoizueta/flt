@@ -14,7 +14,11 @@ module Flt
       # Trinogometry
 
       # Pi
+      @pi_cache = nil
+      @pi_cache_digits = 0
       def pi(decimals=nil)
+        prc = decimals||Flt::DecNum.context.precision
+        return +@pi_cache if @pi_cache_digits >= prc
         three = DecNum(3)
         lasts, t, s, n, na, d, da = 0, three, 3, 1, 0, 0, 24
         Flt::DecNum.context(:precision=>decimals) do |local_context|
@@ -27,6 +31,8 @@ module Flt
             s += t
           end
         end
+        @pi_cache = s
+        @pi_cache_digits = prc
         return +s
       end
 
@@ -41,9 +47,12 @@ module Flt
 
       # Cosine of angle in radians
       def cos(x)
-        i, lasts, s, fact, num = 0, 0, 1, 1, 1
+        s = nil
         DecNum.context do |local_context|
-          local_context.precision += 2 # extra digits for intermediate steps
+          local_context.precision += 3 # extra digits for intermediate steps
+          x = x.modulo(2*pi) # TODO: better reduction
+          i, lasts, fact, num = 0, 0, 1, DecNum(1)
+          s = num
           x2 = -x*x
           while s != lasts
             lasts = s
@@ -58,9 +67,12 @@ module Flt
 
       # Sine of angle in radians
       def sin(x)
-        i, lasts, s, fact, num = 1, 0, x, 1, x
+        s = nil
         DecNum.context do |local_context|
-          local_context.precision += 2 # extra digits for intermediate steps
+          local_context.precision += 3 # extra digits for intermediate steps
+          x = x.modulo(2*pi) # TODO: better reduction
+          i, lasts, fact, num = 1, 0, 1, DecNum(x)
+          s = num
           x2 = -x*x
           while s != lasts
             lasts = s
@@ -73,12 +85,14 @@ module Flt
         return +s
       end
 
-      def sincos(x) # TODO: use cos(x) = sqrt(1-sin(x)**2)
+      # NOTE: currently sincos is a little too slow (sin+cos seems faster)
+      # both sincos and sin,cos are sometimes slightly innacurate (1ulp) and they're differently inacurate
+      def sincos(x) # TODO: use cos(x) = sqrt(1-sin(x)**2) ? # this is slow
         s = DecNum(0)
         c = DecNum(1)
         DecNum.context do |local_context|
-          local_context.precision += 2 # extra digits for intermediate steps
-           x = x.divmod(2 * pi)[1]
+          local_context.precision += 3 # extra digits for intermediate steps
+          x = x.modulo(2*pi) # TODO: better reduction
 
            i = 1
            done_s = false; done_c = false
