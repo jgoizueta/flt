@@ -2514,6 +2514,21 @@ class Num < Numeric
     @exp
   end
 
+  # Integer part (as a Num)
+  def integer_part
+    ans = _check_nans
+    return ans if ans
+    return_as_num = {:places=>0}
+    self.sign < 0 ? self.ceil(return_as_num) : self.floor(return_as_num)
+  end
+
+  # Fraction part (as a Num)
+  def fraction_part
+    ans = _check_nans
+    return ans if ans
+    self - self.integer_part
+  end
+
   # Return the value of the number as an signed integer and a scale.
   def to_int_scale
     if special?
