@@ -14,31 +14,48 @@ module Flt
       # Trinogometry
 
       # Pi
-      @pi_cache = nil
+      @pi_cache = nil # truncated pi
       @pi_cache_digits = 0
-      # TODO: keep also algorithm state to avoid recomputing the initial digits each tims
-      def pi(decimals=nil)
-        decimals ||= DecNum.context.precision
-        DecNum.context(:precision=>decimals) do
-          if @pi_cache_digits < decimals
-            three = DecNum(3)
-            lasts, t, s, n, na, d, da = 0, three, 3, 1, 0, 0, 24
-            Flt::DecNum.context(:precision=>decimals) do |local_context|
-              local_context.precision += 3 # extra digits for intermediate steps
-              while s != lasts
-                lasts = s
-                n, na = n+na, na+8
-                d, da = d+da, da+32
-                t = (t * n) / d
-                s += t
-              end
-              @pi_cache = s
-              @pi_cache_digits = decimals
-            end
+      def pi(round_digits=nil)
+        round_digits ||= DecNum.context.precision
+        digits = round_digits
+          if @pi_cache_digits <= digits # we need at least one more truncated digit
+             continue = true
+             while continue do
+               digits += 1
+               fudge = 10
+               unity = 10**(digits+fudge)
+               v = 4*(4*iarccot(5, unity) - iarccot(239, unity))
+               v /= 10**fudge
+               # if the last digit is 0 or 5 the truncated value may not be good for rounding
+               last_digit = v%10
+               continue = (last_digit==5 || last_digit==0)
+               digits += 1
+             end
+             @pi_cache_digits = digits
+             @pi_cache = DecNum(+1, v, 1-digits) # truncated value
+             #puts "cache #{@pi_cache} #{digits}"
           end
-          +@pi_cache
-        end
+          DecNum.context(:precision=>round_digits){+@pi_cache}
       end
+
+      def iarccot(x, unity)
+        xpow = unity / x
+        n = 1
+        sign = 1
+        sum = 0
+        loop do
+            term = xpow / n
+            break if term == 0
+            sum += sign * (xpow/n)
+            xpow /= x*x
+            n += 2
+            sign = -sign
+        end
+        sum
+      end
+
+
 
       def e(decimals=nil)
         DecNum.context do |local_context|
@@ -257,7 +274,7 @@ module Flt
 
           z = y*y
           nt.times do
-            $asin_red += 1
+            #$asin_red += 1
             #z = (1 - DecNum.context.sqrt(1-z))/2
             z = (- DecNum.context.sqrt(-z+1) + 1)/2
           end
@@ -319,7 +336,7 @@ module Flt
           y2 = nil
           h = DecNum('0.5')
           while y.abs > lim
-            $asin__red += 1
+            #$asin__red += 1
             #s *= 2
             s += s
 
@@ -353,7 +370,7 @@ module Flt
 
       end
 
-      # this is as precise as atan and a little faster
+      # this is practically as precise as atan and a little faster
       def atan__(x)
         # TODO: Nan's...
         s = nil
@@ -388,7 +405,7 @@ module Flt
           while !fin
             t *= a2
             d = t/j
-            break if d.zero?
+            #break if d.zero?
             old_s = s
             s += d
             fin = (s==old_s)
