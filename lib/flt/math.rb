@@ -22,40 +22,31 @@ module Flt
           if @pi_cache_digits <= digits # we need at least one more truncated digit
              continue = true
              while continue do
-               digits += 1
+               margin = 10 # margin to reduce recomputing with more digits to avoid ending in 0 or 5
+               digits += margin + 1
                fudge = 10
                unity = 10**(digits+fudge)
                v = 4*(4*iarccot(5, unity) - iarccot(239, unity))
                v /= 10**fudge
                # if the last digit is 0 or 5 the truncated value may not be good for rounding
-               last_digit = v%10
-               continue = (last_digit==5 || last_digit==0)
-               digits += 1
+               loop do
+                 last_digit = v%10
+                 continue = (last_digit==5 || last_digit==0)
+                 if continue && margin>0
+                   # if we have margin we back-up one digit
+                   margin -= 1
+                   v /= 10
+                 else
+                   break
+                 end
+               end
              end
              @pi_cache_digits = digits
-             @pi_cache = DecNum(+1, v, 1-digits) # truncated value
+             @pi_cache = DecNum(+1, v, 1-digits) # cache truncated value
              #puts "cache #{@pi_cache} #{digits}"
           end
           DecNum.context(:precision=>round_digits){+@pi_cache}
       end
-
-      def iarccot(x, unity)
-        xpow = unity / x
-        n = 1
-        sign = 1
-        sum = 0
-        loop do
-            term = xpow / n
-            break if term == 0
-            sum += sign * (xpow/n)
-            xpow /= x*x
-            n += 2
-            sign = -sign
-        end
-        sum
-      end
-
-
 
       def e(decimals=nil)
         DecNum.context do |local_context|
@@ -480,38 +471,61 @@ module Flt
       @inv2pi = DecNum(+1, 1591549430918953357688837633725143620344596457404564487476673440588967976342265350901138027662530859560728427267579580368929118461145786528779674107316998392292399669374090775730777463969253076887173928962173976616933623902417236290118323801142226997557159404618900869026739561204894109369378440855287230999464434002486723477394596108983230967830749061669864628046994486521878815747865669642410389958741393486099838680991999624428755851711788584311175187671605465475369880097394603647593337680593024944966353053271567755032203247778163971660229467481195981658406060168030359981339119874988327866544352797550700162406775643888495713108801221993761476813777647378906330680464579784817613124273140699607750245002977598570890569027967851315252100163177460209248116062405614562031464840892484591914352115754075562008715266068022171591407574745827225977462853998751553293908139817724093582547970733287190406999759076577078493470393589828087173425640366895116625457059433276312686500261227179711532112599504, -1000)
       @inv2pi_decimals = 1000
 
-      def modtwopi(x)
-        return +DecNum.context(:precision=>DecNum.context.precision*3){x.modulo(pi2)}
-        # This seems to be slower and less accurate:
-        # return x if x < pi2
-        # prec = DecNum.context.precision
-        # ex = x.fractional_exponent
-        # DecNum.context do |local_context|
-        #   # x.modulo(pi2)
-        #   local_context.precision *= 2
-        #   if ex > prec
-        #     # consider exponent separately
-        #     fd = nil
-        #     excess = ex - prec
-        #     x = x.scaleb(prec-ex)
-        #     # now obtain 2*prec digits from inv2pi after the initial excess digits
-        #     digits = nil
-        #     DecNum.context do |extended_context|
-        #       extended_context.precision += excess
-        #       digits = (inv2pi.scaleb(excess)).fraction_part
-        #     end
-        #     x *= digits*pi2
-        #   end
-        #   # compute the fractional part of the division by 2pi
-        #   x = pi2*((x*inv2pi).fraction_part)
-        # end
-        # +x
+
+      class <<self
+        private
+
+        def iarccot(x, unity)
+          xpow = unity / x
+          n = 1
+          sign = 1
+          sum = 0
+          loop do
+              term = xpow / n
+              break if term == 0
+              sum += sign * (xpow/n)
+              xpow /= x*x
+              n += 2
+              sign = -sign
+          end
+          sum
+        end
+
+        def modtwopi(x)
+          return +DecNum.context(:precision=>DecNum.context.precision*3){x.modulo(pi2)}
+          # This seems to be slower and less accurate:
+          # return x if x < pi2
+          # prec = DecNum.context.precision
+          # ex = x.fractional_exponent
+          # DecNum.context do |local_context|
+          #   # x.modulo(pi2)
+          #   local_context.precision *= 2
+          #   if ex > prec
+          #     # consider exponent separately
+          #     fd = nil
+          #     excess = ex - prec
+          #     x = x.scaleb(prec-ex)
+          #     # now obtain 2*prec digits from inv2pi after the initial excess digits
+          #     digits = nil
+          #     DecNum.context do |extended_context|
+          #       extended_context.precision += excess
+          #       digits = (inv2pi.scaleb(excess)).fraction_part
+          #     end
+          #     x *= digits*pi2
+          #   end
+          #   # compute the fractional part of the division by 2pi
+          #   x = pi2*((x*inv2pi).fraction_part)
+          # end
+          # +x
+        end
+
+        def reduce_angle(a)
+          # TODO: reduce to pi/k; with quadrant information
+          modtwopi(a)
+        end
+
       end
 
-      def reduce_angle(a)
-        # TODO: reduce to pi/k; with quadrant information
-        modtwopi(a)
-      end
 
 
     end # Math
