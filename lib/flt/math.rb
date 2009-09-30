@@ -13,6 +13,8 @@ module Flt
 
       # Trigonometry
 
+      HALF = DecNum('0.5')
+
       # Pi
       $no_cache = false
       @pi_cache = nil # truncated pi digits as a string
@@ -161,10 +163,10 @@ module Flt
             return DecNum.zero
           elsif x.abs > 1
             if x.infinite?
-              s = pi / DecNum(x.sign, 2, 0)
+              s = (pi*HALF).copy_sign(x)
               break
             else
-              c = (pi / 2).copy_sign(x)
+              c = (pi*HALF).copy_sign(x)
               x = 1 / x
             end
           end
@@ -200,7 +202,7 @@ module Flt
               elsif abs_y == abs_x
                   x = DecNum(1).copy_sign(x)
                   y = DecNum(1).copy_sign(y)
-                  return pi(context=context) * (2 - x) / (4 * y)
+                  return pi * (2 - x) / (4 * y)
               end
           end
 
@@ -219,11 +221,11 @@ module Flt
         return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
 
           if x == -1
-              return pi / -2
+              return -pi*HALF
           elsif x == 0
               return DecNum.zero
           elsif x == 1
-              return pi / 2
+              return pi*HALF
           end
 
           DecNum.context do |local_context|
@@ -240,7 +242,7 @@ module Flt
           if x == -1
               return pi
           elsif x == 0
-              return pi / 2
+              return pi*HALF
           elsif x == 1
               return DecNum.zero
           end
@@ -250,7 +252,7 @@ module Flt
             x = x/(1-x*x).sqrt
           end
 
-          pi/2 - atan(x) # should use extra precision for this?
+          pi*HALF - atan(x) # should use extra precision for this?
       end
 
       # Inverse trigonometric functions 2: experimental optimizations
@@ -370,13 +372,14 @@ module Flt
 
       end
 
+
       # this is practically as precise as atan and a little faster
       def atan__(x)
         # TODO: Nan's...
         s = nil
         DecNum.context do |local_context|
           local_context.precision += 3
-          piby2 = pi*DecNum('0.5') # TODO. piby2=pi/2 cached constant
+          piby2 = pi*HALF
           if x.infinite?
             s = (piby2).copy_sign(x)
             break
@@ -450,8 +453,8 @@ module Flt
         end
       end
 
-      class <<self
-        private
+      # class <<self
+      #   private
 
         def iarccot(x, unity)
           xpow = unity / x
@@ -472,11 +475,12 @@ module Flt
         def modtwopi(x)
           return +DecNum.context(:precision=>DecNum.context.precision*3){x.modulo(pi2)}
           # This seems to be slower and less accurate:
-          # return x if x < pi2
           # prec = DecNum.context.precision
+          # pi_2 = pi2(prec*2)
+          # return x if x < pi_2
           # ex = x.fractional_exponent
           # DecNum.context do |local_context|
-          #   # x.modulo(pi2)
+          #   # x.modulo(pi_2)
           #   local_context.precision *= 2
           #   if ex > prec
           #     # consider exponent separately
@@ -485,14 +489,16 @@ module Flt
           #     x = x.scaleb(prec-ex)
           #     # now obtain 2*prec digits from inv2pi after the initial excess digits
           #     digits = nil
+          #     inv_2pi = inv2pi(local_context.precision+excess)
           #     DecNum.context do |extended_context|
           #       extended_context.precision += excess
           #       digits = (inv2pi.scaleb(excess)).fraction_part
           #     end
-          #     x *= digits*pi2
+          #     x *= digits*pi_2
           #   end
           #   # compute the fractional part of the division by 2pi
-          #   x = pi2*((x*inv2pi).fraction_part)
+          #   inv_2pi ||= inv2pi
+          #   x = pi_2*((x*inv2pi).fraction_part)
           # end
           # +x
         end
@@ -502,7 +508,7 @@ module Flt
           modtwopi(a)
         end
 
-      end
+      #end
 
 
 
