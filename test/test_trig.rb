@@ -22,6 +22,17 @@ class TestTrig < Test::Unit::TestCase
     end
   end
 
+  def check_relaxed(f, ulps=2)
+    DecNum.context(:precision=>12) do
+      data = @data12[f]
+      data.each do |x, result|
+        y = DecNum::Math.send(f, x)
+        err_ulps = (y-result).abs/result.ulp
+        assert err_ulps<=ulps, "#{f}(#{x})==#{result} to within #{ulps} ulps; error: #{err_ulps} ulps (#{y})"
+      end
+    end
+  end
+
 
   # def test_trig
   #   DecNum.context(:precision=>12) do
@@ -37,29 +48,52 @@ class TestTrig < Test::Unit::TestCase
   # separate tests per function
 
   def test_sin
-    check :sin
+    check_relaxed :sin
   end
 
   def test_cos
-    check :cos
+    check_relaxed :cos
   end
 
   def test_tan
-    check :tan
+    check_relaxed :tan
   end
 
   def test_asin
-    check :asin
+    check_relaxed :asin
   end
 
   def test_acos
-    check :acos
+    check_relaxed :acos
   end
 
   def test_atan
-    check :atan
+    check_relaxed :atan
   end
 
+  def test_sin_strict
+    check :sin
+  end
+
+  def test_cos_strict
+    check :cos
+  end
+
+  def test_tan_strict
+    check :tan
+  end
+
+  def test_asin_strict
+    check :asin
+  end
+
+  def test_acos_strict
+    check :acos
+  end
+
+  def test_atan_strict
+    check :atan
+  end
 
 
 
