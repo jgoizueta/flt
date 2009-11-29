@@ -7,7 +7,7 @@ class TestTrig < Test::Unit::TestCase
   def setup
     @data12 = {}
     [:sin, :cos, :tan, :asin, :acos, :atan].each do |f|
-      @data12[f] = File.read(File.join(File.dirname(__FILE__), "trigtest/#{f}12.txt")).to_a.map do |line|
+      @data12[f] = File.read(File.join(File.dirname(__FILE__), "trigtest/#{f}12.txt")).split("\n").map do |line|
         line.split.map{|x| Flt::DecNum(x)}
       end
     end
