@@ -259,24 +259,42 @@ module Flt
           +x
       end
 
-      def acos(x)
-        x = +x
-        return DecNum.context.exception(Num::InvalidOperation, 'acos needs -1 <= x <= 1') if x.abs > 1
+      def acos(x) # less accurate than asin (has problems near x=1)
 
-          if x == -1
-              return pi
-          elsif x == 0
-              return pi*HALF
-          elsif x == 1
-              return DecNum.zero
-          end
+        # We can compute acos(x) = pi/2 - asin(x)
+        # but we must take care with x near 1, where that formula would cause loss of precision
 
+        return DecNum.context.exception(Num::InvalidOperation, 'acos needs -1 <= x <= 2') if x.abs > 1
+
+        if x == -1
+            return pi
+        elsif x == 0
+            return +DecNum.context(:precision=>DecNum.context.precision+3){pi*HALF}
+        elsif x == 1
+            return DecNum.zero
+        end
+
+        # some identities:
+        #   acos(x) = pi/2 - asin(x) # (but this losses accuracy near x=+1)
+        #   acos(x) = pi/2 - atan(x/(1-x*x).sqrt) # this too
+        #   acos(x) = asin((1-x*x).sqrt) for x>=0; for x<=0  acos(x) = pi/2 - asin((1-x*x).sqrt)
+
+        if x < HALF
           DecNum.context do |local_context|
             local_context.precision += 3
             x = x/(1-x*x).sqrt
             x = pi*HALF - atan(x)
           end
-          +x
+        else
+          # valid for x>=0
+          DecNum.context do |local_context|
+            local_context.precision += 3 # 2
+            x = (1-x*x).sqrt
+            x = asin(x)
+          end
+        end
+        +x
+
       end
 
       # Inverse trigonometric functions 2: experimental optimizations
@@ -340,15 +358,7 @@ module Flt
         asin_(x)
       end
 
-      def acos_(x)
-        return DecNum.context.exception(Num::InvalidOperation, 'acos needs -1 <= x <= 2') if x.abs > 1
-        DecNum.context do |local_context|
-          local_context.precision += 2
-          x = (1-x*x).sqrt
-        end
-        asin_(x)
-      end
-
+      # TODO: analogous implementation of acos for testing
       def asin__(x)
         return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
         z = nil
@@ -360,7 +370,7 @@ module Flt
 
           s = 1
           y2 = nil
-          h = DecNum('0.5')
+          h = HALF
           while y.abs > lim
             #$asin__red += 1
             #s *= 2
