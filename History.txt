@@ -1,8 +1,19 @@
-== 1.0.1 2009-08...
+== 1.1.0 2009-11-29
 
-* Maintenance release
+* New Features:
+  - Access Math functions through context
+  - Enhanced compatibility with Float
+  - Context eval method
+
+* Maintenance changes:
   - Minor internal refactoring.
   - Avoid some warnings on Ruby 1.9
+  - Better documentation
+
+* Bugfixes:
+  - local context blocks didn't restore previous context on return or exceptions,
+  - Tolerance fix for near zero numbers
+  - Other internal problems
 
 == 1.0.0 2009-08-05
 
