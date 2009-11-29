@@ -1204,18 +1204,21 @@ class Num < Numeric
   # options to apply to the local scope.
   # Changes done to the current context are reversed when the scope is exited.
   def self.local_context(*args)
-    keep = self.context # use this so _context is initialized if necessary
-    self.context = define_context(*args) # this dups the assigned context
-    result = yield _context
-    # TODO: consider the convenience of copying the flags from DecNum.context to keep
-    # This way a local context does not affect the settings of the previous context,
-    # but flags are transferred.
-    # (this could be done always or be controlled by some option)
-    #   keep.flags = DecNum.context.flags
-    # Another alternative to consider: logically or the flags:
-    #   keep.flags ||= DecNum.context.flags # (this requires implementing || in Flags)
-    self._context = keep
-    result
+    begin
+      keep = self.context # use this so _context is initialized if necessary
+      self.context = define_context(*args) # this dups the assigned context
+      result = yield _context
+    ensure
+      # TODO: consider the convenience of copying the flags from DecNum.context to keep
+      # This way a local context does not affect the settings of the previous context,
+      # but flags are transferred.
+      # (this could be done always or be controlled by some option)
+      #   keep.flags = DecNum.context.flags
+      # Another alternative to consider: logically or the flags:
+      #   keep.flags ||= DecNum.context.flags # (this requires implementing || in Flags)
+      self._context = keep
+      result
+    end
   end
 
   class <<self
