@@ -1,7 +1,11 @@
 require 'flt/dec_num'
 
-# TODO: convert arguments as Context#_convert does, to accept non DecNum arguments
-# TODO: tests!
+# TODO:
+# * convert arguments as Context#_convert does, to accept non DecNum arguments
+# * Better sin, cos, tan precision; then consider enhancing all functions' to within 1 ulp of precision.
+#
+# Note: current precision is 2 ulps or less for inverse functions (asin,acos,atan),
+# but can be much worse for the direct functions.
 
 module Flt
   class DecNum
@@ -66,11 +70,7 @@ module Flt
         end
       end
 
-      # TODO: reduce angular arguments
-      # TODO: better sin,cos precision
-
       # Cosine of angle in radians
-      # for x = 1.57079646018 RPL gives the correct answer -1.33385103381E-7 but this gives -1.33385104123E-7
       def cos(x) # inaccurate near pi/2
         # c = nil
         # DecNum.context do |local_context|
@@ -98,14 +98,14 @@ module Flt
       end
 
       # Sine of angle in radians
-      # TODO: try this:
-      #  reduce to [0,pi/2] (keep quadrant information)
-      #    using: sin(x) == -sin(-x); sin(a+b) = sin(a)*cos(b)+cos(a)*sin(b); ...
-      #  reduce further to some limit by dividing by 3 k times
-      #  compute the series with extra precision (double?)
-      #  undo second reduction by aplying sin(3a)=sin(a)*(3-4*sin(a)^2) k times
-      #  compute sin using quadrant information
       def sin(x) # inaccurate near pi
+        # TODO: try this:
+        #  reduce to [0,pi/2] (keep quadrant information)
+        #    using: sin(x) == -sin(-x); sin(a+b) = sin(a)*cos(b)+cos(a)*sin(b); ...
+        #  reduce further to some limit by dividing by 3 k times
+        #  compute the series with extra precision (double?)
+        #  undo second reduction by aplying sin(3a)=sin(a)*(3-4*sin(a)^2) k times
+        #  compute sin using quadrant information
         s = nil
         DecNum.context do |local_context|
           local_context.precision += 3 # extra digits for intermediate steps
@@ -124,10 +124,9 @@ module Flt
         return +s
       end
 
-      # NOTE: currently sincos is a little too slow (sin+cos seems faster)
-      # both sincos and sin,cos are sometimes slightly innacurate (1ulp) and they're differently inacurate
-      def sincos(x) # TODO: use cos(x) = sqrt(1-sin(x)**2) ? # this is slow
-        # for x = 1.57079646018 RPL gives the correct answer for sin -1.33385103381E-7 but this gives -1.33385104123E-7
+      def sincos(x)
+        # NOTE: currently sincos is a little too slow (sin+cos seems faster)
+        # both sincos and sin,cos are sometimes slightly innacurate (1ulp) and they're differently inacurate
         s = DecNum(0)
         c = DecNum(1)
         DecNum.context do |local_context|
@@ -162,8 +161,6 @@ module Flt
       end
 
       def tan(x)
-        # for x = 1.57079646018 RPL gives the correct answer-7497089.06508 but this gives -7497089.06279
-        # it needs 5 extra digits rather than 2 to get the correct result
         +DecNum.context do |local_context|
           local_context.precision += 2 # extra digits for intermediate steps
           # s,c = sincos(2*x)
@@ -177,7 +174,9 @@ module Flt
         end
       end
 
-      # Inverse trigonometric functions 1: reference implementation (accurate enough)
+      # Inverse trigonometric functions 1: reference implementation
+
+      # Arc-tangent.
       def atan(x)
         s = nil
         DecNum.context do |local_context|
@@ -238,7 +237,6 @@ module Flt
           end
       end
 
-
       def asin(x)
         x = +x
         return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
@@ -259,7 +257,7 @@ module Flt
           +x
       end
 
-      def acos(x) # less accurate than asin (has problems near x=1)
+      def acos(x)
 
         # We can compute acos(x) = pi/2 - asin(x)
         # but we must take care with x near 1, where that formula would cause loss of precision
@@ -288,7 +286,7 @@ module Flt
         else
           # valid for x>=0
           DecNum.context do |local_context|
-            local_context.precision += 3 # 2
+            local_context.precision += 3
             x = (1-x*x).sqrt
             x = asin(x)
           end
@@ -299,8 +297,7 @@ module Flt
 
       # Inverse trigonometric functions 2: experimental optimizations
 
-      # twice as fast, but slightly less precise in some cases
-      def asin_(x)
+      def asin_(x) # twice as fast, but slightly less precise in some cases
         return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
         z = nil
         DecNum.context do |local_context|
@@ -350,7 +347,7 @@ module Flt
 
       end
 
-      def atan_(x) # bad precision for large x absolute value
+      def atan__(x) # bad precision for large x absolute value
         DecNum.context do |local_context|
           local_context.precision += 3
           x = x/(1+x*x).sqrt
@@ -406,9 +403,8 @@ module Flt
 
       end
 
-
-      # this is practically as precise as atan and a little faster
-      def atan__(x)
+      def atan_(x)
+        # this is practically as precise as atan and a little faster
         # TODO: Nan's...
         s = nil
         DecNum.context do |local_context|
@@ -462,7 +458,6 @@ module Flt
         +s
 
       end
-
 
       # TODO: degrees mode or radians/degrees conversion
 
@@ -537,11 +532,12 @@ module Flt
           # +x
         end
 
+        # Reduce angle to [0,2Pi)
         def reduce_angle(a)
-          # TODO: reduce to pi/k; with quadrant information
           modtwopi(a)
         end
 
+        # Reduce angle to [0,Pi/k0) (experimental, to be used in tests)
         def reduce_angle2(a,k0=nil) # divisor of pi or nil for pi*2
           # we could reduce first to pi*2 to avoid the mod k0 operation
           k,r = DecNum.context do
@@ -553,8 +549,6 @@ module Flt
         end
 
       #end
-
-
 
     end # Math
 
@@ -575,7 +569,7 @@ module Flt
       end
     end
 
-    math_function :sin, :cos, :tan, :atan
+    math_function :sin, :cos, :tan, :atan, :asin, :acos
 
     def pi
       Math.pi
