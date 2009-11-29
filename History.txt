@@ -4,6 +4,7 @@
   - Access Math functions through context
   - Enhanced compatibility with Float
   - Context eval method
+  - New methods integer_part(), fraction_part()
 
 * Maintenance changes:
   - Minor internal refactoring.
