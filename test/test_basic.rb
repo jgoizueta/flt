@@ -50,6 +50,13 @@ def exp1(x, c=nil)
   return +y
 end
 
+def return_from_local_context
+  DecNum.context do |local_context|
+    local_context.precision += 2
+    return
+  end
+end
+
 class TestBasic < Test::Unit::TestCase
 
 
@@ -61,6 +68,8 @@ class TestBasic < Test::Unit::TestCase
   def test_basic
 
     DecNum.context.precision = 4
+    assert_equal 4, DecNum.context.precision
+    return_from_local_context
     assert_equal 4, DecNum.context.precision
     assert_equal DecNum("0.3333"), DecNum(1)/DecNum(3)
     DecNum.context.precision = 10
