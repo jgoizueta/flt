@@ -1,8 +1,9 @@
-== 1.1.0 2009-11-29
+== 1.1.0 2009-11-30
 
 * New Features:
   - Access Math functions through context
   - Enhanced compatibility with Float
+  - Enhanced DecNum trigonometry
   - Context eval method
   - New methods integer_part(), fraction_part()
 
