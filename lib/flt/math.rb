@@ -365,7 +365,7 @@ module Flt
       end
     end
 
-    math_function :sin, :cos, :tan, :atan, :asin, :acos, :hypot
+    math_function :sin, :cos, :tan, :atan, :asin, :acos, :atan2, :hypot
 
     def pi
       Math.pi
