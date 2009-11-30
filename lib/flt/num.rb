@@ -1182,9 +1182,9 @@ class Num < Numeric
       local_context(*args, &blk)
     elsif args.empty?
       # return the current context
-      # return the current context
-      self._context = self::DefaultContext.dup if _context.nil?
-      _context
+      ctxt = self._context
+      self._context = ctxt = self::DefaultContext.dup if ctxt.nil?
+      ctxt
     else
       # change the current context
       # TODO: consider doing self._context = ... here
