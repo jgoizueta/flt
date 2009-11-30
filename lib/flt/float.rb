@@ -93,13 +93,14 @@ class Flt::FloatContext
   end
 
   def Num(*args)
-    args = *args if args.size==1 && args.first.is_a?(Array)
-    if args.size==3
-      Math.ldexp(args[0]*args[1],args[2])
-    elsif args.size==2
-      Math.ldexp(args[0],args[1])
-    elsif args.size==1
+    args.flatten!
+    case args.size
+    when 1
       Float(*args)
+    when 2
+      Math.ldexp(args[0],args[1])
+    when 3
+      Math.ldexp(args[0]*args[1],args[2])
     end
   end
 
@@ -447,7 +448,7 @@ class Flt::FloatContext
 
   math_function :log, :log10, :exp, :sqrt,
                 :sin, :cos, :tan, :asin, :acos, :atan, :atan2,
-                :sinh, :cosh, :tanh, :asinh, :acosh, :atanh
+                :sinh, :cosh, :tanh, :asinh, :acosh, :atanh, :hypot
 
   def ln(x)
     log(x)

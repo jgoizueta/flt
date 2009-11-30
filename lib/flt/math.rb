@@ -248,6 +248,13 @@ module Flt
 
       end
 
+      def hypot(x, y)
+        DecNum.context do |local_context|
+          local_context.precision += 3
+          (x*x + y*y).sqrt
+        end
+      end
+
       # TODO: degrees mode or radians/degrees conversion
 
       def pi2(decimals=nil)
@@ -358,7 +365,7 @@ module Flt
       end
     end
 
-    math_function :sin, :cos, :tan, :atan, :asin, :acos
+    math_function :sin, :cos, :tan, :atan, :asin, :acos, :hypot
 
     def pi
       Math.pi

@@ -1,3 +1,8 @@
+== 1.1.1 2009-11-30
+
+* New Features:
+  - Math.hypot
+
 == 1.1.0 2009-11-30
 
 * New Features:
