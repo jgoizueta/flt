@@ -385,6 +385,11 @@ because it could cause conflicts with other extensions of these classes.
   puts 0.1.split.inspect                           # -> [1, 7205759403792794, -56]
   puts (-0.1).sign                                 # -> -1
 
+A shortcut notation for DecNum is defined in this file (based on an idea by coderrr[http://coderrr.wordpress.com]
+which allows exact definitions with almost literal decimal syntax (note the underscore after the dot.)
+
+  puts 10._123456789123456789                      # -> 10.123456789123456789
+
 == Error analysis
 
 The DecNum#ulp() method returns the value of a "unit in the last place" for a given number under

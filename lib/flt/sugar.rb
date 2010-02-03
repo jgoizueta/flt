@@ -100,3 +100,13 @@ module BigDecimal::Math
   end
 end
 
+# Shortcut to define DecNums, e.g. 1._234567890123456789 produces Flt::DecNum('1.234567890123456789')
+# Based on http://coderrr.wordpress.com/2009/12/22/get-arbitrarily-precise-bigdecimals-in-ruby-for-just-one-extra-character/
+class Integer
+  def method_missing(m, *a, &b)
+    return Flt::DecNum("#{self}.#$1")  if m.to_s =~ /^_(\d+)$/
+    super
+  end
+end
+
+
