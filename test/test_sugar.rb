@@ -19,6 +19,20 @@ class TestSugar < Test::Unit::TestCase
     assert_raise(NoMethodError){3._3233x34333}
     assert_raise(NoMethodError){3.__}
     assert_raise(NoMethodError){3._}
+    assert_equal Flt::DecNum, 10._32_23.class
+    assert_equal Flt::DecNum('10.3223'), 10._32_23
+    assert_equal Flt::DecNum('3.01234567890123456789012345678901234567890123456789'),
+                 3._012345_678901_234567_890123_456789_012345_678901_234567_89
+    assert_equal Flt::DecNum('-3.01234567890123456789012345678901234567890123456789'),
+                 -3._012_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_89
+    assert_equal Flt::DecNum('123456789123.01234567890123456789012345678901234567890123456789'),
+                 123456789123._0123456789_0123456789_0123456789_0123456789_0123456789
+    assert_equal Flt::DecNum('-123456789123.01234567890123456789012345678901234567890123456789'),
+                 -123456789123._0123456789_0123456789_0123456789_0123456789_0123456789
+    assert_equal Flt::DecNum('10.0'), 10._0
+    assert_equal Flt::DecNum('10.000'), 10._000
+    assert_equal Flt::DecNum('10.000000'), 10._000000
+    assert_equal Flt::DecNum('10.000000'), 10._000_000
   end
 
 end

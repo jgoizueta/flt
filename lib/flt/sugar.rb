@@ -104,7 +104,7 @@ end
 # Based on http://coderrr.wordpress.com/2009/12/22/get-arbitrarily-precise-bigdecimals-in-ruby-for-just-one-extra-character/
 class Integer
   def method_missing(m, *a, &b)
-    return Flt::DecNum("#{self}.#$1")  if m.to_s =~ /^_(\d+)$/
+    return Flt::DecNum("#{self}.#{$1.tr('_','')}")  if m.to_s =~ /^_(\d[_\d]*)$/
     super
   end
 end
