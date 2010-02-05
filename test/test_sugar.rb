@@ -33,6 +33,7 @@ class TestSugar < Test::Unit::TestCase
     assert_equal Flt::DecNum('10.000'), 10._000
     assert_equal Flt::DecNum('10.000000'), 10._000000
     assert_equal Flt::DecNum('10.000000'), 10._000_000
+    assert_equal Flt::DecNum('100000.000001'), 100_000._000_001
   end
 
 end

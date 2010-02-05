@@ -390,7 +390,16 @@ which allows exact definitions with almost literal decimal syntax (note the unde
 
   puts 10._123456789123456789                      # -> 10.123456789123456789
 
-Note that 100_000.000_001 is a valid Float and 100_000._000_001 is a valid Flt::DecNum (and 100_000_.000_001 is not valid.)
+Additional underscores can be used to separate digits at any place except before the decimal point:
+
+  puts 100_000._000_001                            # -> 100000.000001
+  puts 100_000._000_001.class                      # -> Flt::DecNum
+
+But note that 100_000.000_001 is a valid Float (it's not a DecNum because there isn't an underscore just after the
+decimal point):
+
+  puts 100_000.000_001                            # -> 100000.000001
+  puts 100_000.000_001.class                      # -> Float
 
 == Error analysis
 
