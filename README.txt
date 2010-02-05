@@ -390,6 +390,8 @@ which allows exact definitions with almost literal decimal syntax (note the unde
 
   puts 10._123456789123456789                      # -> 10.123456789123456789
 
+Note that 100_000.000_001 is a valid Float and 100_000._000_001 is a valid Flt::DecNum (and 100_000_.000_001 is not valid.)
+
 == Error analysis
 
 The DecNum#ulp() method returns the value of a "unit in the last place" for a given number under
