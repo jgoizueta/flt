@@ -1,3 +1,11 @@
+== 1.1.2 2010-06-01
+
+* New Features
+  - New DecNum literal syntax 3._14 defined in flt/sugar
+
+* Bugfixes
+  - fix Flt::Support::Reader#read()
+
 == 1.1.1 2009-11-30
 
 * New Features:
