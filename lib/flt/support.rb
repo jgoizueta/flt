@@ -483,7 +483,7 @@ module Flt
                 float = true
                 context = BinNum::FloatContext
               end
-              x = context.num_class.context(context) do |loca_context|
+              x = context.num_class.context(context) do |local_context|
                 local_context.rounding = round_mode
                 Num.convert_exact(Num[eb].Num(sign, f, e), local_context.num_class, local_context)
               end
