@@ -96,7 +96,6 @@
 #++
 
 require 'flt/support'
-require 'flt/version'
 
 require 'bigdecimal'
 require 'forwardable'
