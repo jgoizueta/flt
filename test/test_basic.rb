@@ -1,53 +1,59 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-def exp(x,c=nil)
-  i, lasts, s, fact, num = 0, 0, 1, 1, 1
-  DecNum.local_context(c) do
-    # result context
-    DecNum.local_context do |context|
-      # working context
-      context.precision += 2
-      context.rounding = DecNum::ROUND_HALF_EVEN
-      while s != lasts
-        lasts = s
+module TestFunctions
+
+  module_function
+
+  def exp(x,c=nil)
+
+    i, lasts, s, fact, num = 0, 0, 1, 1, 1
+    DecNum.local_context(c) do
+      # result context
+      DecNum.local_context do |context|
+        # working context
+        context.precision += 2
+        context.rounding = DecNum::ROUND_HALF_EVEN
+        while s != lasts
+          lasts = s
+          i += 1
+          fact *= i
+          num *= x
+          s += num / fact
+        end
+      end
+      +s
+    end
+  end
+
+  def exp1(x, c=nil)
+    return DecNum(BigDecimal("NaN")) if x.infinite? || x.nan?
+    y = nil
+    ext = 2
+    DecNum.local_context(c) do |context|
+      n = (context.precision += ext)
+
+      one  = DecNum("1")
+      x1 = one
+      y  = one
+      d  = y
+      z  = one
+      i  = 0
+      while d.nonzero? && ((m = n - (y.fractional_exponent - d.fractional_exponent).abs) > 0)
+        m = ext if m < ext
+        x1  *= x
         i += 1
-        fact *= i
-        num *= x
-        s += num / fact
+        z *= i
+
+        #d  = x1.divide(z,:precision=>m)
+        context.precision = m
+        d = x1/z
+        context.precision = n
+
+        y += d
       end
     end
-    +s
+    return +y
   end
-end
-
-def exp1(x, c=nil)
-  return DecNum(BigDecimal("NaN")) if x.infinite? || x.nan?
-  y = nil
-  ext = 2
-  DecNum.local_context(c) do |context|
-    n = (context.precision += ext)
-
-    one  = DecNum("1")
-    x1 = one
-    y  = one
-    d  = y
-    z  = one
-    i  = 0
-    while d.nonzero? && ((m = n - (y.fractional_exponent - d.fractional_exponent).abs) > 0)
-      m = ext if m < ext
-      x1  *= x
-      i += 1
-      z *= i
-
-      #d  = x1.divide(z,:precision=>m)
-      context.precision = m
-      d = x1/z
-      context.precision = n
-
-      y += d
-    end
-  end
-  return +y
 end
 
 def return_from_local_context
@@ -324,10 +330,10 @@ class TestBasic < Test::Unit::TestCase
     DecNum.context.precision = 100
     DecNum.context.rounding = :half_even
     e_100 = "2.718281828459045235360287471352662497757247093699959574966967627724076630353547594571382178525166427"
-    assert_equal e_100, exp(DecNum(1)).to_s
-    assert_equal DecNum(e_100), exp(DecNum(1))
-    assert_equal e_100, exp1(DecNum(1)).to_s
-    assert_equal DecNum(e_100), exp1(DecNum(1))
+    assert_equal e_100, TestFunctions.exp(DecNum(1)).to_s
+    assert_equal DecNum(e_100), TestFunctions.exp(DecNum(1))
+    assert_equal e_100, TestFunctions.exp1(DecNum(1)).to_s
+    assert_equal DecNum(e_100), TestFunctions.exp1(DecNum(1))
   end
 
   def test_special
