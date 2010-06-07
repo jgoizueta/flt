@@ -2435,6 +2435,22 @@ class Num < Numeric
   def ==(other)
     (self<=>other) == 0
   end
+
+  # The operators <,etc. must be defined here to avoid infinite coerce recursion in Rubinius 1.0
+  # For MRI this is unnecesary
+  def <=(other)
+    (self<=>other) <= 0
+  end
+  def <(other)
+    (self<=>other) < 0
+  end
+  def >=(other)
+    (self<=>other) >= 0
+  end
+  def >(other)
+    (self<=>other) > 0
+  end
+
   include Comparable
 
   def hash
@@ -3978,7 +3994,6 @@ class Num < Numeric
       (1...t).to_a.reverse.each do |k|
          w = _div_nearest(m, k) - _div_nearest(yshift*w, m)
       end
-
       return _div_nearest(w*y, m)
     end
 
@@ -4010,6 +4025,12 @@ class Num < Numeric
     # Closest integer to a/b, a and b positive integers; rounds to even
     # in the case of a tie.
     def _div_nearest(a, b)
+      # Rubinius 1.0 has a bug in Rational#>, so we avoid operating with rationals:
+      if a.is_a?(Rational) || b.is_a?(Rational)
+        a,b = Rational(a),Rational(b)
+        a,b = a.numerator*b.denominator, a.denominator*b.numerator
+      end
+
       q, r = a.divmod(b)
       q + (((2*r + (q&1)) > b) ? 1 : 0)
     end

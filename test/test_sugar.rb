@@ -14,11 +14,11 @@ class TestSugar < Test::Unit::TestCase
                  123456789123._01234567890123456789012345678901234567890123456789
     assert_equal Flt::DecNum('-123456789123.01234567890123456789012345678901234567890123456789'),
                  -123456789123._01234567890123456789012345678901234567890123456789
-    assert_raise(NoMethodError){3._x}
-    assert_raise(NoMethodError){3._3233x}
-    assert_raise(NoMethodError){3._3233x34333}
-    assert_raise(NoMethodError){3.__}
-    assert_raise(NoMethodError){3._}
+    assert_raise(NoMethodError,NameError){3._x}
+    assert_raise(NoMethodError,NameError){3._3233x}
+    assert_raise(NoMethodError,NameError){3._3233x34333}
+    assert_raise(NoMethodError,NameError){3.__}
+    assert_raise(NoMethodError,NameError){3._}
     assert_equal Flt::DecNum, 10._32_23.class
     assert_equal Flt::DecNum('10.3223'), 10._32_23
     assert_equal Flt::DecNum('3.01234567890123456789012345678901234567890123456789'),
