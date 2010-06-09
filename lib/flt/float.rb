@@ -44,8 +44,12 @@ require 'singleton'
 #
 # Float::MIN  : Minimum normalized positive floating-point number
 #                  b**(emin - 1).
+#               In JRuby this is the mininimum denormal number!
 #
 # Float::ROUNDS : Addition rounds to 0: zero, 1: nearest, 2: +inf, 3: -inf, -1: unknown.
+#
+# Note: Ruby 1.9.2 Adds Float::INFINITY and Float::NAN
+#
 #
 # Additional contants defined here:
 #
@@ -56,11 +60,11 @@ require 'singleton'
 #                         ceil(1 + pmax * log10(b))	otherwise
 #                       DECIMAL_DIG = (MANT_DIG*Math.log(RADIX)/Math.log(10)).ceil+1
 #
-# Float::MIN_N : Minimum normalized number == MAX_D.next == MIN
+# Float::MIN_N : Minimum normalized number == MAX_D.next == MIN (not in JRuby)
 #
 # Float::MAX_D : Maximum denormal number == MIN_N.prev
 #
-# Float::MIN_D : Minimum non zero positive denormal number == 0.0.next
+# Float::MIN_D : Minimum non zero positive denormal number == 0.0.next (== MIN in JRuby)
 #
 # Float::MAX_F : Maximum significand
 class Float
@@ -110,7 +114,7 @@ class Flt::FloatContext
 
   # NaN (not a number value)
   def nan
-    0.0/0.0
+    0.0/0.0 # Ruby 1.9.2: Float::NAN
   end
 
   # zero value with specified sign
@@ -120,7 +124,7 @@ class Flt::FloatContext
 
   # infinity value with specified sign
   def infinity(sign=+1)
-    (sign < 0) ? -1.0/0.0 : 1.0/0.0
+    (sign < 0) ? -1.0/0.0 : 1.0/0.0 # Ruby 1.9.2: (sing < 0) ? -Float::INFINITY : Float::INFINITY
   end
 
   def int_radix_power(n)
