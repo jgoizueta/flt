@@ -2436,8 +2436,7 @@ class Num < Numeric
     (self<=>other) == 0
   end
 
-  # The operators <,etc. must be defined here to avoid infinite coerce recursion in Rubinius 1.0
-  # For MRI this is unnecesary
+  # For MRI this is unnecesary, but it is needed for Rubinius because of the coercion done in Numeric#< etc.
   def <=(other)
     (self<=>other) <= 0
   end
@@ -4025,12 +4024,6 @@ class Num < Numeric
     # Closest integer to a/b, a and b positive integers; rounds to even
     # in the case of a tie.
     def _div_nearest(a, b)
-      # Rubinius 1.0 has a bug in Rational#>, so we avoid operating with rationals:
-      if a.is_a?(Rational) || b.is_a?(Rational)
-        a,b = Rational(a),Rational(b)
-        a,b = a.numerator*b.denominator, a.denominator*b.numerator
-      end
-
       q, r = a.divmod(b)
       q + (((2*r + (q&1)) > b) ? 1 : 0)
     end
