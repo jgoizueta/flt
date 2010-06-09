@@ -125,7 +125,8 @@ class TestBasic < Test::Unit::TestCase
 
         File.open(fn,'r') do |file|
           file.each_line do |line|
-            next if line[0,2]=='--' || line.strip.empty?
+            line = line.split('--').first.strip if line.include?('--')
+            next if line.strip.empty?
 
             if line.include?(' -> ')
               # test
