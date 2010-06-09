@@ -23,7 +23,7 @@ class TestBin < Test::Unit::TestCase
     assert_equal 0.1, BinNum('0.1', :fixed)
 
     assert_equal Float::MAX, BinNum.context.maximum_finite
-    assert_equal Float::MIN, BinNum.context.minimum_normal
+    assert_equal Float::MIN_N, BinNum.context.minimum_normal
 
     numbers = %w{
       0.123437
