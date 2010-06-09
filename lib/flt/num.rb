@@ -4117,7 +4117,15 @@ class Num < Numeric
     #
     # If the base does not correspond to one of the predefined classes (DecNum, BinNum), a new class
     # is dynamically generated.
-    def [](base)
+    #
+    # The [] operator can also be applied to classes derived from Num to act as a constructor
+    # (short hand for .new):
+    #   Flt::Num[10]['0.1'] # same as FLt::DecNum['0.1'] or Flt.DecNum('0.1') or Flt::DecNum.new('0.1')
+    def [](*args)
+      return self.Num(*args) if self!=Num # && self.ancestors.include?(Num)
+      raise RuntimeError, "Invalide number of arguments (#{args.size}) for Num.[]; 1 expected." unless args.size=1
+      base = args.first
+
       case base
       when 10
         DecNum
