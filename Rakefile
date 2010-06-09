@@ -10,7 +10,7 @@ begin
     gem.email = "jgoizueta@gmail.com"
     gem.homepage = "http://github.com/jgoizueta/flt"
     gem.authors = ["Javier Goizueta"]
-    gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
+    gem.add_development_dependency "shoulda"
     gem.rubyforge_project = 'flt'
   end
   Jeweler::GemcutterTasks.new
