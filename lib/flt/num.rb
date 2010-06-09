@@ -970,7 +970,7 @@ class Num < Numeric
     def inspect
       class_name = self.class.to_s.split('::').last
       "<#{class_name}:\n" +
-      instance_variables.map { |v| "  #{v}: #{eval(v).inspect}"}.join("\n") +
+      instance_variables.map { |v| "  #{v}: #{instance_variable_get(v).inspect}"}.join("\n") +
       ">\n"
     end
 
