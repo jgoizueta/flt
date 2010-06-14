@@ -73,7 +73,7 @@ class TestTrig < Test::Unit::TestCase
     check_relaxed :atan
   end
 
-  if Env['TEST_STRICT_TRIG']
+  if ENV['TEST_STRICT_TRIG']
     def test_sin_strict
       check :sin
     end
