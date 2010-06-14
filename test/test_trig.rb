@@ -24,7 +24,7 @@ class TestTrig < Test::Unit::TestCase
     end
   end
 
-  def check_relaxed(f, ulps=2)
+  def check_relaxed(f, ulps=1)
     DecNum.context(:precision=>12) do
       data = @data12[f]
       data.each do |x, result|
