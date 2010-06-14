@@ -1,11 +1,5 @@
 require 'flt/dec_num'
 
-# TODO:
-# * convert arguments as Context#_convert does, to accept non DecNum arguments
-# * Better sin, cos, tan precision; then consider enhancing all functions' to within 1 ulp of precision.
-# * BinNum or generic base implementation
-# Note: current precision is 1 ulps or less
-
 module Flt
   class DecNum
     module Math
@@ -274,9 +268,6 @@ module Flt
 
       def acos(x)
 
-        # We can compute acos(x) = pi/2 - asin(x)
-        # but we must take care with x near 1, where that formula would cause loss of precision
-
         return DecNum.context.exception(Num::InvalidOperation, 'acos needs -1 <= x <= 2') if x.abs > 1
 
         if x == -1
@@ -286,11 +277,6 @@ module Flt
         elsif x == 1
             return DecNum.zero
         end
-
-        # some identities:
-        #   acos(x) = pi/2 - asin(x) # (but this losses accuracy near x=+1)
-        #   acos(x) = pi/2 - atan(x/(1-x*x).sqrt) # this too
-        #   acos(x) = asin((1-x*x).sqrt) for x>=0; for x<=0  acos(x) = pi/2 - asin((1-x*x).sqrt)
 
         if x < HALF
           DecNum.context do |local_context|
@@ -307,170 +293,6 @@ module Flt
           end
         end
         +x
-
-      end
-
-      # Inverse trigonometric functions 2: experimental optimizations
-
-      def asin_(x) # twice as fast, but slightly less precise in some cases
-        return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
-        z = nil
-        DecNum.context do |local_context|
-          local_context.precision += 3
-          y = x
-
-          # scale argument for faster convergence
-
-          exp = x.adjusted_exponent
-          if exp <= -2
-            nt = 0
-          else
-            nt = 3
-          end
-
-          z = y*y
-          nt.times do
-            #$asin_red += 1
-            #z = (1 - DecNum.context.sqrt(1-z))/2
-            z = (- DecNum.context.sqrt(-z+1) + 1)/2
-          end
-          y = DecNum.context.sqrt(z)
-          n = 1
-
-          z = y/DecNum.context.sqrt(n - z)
-#          puts "asin_ #{x} nt=#{nt} y=#{y} z=#{z}"
-          y = z
-          k = -z*z
-
-          ok = true
-          while ok
-            n += 2
-            z *= k
-            next_y = y + z/n
-            ok = (y != next_y)
-            y = next_y
-          end
-
-          if nt==3
-            z = y*8
-            z = -z if x <= y
-          else
-            z = y
-          end
-        end
-        +z
-
-      end
-
-      def atan__(x) # bad precision for large x absolute value
-        DecNum.context do |local_context|
-          local_context.precision += 3
-          x = x/(1+x*x).sqrt
-        end
-        asin_(x)
-      end
-
-      # TODO: analogous implementation of acos for testing
-      def asin__(x)
-        return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
-        z = nil
-        lim = DecNum('0.1') # DecNum('0.2') is enough; DecNum('0.1') trades reduction iterations for taylor series iterations
-        DecNum.context do |local_context|
-          local_context.precision += 3
-          y = x
-
-
-          s = 1
-          y2 = nil
-          h = HALF
-          while y.abs > lim
-            #$asin__red += 1
-            #s *= 2
-            s += s
-
-            y2 = ((1 - DecNum.context.sqrt(1-(y2 || y*y)))/2)
-            y = y2.sqrt # this could be avoided except for last iteration as in asin_
-          end
-          n = 1
-
-          z = y/DecNum.context.sqrt(n - (y2 || y*y))
-          #puts "asin__ #{x} k=#{s} y=#{y} z=#{z}"
-          y = z
-          k = -z*z
-
-          ok = true
-          while ok
-            n += 2
-            z *= k
-            next_y = y + z/n
-            ok = (y != next_y)
-            y = next_y
-          end
-
-          if s!=1
-            z = y*s
-            z = -z if x <= y
-          else
-            z = y
-          end
-        end
-        +z
-
-      end
-
-      def atan_(x)
-        # this is practically as precise as atan and a little faster
-        # TODO: Nan's...
-        s = nil
-        DecNum.context do |local_context|
-          local_context.precision += 3
-          piby2 = pi*HALF
-          if x.infinite?
-            s = (piby2).copy_sign(x)
-            break
-          end
-          neg = (x.sign==-1)
-          a = neg ? -x : x
-
-          invert = (a>1)
-          a = DecNum(1)/a if invert
-
-          lim = DecNum('0.1')
-          #k = 1
-          dbls = 0
-          while a > lim
-            dbls += 1
-            #k += k
-            a = a/((a*a+1).sqrt+1)
-          end
-
-          a2 = -a*a
-          t = a2
-          s = 1 + t/3
-          j = 5
-
-          fin = false
-          while !fin
-            t *= a2
-            d = t/j
-            #break if d.zero?
-            old_s = s
-            s += d
-            fin = (s==old_s)
-            j += 2
-          end
-          s *= a
-
-          #s *= k
-          dbls.times  do
-            s += s
-          end
-
-          s = piby2-s if invert
-          s = -s if neg
-        end
-
-        +s
 
       end
 
@@ -518,33 +340,6 @@ module Flt
 
         def modtwopi(x)
           return +DecNum.context(:precision=>DecNum.context.precision*3){x.modulo(pi2)}
-          # This seems to be slower and less accurate:
-          # prec = DecNum.context.precision
-          # pi_2 = pi2(prec*2)
-          # return x if x < pi_2
-          # ex = x.fractional_exponent
-          # DecNum.context do |local_context|
-          #   # x.modulo(pi_2)
-          #   local_context.precision *= 2
-          #   if ex > prec
-          #     # consider exponent separately
-          #     fd = nil
-          #     excess = ex - prec
-          #     x = x.scaleb(prec-ex)
-          #     # now obtain 2*prec digits from inv2pi after the initial excess digits
-          #     digits = nil
-          #     inv_2pi = inv2pi(local_context.precision+excess)
-          #     DecNum.context do |extended_context|
-          #       extended_context.precision += excess
-          #       digits = (inv2pi.scaleb(excess)).fraction_part
-          #     end
-          #     x *= digits*pi_2
-          #   end
-          #   # compute the fractional part of the division by 2pi
-          #   inv_2pi ||= inv2pi
-          #   x = pi_2*((x*inv2pi).fraction_part)
-          # end
-          # +x
         end
 
         # Reduce angle to [0,2Pi)
