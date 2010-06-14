@@ -50,11 +50,11 @@ class TestTrig < Test::Unit::TestCase
   # separate tests per function
 
   def test_sin
-    check_relaxed :sin
+    check :sin
   end
 
   def test_cos
-    check_relaxed :cos
+    check :cos
   end
 
   def test_tan
