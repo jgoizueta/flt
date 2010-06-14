@@ -13,7 +13,6 @@ module Flt
       HALF = DecNum('0.5')
 
       # Pi
-      $no_cache = false
       @@pi_cache = nil # truncated pi digits as a string
       @@pi_cache_digits = 0
       PI_MARGIN = 10
@@ -242,7 +241,7 @@ module Flt
         end
       end
 
-      # TODO: degrees mode or radians/degrees conversion
+      # TODO: add angular units to context; add support for degrees
 
       def pi2(decimals=nil)
         decimals ||= DecNum.context.precision
