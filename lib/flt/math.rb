@@ -3,9 +3,8 @@ require 'flt/dec_num'
 # TODO:
 # * convert arguments as Context#_convert does, to accept non DecNum arguments
 # * Better sin, cos, tan precision; then consider enhancing all functions' to within 1 ulp of precision.
-#
-# Note: current precision is 2 ulps or less for inverse functions (asin,acos,atan),
-# but can be much worse for the direct functions.
+# * BinNum or generic base implementation
+# Note: current precision is 1 ulps or less
 
 module Flt
   class DecNum
@@ -73,93 +72,107 @@ module Flt
       end
 
       # Cosine of angle in radians
-      def cos(x) # inaccurate near pi/2
-        # c = nil
-        # DecNum.context do |local_context|
-        #   local_context.precision += 3 # extra digits for intermediate steps
-        #   x = reduce_angle(x)
-        #   c = sin(x+pi/2)
-        # end
-        # return +c
-        s = nil
-        DecNum.context do |local_context|
-          local_context.precision += 3 # extra digits for intermediate steps
-          x = reduce_angle(x)
-          i, lasts, fact, num = 0, 0, 1, DecNum(1)
-          s = num
-          x2 = -x*x
-          while s != lasts
-            lasts = s
-            i += 2
-            fact *= i * (i-1)
-            num *= x2
-            s += num / fact
-          end
+      def cos(x)
+        x = x.copy_sign(+1)
+        x, k = reduce_angle2(x, 4)
+        if (k % 2)==1
+           x = DecNum.context(:precision=>DecNum.context.precision*2){pi/4 - x}
         end
-        return +s
+        s = case k
+        when 0
+          # cos(x)
+          cos_series(+x)
+        when 1
+          # sin(pi/2-x)
+          sin_series(+x)
+        when 2
+          # -sin(x-pi/2)
+          -sin_series(+x)
+        when 3
+          # -cos(pi-x)
+          -cos_series(+x)
+        when 4
+          # -cos(x-pi)
+          -cos_series(+x)
+        when 5
+          # -sin(3*pi/2-x)
+          -sin_series(+x)
+        when 6
+          # sin(x-3*pi/2)
+          sin_series(+x)
+        when 7
+          # cos(2*pi-x)
+          cos_series(+x)
+        end
+        +s
       end
 
       # Sine of angle in radians
-      def sin(x) # inaccurate near pi
-        # TODO: try this:
-        #  reduce to [0,pi/2] (keep quadrant information)
-        #    using: sin(x) == -sin(-x); sin(a+b) = sin(a)*cos(b)+cos(a)*sin(b); ...
-        #  reduce further to some limit by dividing by 3 k times
-        #  compute the series with extra precision (double?)
-        #  undo second reduction by aplying sin(3a)=sin(a)*(3-4*sin(a)^2) k times
-        #  compute sin using quadrant information
-        s = nil
-        DecNum.context do |local_context|
-          local_context.precision += 3 # extra digits for intermediate steps
-          x = reduce_angle(x)
-          i, lasts, fact, num = 1, 0, 1, DecNum(x)
-          s = num
-          x2 = -x*x
-          while s != lasts
-            lasts = s
-            i += 2
-            fact *= i * (i-1)
-            num *= x2
-            s += num / fact
-          end
+      def sin(x)
+        sign = x.sign
+        x = x.copy_sign(+1)
+        x, k = reduce_angle2(x, 4)
+        if (k % 2)==1
+           x = DecNum.context(:precision=>DecNum.context.precision*2){pi/4 - x}
         end
-        return +s
+        s = case k
+        when 0
+          # sin(x)
+          sin_series(+x)
+        when 1
+          # cos(pi/2-x)
+          cos_series(+x)
+        when 2
+          # cos(x-pi/2)
+          cos_series(+x)
+        when 3
+          # sin(pi-x)
+          sin_series(+x)
+        when 4
+          # -sin(x-pi)
+          -sin_series(+x)
+        when 5
+          # -cos(3*pi/2-x)
+          -cos_series(+x)
+        when 6
+          # -cos(x-3*pi/2)
+          -cos_series(+x)
+        when 7
+          # -sin(2*pi-x)
+          -sin_series(+x)
+        end
+        s = -s if sign<0 # s = s.copy_sign(sign*s.sign)
+        s
       end
 
       def sincos(x)
-        # NOTE: currently sincos is a little too slow (sin+cos seems faster)
-        # both sincos and sin,cos are sometimes slightly innacurate (1ulp) and they're differently inacurate
-        s = DecNum(0)
-        c = DecNum(1)
-        DecNum.context do |local_context|
-          local_context.precision += 3 # extra digits for intermediate steps
-          x = reduce_angle(x)
-
-           i = 1
-           done_s = false; done_c = false
-
-           d = 1
-           f = 1
-           sign = 1
-           num = x
-           while (!done_s && !done_c)
-               new_s = s + sign * num / f
-               d += 1
-               f *= d
-               sign = -sign
-               num *= x
-               new_c = c + sign * num / f
-               d += 1
-               f *= d
-               num *= x
-               done_c = true if (new_c - c == 0)
-               done_s = true if (new_s - s == 0)
-               c = new_c
-               s = new_s
-               i = i + 2
-           end
+        sign = x.sign
+        x = x.copy_sign(+1)
+        x, k = reduce_angle2(x, 4)
+        if (k % 2)==1
+           x = DecNum.context(:precision=>DecNum.context.precision*2){pi/4 - x}
         end
-        return +s, +c
+        s,c = sincos_series(+x)
+        s,c = case k
+        when 0
+          [s,c]
+        when 1
+          [c,s]
+        when 2
+          [c,-s]
+        when 3
+          [s,-c]
+        when 4
+          [-s,-c]
+        when 5
+          [-c,-s]
+        when 6
+          [-c,s]
+        when 7
+          [-s,c]
+        end
+        s = -s if sign<0
+        [s,c]
       end
 
       def tan(x)
@@ -461,7 +474,7 @@ module Flt
 
       end
 
-      # TODO: degrees mode or radians/degrees conversion
+      # TODO: add angular units to context; add support for degrees
 
       def pi2(decimals=nil)
         decimals ||= DecNum.context.precision
@@ -539,18 +552,90 @@ module Flt
           modtwopi(a)
         end
 
-        # Reduce angle to [0,Pi/k0) (experimental, to be used in tests)
+        # Reduce angle to [0,Pi/k0)
         def reduce_angle2(a,k0=nil) # divisor of pi or nil for pi*2
           # we could reduce first to pi*2 to avoid the mod k0 operation
           k,r = DecNum.context do
             DecNum.context.precision *= 3
             m = k0.nil? ? pi2 : pi/k0
-            a.divmod(k)
+            k0 = k0.nil? ?   1 : 2*k0
+            a.divmod(m)
           end
-          [+r, k.modulo(k0).to_i]
+          [r, k.modulo(k0).to_i]
         end
 
       #end
+
+      def cos_series(x)
+        s = nil
+        DecNum.context do |local_context|
+          local_context.precision += 3 # extra digits for intermediate steps
+
+          i, lasts, fact, num = 0, 0, 1, DecNum(1)
+          s = num
+          x2 = -x*x
+          while s != lasts
+            lasts = s
+            i += 2
+            fact *= i * (i-1)
+            num *= x2
+            s += num / fact
+          end
+        end
+        return +s
+      end
+
+      def sin_series(x) # inaccurate near pi
+        s = nil
+        DecNum.context do |local_context|
+          local_context.precision += 3
+
+          i, lasts, fact, num = 1, 0, 1, DecNum(x)
+          s = num
+          x2 = -x*x
+          while s != lasts
+            lasts = s
+            i += 2
+            fact *= i * (i-1)
+            num *= x2
+            s += num / fact
+          end
+        end
+        return +s
+      end
+
+      def sincos_series(x)
+        s = DecNum(0)
+        c = DecNum(1)
+        DecNum.context do |local_context|
+          local_context.precision += 3
+
+           i = 1
+           done_s = false; done_c = false
+
+           d = 1
+           f = 1
+           sign = 1
+           num = x
+           while (!done_s && !done_c)
+               new_s = s + sign * num / f
+               d += 1
+               f *= d
+               sign = -sign
+               num *= x
+               new_c = c + sign * num / f
+               d += 1
+               f *= d
+               num *= x
+               done_c = true if (new_c - c == 0)
+               done_s = true if (new_s - s == 0)
+               c = new_c
+               s = new_s
+               i = i + 2
+           end
+        end
+        return +s, +c
+      end
 
     end # Math
 

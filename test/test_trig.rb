@@ -24,7 +24,7 @@ class TestTrig < Test::Unit::TestCase
     end
   end
 
-  def check_relaxed(f, ulps=2)
+  def check_relaxed(f, ulps=1)
     DecNum.context(:precision=>12) do
       data = @data12[f]
       data.each do |x, result|
@@ -73,30 +73,31 @@ class TestTrig < Test::Unit::TestCase
     check_relaxed :atan
   end
 
-  def test_sin_strict
-    check :sin
-  end
+  if Env['TEST_STRICT_TRIG']
+    def test_sin_strict
+      check :sin
+    end
 
-  def test_cos_strict
-    check :cos
-  end
+    def test_cos_strict
+      check :cos
+    end
 
-  def test_tan_strict
-    check :tan
-  end
+    def test_tan_strict
+      check :tan
+    end
 
-  def test_asin_strict
-    check :asin
-  end
+    def test_asin_strict
+      check :asin
+    end
 
-  def test_acos_strict
-    check :acos
-  end
+    def test_acos_strict
+      check :acos
+    end
 
-  def test_atan_strict
-    check :atan
+    def test_atan_strict
+      check :atan
+    end
   end
-
 
 
 end
