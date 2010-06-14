@@ -20,15 +20,17 @@ module Flt
       HALF = DecNum('0.5')
 
       # Pi
-      $no_cache = false
       @pi_cache = nil # truncated pi digits as a string
       @pi_cache_digits = 0
+      class << self
+        attr_accessor :pi_cache, :pi_cache_digits
+      end
       PI_MARGIN = 10
       def pi(round_digits=nil)
 
         round_digits ||= DecNum.context.precision
         digits = round_digits
-          if @pi_cache_digits <= digits # we need at least one more truncated digit
+          if Math.pi_cache_digits <= digits # we need at least one more truncated digit
              continue = true
              while continue
                margin = PI_MARGIN # margin to reduce recomputing with more digits to avoid ending in 0 or 5
@@ -51,15 +53,15 @@ module Flt
                  end
                end
              end
-             @pi_cache_digits = digits + margin - PI_MARGIN # @pi_cache.size
-             @pi_cache = v # DecNum(+1, v, 1-digits) # cache truncated value
+             Math.pi_cache_digits = digits + margin - PI_MARGIN # Math.pi_cache.size
+             Math.pi_cache = v # DecNum(+1, v, 1-digits) # cache truncated value
           end
           # Now we avoid rounding too much because it is slow
           l = round_digits + 1
-          while (l<@pi_cache_digits) && [0,5].include?(@pi_cache[l-1,1].to_i)
+          while (l<Math.pi_cache_digits) && [0,5].include?(Math.pi_cache[l-1,1].to_i)
             l += 1
           end
-          v = @pi_cache[0,l]
+          v = Math.pi_cache[0,l]
           DecNum.context(:precision=>round_digits){+DecNum(+1,v.to_i,1-l)}
       end
 
