@@ -68,99 +68,128 @@ module Flt
       # Cosine of angle in radians
       def cos(x)
         x = x.copy_sign(+1)
-        x, k, pi_4 = reduce_angle2(x, 4)
-        x = pi_4 - x if (k % 2)==1 # we need at least twice the precision digits in pi_3; we have thrice.
-        s = case k
-        when 0
-          # cos(x)
-          cos_series(+x)
-        when 1
-          # sin(pi/2-x)
-          sin_series(+x)
-        when 2
-          # -sin(x-pi/2)
-          -sin_series(+x)
-        when 3
-          # -cos(pi-x)
-          -cos_series(+x)
-        when 4
-          # -cos(x-pi)
-          -cos_series(+x)
-        when 5
-          # -sin(3*pi/2-x)
-          -sin_series(+x)
-        when 6
-          # sin(x-3*pi/2)
-          sin_series(+x)
-        when 7
-          # cos(2*pi-x)
-          cos_series(+x)
+        sign = +1
+        s = nil
+        DecNum.context do |local_context|
+          local_context.precision += 3
+
+          x, k, pi_4 = reduce_angle2(x, 4)
+          x = pi_4 - x if (k % 2)==1 # we need at least twice the precision digits in pi_3; we have thrice.
+          s = case k
+          when 0
+            # cos(x)
+            cos_series(+x)
+          when 1
+            # sin(pi/2-x)
+            sin_series(+x)
+          when 2
+            # -sin(x-pi/2)
+            sign = -sign
+            sin_series(+x)
+          when 3
+            # -cos(pi-x)
+            sign = -sign
+            cos_series(+x)
+          when 4
+            # -cos(x-pi)
+            sign = -sign
+            cos_series(+x)
+          when 5
+            # -sin(3*pi/2-x)
+            sign = -sign
+            sin_series(+x)
+          when 6
+            # sin(x-3*pi/2)
+            sin_series(+x)
+          when 7
+            # cos(2*pi-x)
+            cos_series(+x)
+          end
         end
-        +s
+        sign<0 ? -s : +s
       end
 
       # Sine of angle in radians
       def sin(x)
         sign = x.sign
         x = x.copy_sign(+1)
-        x, k, pi_4 = reduce_angle2(x, 4)
-        x = pi_4 - x if (k % 2)==1 # we need at least twice the precision digits in pi_3; we have thrice.
-        s = case k
-        when 0
-          # sin(x)
-          sin_series(+x)
-        when 1
-          # cos(pi/2-x)
-          cos_series(+x)
-        when 2
-          # cos(x-pi/2)
-          cos_series(+x)
-        when 3
-          # sin(pi-x)
-          sin_series(+x)
-        when 4
-          # -sin(x-pi)
-          -sin_series(+x)
-        when 5
-          # -cos(3*pi/2-x)
-          -cos_series(+x)
-        when 6
-          # -cos(x-3*pi/2)
-          -cos_series(+x)
-        when 7
-          # -sin(2*pi-x)
-          -sin_series(+x)
+        s = nil
+        DecNum.context do |local_context|
+          local_context.precision += 3
+
+          x, k, pi_4 = reduce_angle2(x, 4)
+          x = pi_4 - x if (k % 2)==1 # we need at least twice the precision digits in pi_3; we have thrice.
+          s = case k
+          when 0
+            # sin(x)
+            sin_series(+x)
+          when 1
+            # cos(pi/2-x)
+            cos_series(+x)
+          when 2
+            # cos(x-pi/2)
+            cos_series(+x)
+          when 3
+            # sin(pi-x)
+            sin_series(+x)
+          when 4
+            # -sin(x-pi)
+            sign = -sign
+            sin_series(+x)
+          when 5
+            # -cos(3*pi/2-x)
+            sign = -sign
+            cos_series(+x)
+          when 6
+            # -cos(x-3*pi/2)
+            sign = -sign
+            cos_series(+x)
+          when 7
+            # -sin(2*pi-x)
+            sign = -sign
+            sin_series(+x)
+          end
         end
-        s = -s if sign<0 # s = s.copy_sign(sign*s.sign)
-        s
+        sign<0 ? -s : +s
       end
 
       def sincos(x)
-        sign = x.sign
+        s = c = nil
+        ssign, csign = x.sign, +1
         x = x.copy_sign(+1)
-        x, k, pi_4 = reduce_angle2(x, 4)
-        x = pi_4 - x if (k % 2)==1 # we need at least twice the precision digits in pi_3; we have thrice.
-        s,c = sincos_series(+x)
-        s,c = case k
-        when 0
-          [s,c]
-        when 1
-          [c,s]
-        when 2
-          [c,-s]
-        when 3
-          [s,-c]
-        when 4
-          [-s,-c]
-        when 5
-          [-c,-s]
-        when 6
-          [-c,s]
-        when 7
-          [-s,c]
+        DecNum.context do |local_context|
+          local_context.precision += 3
+          x, k, pi_4 = reduce_angle2(x, 4)
+          x = pi_4 - x if (k % 2)==1 # we need at least twice the precision digits in pi_3; we have thrice.
+          s,c = sincos_series(+x)
+          s,c = case k
+          when 0
+            [s,c]
+          when 1
+            [c,s]
+          when 2
+            ssign = -ssign
+            [c,s]
+          when 3
+            csign = -csign
+            [s,c]
+          when 4
+            ssign = -ssign
+            csign = -csign
+            [s,c]
+          when 5
+            ssign = -ssign
+            csign = -csign
+            [c,s]
+          when 6
+            csign = -csign
+            [c,s]
+          when 7
+            ssign = -ssign
+            [s,c]
+          end
         end
-        s = -s if sign<0
-        [s,c]
+        [ssign<0 ? -s : +s, csign<0 ? -c : +c]
       end
 
       def tan(x)
@@ -357,8 +386,6 @@ module Flt
 
       def cos_series(x)
         s = nil
-        DecNum.context do |local_context|
-          local_context.precision += 3 # extra digits for intermediate steps
 
           i, lasts, fact, num = 0, 0, 1, DecNum(1)
           s = num
@@ -370,14 +397,12 @@ module Flt
             num *= x2
             s += num / fact
           end
-        end
-        return +s
+
+        return s
       end
 
       def sin_series(x) # inaccurate near pi
         s = nil
-        DecNum.context do |local_context|
-          local_context.precision += 3
 
           i, lasts, fact, num = 1, 0, 1, DecNum(x)
           s = num
@@ -389,15 +414,13 @@ module Flt
             num *= x2
             s += num / fact
           end
-        end
-        return +s
+
+        return s
       end
 
       def sincos_series(x)
         s = DecNum(0)
         c = DecNum(1)
-        DecNum.context do |local_context|
-          local_context.precision += 3
 
            i = 1
            done_s = false; done_c = false
@@ -422,8 +445,8 @@ module Flt
                s = new_s
                i = i + 2
            end
-        end
-        return +s, +c
+
+        return s, c
       end
 
     end # Math
