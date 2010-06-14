@@ -1,5 +1,5 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
-require File.dirname(__FILE__) + '/../lib/flt/math'
+require 'flt/math'
 
 # TODO: Currently tests only with 12 digits of precision; test with more precision.
 

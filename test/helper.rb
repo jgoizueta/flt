@@ -1,5 +1,6 @@
 require 'test/unit'
-require File.expand_path(File.join(File.dirname(__FILE__),'/../lib/flt'))
+$:.unshift File.expand_path(File.join(File.dirname(__FILE__),'../lib'))
+require 'flt'
 require 'enumerator'
 include Flt
 
