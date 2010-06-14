@@ -68,10 +68,8 @@ module Flt
       # Cosine of angle in radians
       def cos(x)
         x = x.copy_sign(+1)
-        x, k = reduce_angle2(x, 4)
-        if (k % 2)==1
-           x = DecNum.context(:precision=>DecNum.context.precision*2){pi/4 - x}
-        end
+        x, k, pi_4 = reduce_angle2(x, 4)
+        x = pi_4 - x if (k % 2)==1 # we need at least twice the precision digits in pi_3; we have thrice.
         s = case k
         when 0
           # cos(x)
@@ -105,10 +103,8 @@ module Flt
       def sin(x)
         sign = x.sign
         x = x.copy_sign(+1)
-        x, k = reduce_angle2(x, 4)
-        if (k % 2)==1
-           x = DecNum.context(:precision=>DecNum.context.precision*2){pi/4 - x}
-        end
+        x, k, pi_4 = reduce_angle2(x, 4)
+        x = pi_4 - x if (k % 2)==1 # we need at least twice the precision digits in pi_3; we have thrice.
         s = case k
         when 0
           # sin(x)
@@ -142,10 +138,8 @@ module Flt
       def sincos(x)
         sign = x.sign
         x = x.copy_sign(+1)
-        x, k = reduce_angle2(x, 4)
-        if (k % 2)==1
-           x = DecNum.context(:precision=>DecNum.context.precision*2){pi/4 - x}
-        end
+        x, k, pi_4 = reduce_angle2(x, 4)
+        x = pi_4 - x if (k % 2)==1 # we need at least twice the precision digits in pi_3; we have thrice.
         s,c = sincos_series(+x)
         s,c = case k
         when 0
@@ -347,16 +341,16 @@ module Flt
           modtwopi(a)
         end
 
-        # Reduce angle to [0,Pi/k0)
+        # Reduce angle to [0,Pi/k0) (result is not rounded to precision)
         def reduce_angle2(a,k0=nil) # divisor of pi or nil for pi*2
           # we could reduce first to pi*2 to avoid the mod k0 operation
-          k,r = DecNum.context do
+          k,r, divisor = DecNum.context do
             DecNum.context.precision *= 3
             m = k0.nil? ? pi2 : pi/k0
             k0 = k0.nil? ?   1 : 2*k0
-            a.divmod(m)
+            a.divmod(m) + [m]
           end
-          [r, k.modulo(k0).to_i]
+          [r, k.modulo(k0).to_i, divisor]
         end
 
       #end
