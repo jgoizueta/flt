@@ -1,10 +1,5 @@
 require 'flt/dec_num'
 
-# TODO:
-# * convert arguments as Context#_convert does, to accept non DecNum arguments
-# * Better precision (currently is within about 2 ulps of the correct result)
-# * Speed optimization
-
 module Flt
   class DecNum
     module Math
@@ -18,7 +13,6 @@ module Flt
       HALF = DecNum('0.5')
 
       # Pi
-      $no_cache = false
       @@pi_cache = nil # truncated pi digits as a string
       @@pi_cache_digits = 0
       PI_MARGIN = 10
@@ -212,9 +206,6 @@ module Flt
 
       def acos(x)
 
-        # We can compute acos(x) = pi/2 - asin(x)
-        # but we must take care with x near 1, where that formula would cause loss of precision
-
         return DecNum.context.exception(Num::InvalidOperation, 'acos needs -1 <= x <= 2') if x.abs > 1
 
         if x == -1
@@ -224,11 +215,6 @@ module Flt
         elsif x == 1
             return DecNum.zero
         end
-
-        # some identities:
-        #   acos(x) = pi/2 - asin(x) # (but this losses accuracy near x=+1)
-        #   acos(x) = pi/2 - atan(x/(1-x*x).sqrt) # this too
-        #   acos(x) = asin((1-x*x).sqrt) for x>=0; for x<=0  acos(x) = pi/2 - asin((1-x*x).sqrt)
 
         if x < HALF
           DecNum.context do |local_context|
@@ -255,7 +241,7 @@ module Flt
         end
       end
 
-      # TODO: degrees mode or radians/degrees conversion
+      # TODO: add angular units to context; add support for degrees
 
       def pi2(decimals=nil)
         decimals ||= DecNum.context.precision
@@ -299,33 +285,6 @@ module Flt
 
         def modtwopi(x)
           return +DecNum.context(:precision=>DecNum.context.precision*3){x.modulo(pi2)}
-          # This seems to be slower and less accurate:
-          # prec = DecNum.context.precision
-          # pi_2 = pi2(prec*2)
-          # return x if x < pi_2
-          # ex = x.fractional_exponent
-          # DecNum.context do |local_context|
-          #   # x.modulo(pi_2)
-          #   local_context.precision *= 2
-          #   if ex > prec
-          #     # consider exponent separately
-          #     fd = nil
-          #     excess = ex - prec
-          #     x = x.scaleb(prec-ex)
-          #     # now obtain 2*prec digits from inv2pi after the initial excess digits
-          #     digits = nil
-          #     inv_2pi = inv2pi(local_context.precision+excess)
-          #     DecNum.context do |extended_context|
-          #       extended_context.precision += excess
-          #       digits = (inv2pi.scaleb(excess)).fraction_part
-          #     end
-          #     x *= digits*pi_2
-          #   end
-          #   # compute the fractional part of the division by 2pi
-          #   inv_2pi ||= inv2pi
-          #   x = pi_2*((x*inv2pi).fraction_part)
-          # end
-          # +x
         end
 
         # Reduce angle to [0,2Pi)

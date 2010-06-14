@@ -24,7 +24,7 @@ class TestTrig < Test::Unit::TestCase
     end
   end
 
-  def check_relaxed(f, ulps=2)
+  def check_relaxed(f, ulps=1)
     DecNum.context(:precision=>12) do
       data = @data12[f]
       data.each do |x, result|
@@ -50,11 +50,11 @@ class TestTrig < Test::Unit::TestCase
   # separate tests per function
 
   def test_sin
-    check_relaxed :sin
+    check :sin
   end
 
   def test_cos
-    check_relaxed :cos
+    check :cos
   end
 
   def test_tan
