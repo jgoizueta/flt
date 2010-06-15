@@ -4070,7 +4070,7 @@ class Num < Numeric
     def log2_lb(c)
         raise ArgumentError, "The argument to _log2_lb should be nonnegative." if c <= 0
         str_c = c.to_s(16)
-        return LOG2_MULT*4*str_c.length - LOG2_LB_CORRECTION[str_c[0,1].to_i(16)]
+        return LOG2_MULT*4*str_c.length - LOG2_LB_CORRECTION[str_c[0,1].to_i(16)-1]
     end
 
     LOG10_MULT = 100
