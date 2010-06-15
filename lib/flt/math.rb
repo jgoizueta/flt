@@ -438,21 +438,25 @@ module Flt
           # define_method(f) do |*args|
           #   Math.send(f, self, *args)
           # end
-          Num::ContextBase.send :define_method,f do |*args|
-            x = Num(args.shift)
-            Math.send(f, x, *args)
+          Num::ContextBase.class_eval do
+            define_method f do |*args|
+              Math.send(f, *args.map{|x| Num(x)})
+              # x = Num(args.shift)
+              # Math.send(f, x, *args)
+            end
           end
         end
       end
     end
 
     math_function :sin, :cos, :tan, :atan, :asin, :acos, :atan2, :hypot
+    math_function :pi, :e
 
-    def pi
+    def self.pi
       Math.pi
     end
 
-    def e
+    def self.e
       Math.e
     end
 

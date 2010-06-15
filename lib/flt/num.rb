@@ -1261,10 +1261,7 @@ class Num < Numeric
     def nan()
       new [+1, nil, :nan]
     end
-  end
 
-
-  class <<self
     def int_radix_power(n)
       self.radix**n
     end
@@ -1276,6 +1273,11 @@ class Num < Numeric
     def int_div_radix_power(x,n)
       n < 0 ? (x * self.radix**(-n) ) : (x / self.radix**n)
     end
+
+    def math(*args, &blk)
+      self.context.math(*args, &blk)
+    end
+
   end
 
   # A floating point-number value can be defined by:
