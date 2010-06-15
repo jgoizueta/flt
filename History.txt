@@ -1,3 +1,8 @@
+== 1.2.0 2010-06-15
+
+* New Features
+  - Trigonometry in radians/degrees/gradians
+
 == 1.1.2 2010-06-01
 
 * New Features

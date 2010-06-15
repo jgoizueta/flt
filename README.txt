@@ -567,7 +567,8 @@ EXPAND+
 
 = Roadmap
 
-* Version 1.0.0: First released version of the new flt gem.
-* Version 1.1.0: Implement the missing GDA functions:
+* Math (trigonometry) functions for DecNum & BinNum (reorganization of DecNum::Math)
+* Complex support.
+* Implement the missing GDA functions:
   rotate, shift, trim, and, or, xor, invert,
   max, min, maxmag, minmag, comparetotal, comparetotmag
