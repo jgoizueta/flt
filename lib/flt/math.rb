@@ -62,7 +62,10 @@ module Flt
         end
       end
 
-      # Cosine of angle in radians
+      # Cosine of an angle given in the units specified by DecNum.context.angle:
+      # * :rad for radians
+      # * :deg for degrees
+      # * :grad for gradians
       def cos(x)
         x = x.abs
         rev_sign = false
@@ -76,6 +79,7 @@ module Flt
           else
             rev_sign = !rev_sign
           end
+          x = to_rad(x)
           i, lasts, fact, num = 1, 0, 1, DecNum(x)
           s = num
           x2 = -x*x
@@ -90,7 +94,10 @@ module Flt
         return rev_sign ? (-s) : (+s)
       end
 
-      # Sine of angle in radians
+      # Sine of an angle given in the units specified by DecNum.context.angle:
+      # * :rad for radians
+      # * :deg for degrees
+      # * :grad for gradians
       def sin(x)
         sign = x.sign
         s = nil
@@ -100,7 +107,7 @@ module Flt
           x,k,pi_2 = reduce_angle2(x,2)
           sign = -sign if k>1
           x = pi_2 - x if k % 2 == 1
-          x = +x
+          x = to_rad(x)
           i, lasts, fact, num = 1, 0, 1, DecNum(x)
           s = num
           x2 = -x*x
@@ -115,6 +122,7 @@ module Flt
         return (+s).copy_sign(sign)
       end
 
+      # Tangent of an angle
       def tan(x)
         +DecNum.context do |local_context|
           local_context.precision += 2 # extra digits for intermediate steps
@@ -123,19 +131,22 @@ module Flt
         end
       end
 
-      # Arc-tangent.
+      # Arc-tangent in units specified by DecNum.context.angle
       def atan(x)
         s = nil
+        conversion = true
         DecNum.context do |local_context|
           local_context.precision += 2
           if x == 0
             return DecNum.zero
           elsif x.abs > 1
             if x.infinite?
-              s = (pi*HALF).copy_sign(x)
+              s = (quarter_cycle).copy_sign(x)
+              conversion = false
               break
             else
-              c = (pi*HALF).copy_sign(x)
+              # c = (quarter_cycle).copy_sign(x)
+              c = (HALF*pi).copy_sign(x)
               x = 1 / x
             end
           end
@@ -155,7 +166,7 @@ module Flt
             s = c - s
           end
         end
-        return +s
+        return conversion ? rad_to(s) : +s
       end
 
       def atan2(y, x)
@@ -166,19 +177,19 @@ module Flt
           if x != 0
               if y_is_real
                   a = y!=0 ? atan(y / x) : DecNum.zero
-                  a += pi.copy_sign(y) if x < 0
+                  a += half_cycle.copy_sign(y) if x < 0
                   return a
               elsif abs_y == abs_x
                   x = DecNum(1).copy_sign(x)
                   y = DecNum(1).copy_sign(y)
-                  return pi * (2 - x) / (4 * y)
+                  return half_cycle * (2 - x) / (4 * y)
               end
           end
 
           if y != 0
               return atan(DecNum.infinity(y.sign))
           elsif x < 0
-              return pi.copy_sign(x)
+              return half_cycle.copy_sign(x)
           else
               return DecNum.zero
           end
@@ -189,11 +200,11 @@ module Flt
         return DecNum.context.exception(Num::InvalidOperation, 'asin needs -1 <= x <= 1') if x.abs > 1
 
           if x == -1
-              return -pi*HALF
+              return -quarter_cycle
           elsif x == 0
               return DecNum.zero
           elsif x == 1
-              return pi*HALF
+              return quarter_cycle
           end
 
           DecNum.context do |local_context|
@@ -209,9 +220,9 @@ module Flt
         return DecNum.context.exception(Num::InvalidOperation, 'acos needs -1 <= x <= 2') if x.abs > 1
 
         if x == -1
-            return pi
+            return half_cycle
         elsif x == 0
-            return +DecNum.context(:precision=>DecNum.context.precision+3){pi*HALF}
+            return quarter_cycle
         elsif x == 1
             return DecNum.zero
         end
@@ -220,7 +231,7 @@ module Flt
           DecNum.context do |local_context|
             local_context.precision += 3
             x = x/(1-x*x).sqrt
-            x = pi*HALF - atan(x)
+            x = quarter_cycle - atan(x)
           end
         else
           # valid for x>=0
@@ -284,7 +295,7 @@ module Flt
         end
 
         def modtwopi(x)
-          return +DecNum.context(:precision=>DecNum.context.precision*3){x.modulo(pi2)}
+          return +DecNum.context(:precision=>DecNum.context.precision*3){x.modulo(one_cycle)}
         end
 
         # Reduce angle to [0,2Pi)
@@ -297,10 +308,121 @@ module Flt
           # we could reduce first to pi*2 to avoid the mod k0 operation
           k,r,divisor = DecNum.context do
             DecNum.context.precision *= 3
-            m = k0.nil? ? pi2 : pi/k0
+            m = k0.nil? ? one_cycle : half_cycle/k0
             a.divmod(m)+[m]
           end
           [r, k.modulo(k0*2).to_i, divisor]
+        end
+
+        def one_cycle
+          case DecNum.context.angle
+          when :rad
+            pi2
+          when :deg
+            DecNum(360)
+          when :grad
+            DecNum(400)
+          end
+        end
+
+        def half_cycle
+          case DecNum.context.angle
+          when :rad
+            pi
+          when :deg
+            DecNum(180)
+          when :grad
+            DecNum(200)
+          end
+        end
+
+        def quarter_cycle
+          case DecNum.context.angle
+          when :rad
+            HALF*pi
+          when :deg
+            DecNum(90)
+          when :grad
+            DecNum(100)
+          end
+        end
+
+        def to_rad(x)
+          case DecNum.context.angle
+          when :rad
+            +x
+          else
+            +DecNum.context(:precision=>DecNum.context.precision+3){x*pi/half_cycle}
+          end
+        end
+
+        def to_deg(x)
+          case DecNum.context.angle
+          when :deg
+            +x
+          else
+            +DecNum.context(:precision=>DecNum.context.precision+3){x*DecNum(180)/half_cycle}
+          end
+        end
+
+        def to_grad(x)
+          case DecNum.context.angle
+          when :deg
+            +x
+          else
+            +DecNum.context(:precision=>DecNum.context.precision+3){x*DecNum(200)/half_cycle}
+          end
+        end
+
+        def to_angle(angular_units, x)
+          return +x if angular_units == DecNum.context.angle
+          case angular_units
+          when :rad
+            to_rad(x)
+          when :deg
+            to_deg(x)
+          when :grad
+            to_grad(x)
+          end
+        end
+
+        def rad_to(x)
+          case DecNum.context.angle
+          when :rad
+            +x
+          else
+            +DecNum.context(:precision=>DecNum.context.precision+3){x*half_cycle/pi}
+          end
+        end
+
+        def deg_to(x)
+          case DecNum.context.angle
+          when :deg
+            +x
+          else
+            +DecNum.context(:precision=>DecNum.context.precision+3){x*half_cycle/DecNum(180)}
+          end
+        end
+
+        def grad_to(x)
+          case DecNum.context.angle
+          when :grad
+            +x
+          else
+            +DecNum.context(:precision=>DecNum.context.precision+3){x*half_cycle/DecNum(200)}
+          end
+        end
+
+        def angle_to(x, angular_units)
+          return +x if angular_units == DecNum.context.angle
+          case angular_units
+          when :rad
+            rad_to(x)
+          when :deg
+            deg_to(x)
+          when :grad
+            grad_to(x)
+          end
         end
 
       #end

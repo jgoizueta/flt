@@ -407,6 +407,7 @@ class Num < Numeric
         @flags = Num::Flags()
         @coercible_type_handlers = num_class.base_coercible_types.dup
         @conversions = num_class.base_conversions.dup
+        @angle = :rad # angular units: :rad (radians) / :deg (degrees) / :grad (gradians)
       end
       assign options.first
 
@@ -475,7 +476,7 @@ class Num < Numeric
       @num_class.int_div_radix_power(x,n)
     end
 
-    attr_accessor :rounding, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp
+    attr_accessor :rounding, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp, :angle
 
     # TODO: consider the convenience of adding accessors of this kind:
     # def rounding(new_rounding=nil)
@@ -592,6 +593,7 @@ class Num < Numeric
         @capitals = options[:capitals ] unless options[:capitals ].nil?
         @clamp = options[:clamp ] unless options[:clamp ].nil?
         @exact = options[:exact ] unless options[:exact ].nil?
+        @angle = options[:angle ] unless options[:angle ].nil?
         update_precision
       end
     end
@@ -614,6 +616,7 @@ class Num < Numeric
       @exact = other.exact
       @coercible_type_handlers = other.coercible_type_handlers.dup
       @conversions = other.conversions.dup
+      @angle = other.angle
     end
 
     def dup
@@ -4164,7 +4167,8 @@ class Num < Numeric
             :traps=>[DivisionByZero, Overflow, InvalidOperation],
             :ignored_flags=>[],
             :capitals=>true,
-            :clamp=>true
+            :clamp=>true,
+            :angle=>:rad
           )
 
         end
