@@ -23,12 +23,12 @@ end
 # random angles in radians for sin,cos,tan
 def angle_data(num_class)
   xs = []
-  pi = num_class::Math.pi
+  pi = num_class::Math.half_cycle
   (-8..8).each do |k|
     x = k*pi/4
     xs += near(x)
   end
-  pi2 = pi/2
+  pi2 = num_class::Math.quarter_cycle
   50.times{ xs << random_num_one(num_class)*pi2}
   base = xs.dup
   (2...10).each do |k|
@@ -82,11 +82,15 @@ def random_num_one(num_class=DecNum)
 end
 
 
-def gen_test_data(num_class, prec)
+def gen_test_data(num_class, prec, angle_units=:rad)
   dir = File.dirname(__FILE__)+'/trigtest'
   num_class.context(:precision=>prec) do
+    num_class.context.angle = angle_units
+    DecNum.context.traps[DecNum::DivisionByZero] = false
+    radix = "#{num_class.context.radix}_"
+    units = "_#{num_class.context.angle}"
     angles = angle_data(num_class)
-    File.open("#{dir}/sin#{prec}.txt","w") do |out|
+    File.open("#{dir}/sin#{radix}#{prec}#{units}.txt","w") do |out|
       angles.each do |angle|
         result = +num_class.context(:precision=>prec+100) {
           num_class::Math.sin(angle)
@@ -94,7 +98,7 @@ def gen_test_data(num_class, prec)
         out.puts "#{angle}\t#{result}"
       end
     end
-    File.open("#{dir}/cos#{prec}.txt","w") do |out|
+    File.open("#{dir}/cos#{radix}#{prec}#{units}.txt","w") do |out|
       angles.each do |angle|
         result = +num_class.context(:precision=>prec+100) {
           num_class::Math.cos(angle)
@@ -102,7 +106,7 @@ def gen_test_data(num_class, prec)
         out.puts "#{angle}\t#{result}"
       end
     end
-    File.open("#{dir}/tan#{prec}.txt","w") do |out|
+    File.open("#{dir}/tan#{radix}#{prec}#{units}.txt","w") do |out|
       angles.each do |angle|
         result = +num_class.context(:precision=>prec+100) {
           num_class::Math.tan(angle)
@@ -111,7 +115,7 @@ def gen_test_data(num_class, prec)
       end
     end
     xs = one_data(num_class)
-    File.open("#{dir}/asin#{prec}.txt","w") do |out|
+    File.open("#{dir}/asin#{radix}#{prec}#{units}.txt","w") do |out|
       xs.each do |x|
         result = +num_class.context(:precision=>prec+100) {
           num_class::Math.asin(x)
@@ -119,7 +123,7 @@ def gen_test_data(num_class, prec)
         out.puts "#{x}\t#{result}"
       end
     end
-    File.open("#{dir}/acos#{prec}.txt","w") do |out|
+    File.open("#{dir}/acos#{radix}#{prec}#{units}.txt","w") do |out|
       xs.each do |x|
         result = +num_class.context(:precision=>prec+100) {
           num_class::Math.acos(x)
@@ -128,7 +132,7 @@ def gen_test_data(num_class, prec)
       end
     end
     xs += Array.new(100){random_num(num_class)}
-    File.open("#{dir}/atan#{prec}.txt","w") do |out|
+    File.open("#{dir}/atan#{radix}#{prec}#{units}.txt","w") do |out|
       xs.each do |x|
         result = +num_class.context(:precision=>prec+100) {
           num_class::Math.atan(x)
@@ -140,7 +144,9 @@ def gen_test_data(num_class, prec)
 end
 
 srand 12322
-gen_test_data DecNum, 12
+# gen_test_data DecNum, 12, :rad
+srand 12322
+gen_test_data DecNum, 12, :deg
 
 # TODO:
 # 1. prepare test data for 12, 15, 25, 50 digits with gen_test_data
