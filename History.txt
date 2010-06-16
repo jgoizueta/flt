@@ -1,3 +1,13 @@
+== 1.2.1 2010-06-16
+
+* New features
+  - Trigonometry for BinNum and reorganization of Math modules.
+
+* Bugfixes
+  - Context#elimit= didn't work
+  - atan could be inaccurate for small arguments
+  - asin could be inaccurate for arguments near 1
+
 == 1.2.0 2010-06-15
 
 * New Features
