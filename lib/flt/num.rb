@@ -519,7 +519,7 @@ class Num < Numeric
     # if e > 0 it is taken as emax and emin=1-emax
     # if e < 0  it is taken as emin and emax=1-emin
     def elimit=(e)
-      @emin, @emax = [elimit, 1-elimit].sort
+      @emin, @emax = [e, 1-e].sort
     end
 
     # synonym for precision()
