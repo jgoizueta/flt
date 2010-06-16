@@ -2,46 +2,54 @@ require 'flt/dec_num'
 
 module Flt
 
+  # Mathematical functions. The angular units used by these functions can be specified
+  # with the +angle+ attribute of the context. The accepted values are:
+  # * :rad for radians
+  # * :deg for degrees
+  # * :grad for gradians
   module MathBase
 
-    # Cosine of an angle given in the units specified by DecNum.context.angle:
-    # * :rad for radians
-    # * :deg for degrees
-    # * :grad for gradians
+    # Cosine of an angle given in the units specified by DecNum.context.angle.
     def cos(x)
       cos_base(num_class.Num(x))
     end
 
-    # Sine of an angle given in the units specified by DecNum.context.angle:
-    # * :rad for radians
-    # * :deg for degrees
-    # * :grad for gradians
+    # Sine of an angle given in the units specified by DecNum.context.angle.
     def sin(x)
       sin_base(num_class.Num(x))
     end
 
-    # Tangent of an angle
+    # Tangent of an angle given in the units specified by DecNum.context.angle.
     def tan(x)
       tan_base(num_class.Num(x))
     end
 
-    # Arc-tangent in units specified by DecNum.context.angle
+    # Arc-tangent. The result is in the units specified by DecNum.context.angle.
+    # If the angular units are radians the result is in [-pi/2, pi/2]; it is in [-90,90] in degrees.
     def atan(x)
       atan_base(num_class.Num(x))
     end
 
+    # Arc-tangent with two arguments (principal value of the argument of the complex number x+i*y).
+    # The result is in the units specified by DecNum.context.angle.
+    # If the angular units are radians the result is in [-pi, pi]; it is in [-180,180] in degrees.
     def atan2(y, x)
       atan2_base(num_class.Num(y), num_class.Num(x))
     end
 
+    # Arc-sine. The result is in the units specified by DecNum.context.angle.
+    # If the angular units are radians the result is in [-pi/2, pi/2]; it is in [-90,90] in degrees.
     def asin(x)
       asin_base(num_class.Num(x))
     end
 
+    # Arc-cosine. The result is in the units specified by DecNum.context.angle.
+    # If the angular units are radians the result is in [-pi/2, pi/2]; it is in [-90,90] in degrees.
     def acos(x)
       acos_base(num_class.Num(x))
     end
 
+    # Length of the hypotenuse of a right-angle triangle (modulus or absolute value of the complex x+i*y).
     def hypot(x, y)
       hypot_base(num_class.Num(x), num_class.Num(y))
     end

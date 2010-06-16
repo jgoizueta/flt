@@ -530,6 +530,7 @@ Its functions can be accessed in a number of ways:
 * Floating Point Tolerance: see the flt/tolerance.rb[link:files/lib/flt/tolerance_rb.html] file
   and the Flt::Tolerance class
 * Constructors: see Flt.DecNum(), Flt.BinNum() and Flt.Tolerance().
+* Mathematical functions: see Flt::MathBase.
 
 = DecNum vs BigDecimal
 
