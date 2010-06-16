@@ -507,6 +507,7 @@ constants e and pi.
 
 Its functions can be accessed in a number of ways:
 
+  require 'flt/math'
   DecNum.context(:precision=>10) do |context|
     # As module functions:
     puts DecNum::Math.sin(1)*DecNum::Math.pi        # -> 2.643559064
