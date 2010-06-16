@@ -205,7 +205,7 @@ class BinNum < Num
       if special?
         super
       else
-        Math.ldexp(@sign*@coeff, @exp)
+        ::Math.ldexp(@sign*@coeff, @exp)
       end
     end
   end

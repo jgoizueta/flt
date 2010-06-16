@@ -498,6 +498,28 @@ Note also that if we normalize a value we will change it's precision to that of 
   puts x.normalize.number_of_digits                # -> 53
   puts x.normalize.to_s                            # -> 0.125
 
+== Mathematical functions
+
+There are two mathematical functions modules analogous to Ruby's Math for Float,
+Flt::DecNum::Math and Flt::BinNum::Math.
+Currently they consist of basic trigonometric functions, including hypot, and the
+constants e and pi.
+
+Its functions can be accessed in a number of ways:
+
+  DecNum.context(:precision=>10) do |context|
+    # As module functions:
+    puts DecNum::Math.sin(1)*DecNum::Math.pi        # -> 2.643559064
+    # As functions of a context object:
+    puts context.sin(1)*context.pi                  # -> 2.643559064
+    # Through a math block:
+      puts DecNum.context.math{sin(1)*pi}           # -> 2.643559064
+      puts DecNum.math{sin(1)*pi}                   # -> 2.643559064
+    # And can be included to be used ans private instance methods:
+      include DecNum::Math
+      puts sin(1)*pi                                # -> 2.643559064
+  end
+
 == More Information
 
 * Decimal Floating point type: see the base Flt::Num class and the Flt::DecNum class
@@ -567,7 +589,7 @@ EXPAND+
 
 = Roadmap
 
-* Math (trigonometry) functions for DecNum & BinNum (reorganization of DecNum::Math)
+* Trigonometry optimizations
 * Complex support.
 * Implement the missing GDA functions:
   rotate, shift, trim, and, or, xor, invert,
