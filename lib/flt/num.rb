@@ -595,6 +595,7 @@ class Num < Numeric
         @clamp = options[:clamp ] unless options[:clamp ].nil?
         @exact = options[:exact ] unless options[:exact ].nil?
         @angle = options[:angle ] unless options[:angle ].nil?
+        @precision += options[:extra_precision] unless options[:extra_precision].nil?
         update_precision
       end
     end

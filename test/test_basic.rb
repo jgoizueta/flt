@@ -101,6 +101,11 @@ class TestBasic < Test::Unit::TestCase
     }
     assert_equal 10, DecNum.context.precision
 
+    DecNum.context(:extra_precision=>4) {
+      assert_equal 14, DecNum.context.precision
+    }
+    assert_equal 10, DecNum.context.precision
+
     DecNum.local_context(DecNum::BasicContext) {
       assert_equal :half_up, DecNum.context.rounding
       assert_equal 9, DecNum.context.precision
