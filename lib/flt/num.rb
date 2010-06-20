@@ -4319,7 +4319,7 @@ class Num < Numeric
     #   Flt::Num[10]['0.1'] # same as FLt::DecNum['0.1'] or Flt.DecNum('0.1') or Flt::DecNum.new('0.1')
     def [](*args)
       return self.Num(*args) if self!=Num # && self.ancestors.include?(Num)
-      raise RuntimeError, "Invalide number of arguments (#{args.size}) for Num.[]; 1 expected." unless args.size=1
+      raise RuntimeError, "Invalid number of arguments (#{args.size}) for Num.[]; 1 expected." unless args.size=1
       base = args.first
 
       case base
