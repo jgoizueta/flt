@@ -44,27 +44,6 @@ class DecNum < Num
     def initialize(*options)
       super(DecNum, *options)
     end
-
-    # Power. See DecNum#power()
-    def power(x,y,modulo=nil)
-      _convert(x).power(y,modulo,self)
-    end
-
-    # Returns the base 10 logarithm
-    def log10(x)
-      _convert(x).log10(self)
-    end
-
-    # Exponential function: e**x
-    def exp(x)
-      _convert(x).exp(self)
-    end
-
-    # Returns the natural (base e) logarithm
-    def ln(x)
-      _convert(x).ln(self)
-    end
-
   end
 
   # the DefaultContext is the base for new contexts; it can be changed.

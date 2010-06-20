@@ -677,6 +677,31 @@ class Num < Numeric
       _convert(x)._neg(self)
     end
 
+    # Power. See DecNum#power()
+    def power(x,y,modulo=nil)
+      _convert(x).power(y,modulo,self)
+    end
+
+    # Returns the base 10 logarithm
+    def log10(x)
+      _convert(x).log10(self)
+    end
+
+    # Returns the base 2 logarithm
+    def log2(x)
+      _convert(x).log10(self)
+    end
+
+    # Exponential function: e**x
+    def exp(x)
+      _convert(x).exp(self)
+    end
+
+    # Returns the natural (base e) logarithm
+    def ln(x)
+      _convert(x).ln(self)
+    end
+
     # Converts a number to a string
     def to_string(x, eng=false)
       _convert(x)._fix(self).to_s(eng, self)
@@ -2281,6 +2306,150 @@ class Num < Numeric
 
   end
 
+  # Naive implementation of exponential and logarithm functions; should be replaced
+  # by something more efficient in specific Num classes.
+
+  # Exponential function
+  def exp(context=nil)
+    context = num_class.define_context(context)
+
+    # exp(NaN) = NaN
+    ans = _check_nans(context)
+    return ans if ans
+
+    # exp(-Infinity) = 0
+    return num_class.zero if self.infinite? && (self.sign == -1)
+
+    # exp(0) = 1
+    return Num(1) if self.zero?
+
+    # exp(Infinity) = Infinity
+    return Num(self) if self.infinite?
+
+    # the result is now guaranteed to be inexact (the true
+    # mathematical result is transcendental). There's no need to
+    # raise Rounded and Inexact here---they'll always be raised as
+    # a result of the call to _fix.
+    return context.exception(Inexact, 'Inexact exp') if context.exact?
+    p = context.precision
+    adj = self.adjusted_exponent
+
+    if self.sign == +1 and adj > _number_of_digits((context.emax+1)*3)
+      # overflow
+      ans = Num(+1, 1, context.emax+1)
+    elsif self.sign == -1 and adj > _number_of_digits((-context.etiny+1)*3)
+      # underflow to 0
+      ans = Num(+1, 1, context.etiny-1)
+    elsif self.sign == +1 and adj < -p
+      # p+1 digits; final round will raise correct flags
+      ans = Num(+1, num_clas.int_radix_power(p)+1, -p)
+    elsif self.sign == -1 and adj < -p-1
+      # p+1 digits; final round will raise correct flags
+      ans = Num(+1, num_clas.int_radix_power(p+1)-1, -p-1)
+    else
+      # general case
+      x_sign = self.sign
+      x = self.copy_sign(+1)
+      i, lasts, s, fact, num = 0, 0, 1, 1, 1
+      elim = [context.emax, -context.emin, 10000].max
+      xprec = num_class.radix==10 ? 3 : 4
+      num_class.local_context(context, :extra_precision=>xprec, :rounding=>:half_even, :elimit=>elim) do
+        while s != lasts
+          lasts = s
+          i += 1
+          fact *= i
+          num *= x
+          s += num / fact
+        end
+        s = num_class.Num(1)/s if x_sign<0
+      end
+      ans = s
+    end
+
+    # at this stage, ans should round correctly with *any*
+    # rounding mode, not just with ROUND_HALF_EVEN
+    num_class.context(context, :rounding=>:half_even) do |local_context|
+      ans = ans._fix(local_context)
+      context.flags = local_context.flags
+    end
+
+    return ans
+  end
+
+  # Returns the natural (base e) logarithm
+  def ln(context=nil)
+    context = num_class.define_context(context)
+
+    # ln(NaN) = NaN
+    ans = _check_nans(context)
+    return ans if ans
+
+    # ln(0.0) == -Infinity
+    return num_class.infinity(-1) if self.zero?
+
+    # ln(Infinity) = Infinity
+    return num_class.infinity if self.infinite? && self.sign == +1
+
+    # ln(1.0) == 0.0
+    return num_class.zero if self == Num(1)
+
+    # ln(negative) raises InvalidOperation
+    return context.exception(InvalidOperation, 'ln of a negative value') if self.sign==-1
+
+    # result is irrational, so necessarily inexact
+    return context.exception(Inexact, 'Inexact exp') if context.exact?
+
+    elim = [context.emax, -context.emin, 10000].max
+    xprec = num_class.radix==10 ? 3 : 4
+    num_class.local_context(context, :extra_precision=>xprec, :rounding=>:half_even, :elimit=>elim) do
+
+      one = num_class.Num(1)
+
+      x = self
+      if (expo = x.adjusted_exponent)<-1 || expo>=2
+        x = x.scaleb(-expo)
+      else
+        expo = nil
+      end
+
+      x = (x-one)/(x+one)
+      x2 = x*x
+      ans = x
+      d = ans
+      i = one
+      last_ans = nil
+      while ans != last_ans
+        last_ans = ans
+        x = x2*x
+        i += 2
+        d = x/i
+        ans += d
+      end
+      ans *= 2
+      if expo
+        ans += num_class.Num(num_class.radix).ln*expo
+      end
+    end
+
+    num_class.context(context, :rounding=>:half_even) do |local_context|
+      ans = ans._fix(local_context)
+      context.flags = local_context.flags
+    end
+    return ans
+  end
+
+  # Returns the base 10 logarithm
+  def log10(context=nil)
+    context = num_class.define_context(context)
+    num_class.context(:extra_precision=>3){self.ln/num_class.Num(10).ln}
+  end
+
+  # Returns the base 2 logarithm
+  def log2(context=nil)
+    context = num_class.define_context(context)
+    num_class.context(context, :extra_precision=>3){self.ln()/num_class.Num(2).ln}
+  end
+
   # Convert to other numerical type.
   def convert_to(type, context=nil)
     context = define_context(context)
@@ -2350,14 +2519,14 @@ class Num < Numeric
       # The ulp here is context.maximum_finite - context.maximum_finite.next_minus
       return Num(+1, 1, context.etop)
     elsif self.zero? || self.adjusted_exponent <= context.emin
-      # This is the ulp value for self.abs <= context.minimum_normal*DecNum.context
-      # Here we use it for self.abs < context.minimum_normal*DecNum.context;
+      # This is the ulp value for self.abs <= context.minimum_normal*num_class.context
+      # Here we use it for self.abs < context.minimum_normal*num_class.context;
       #  because of the simple exponent check; the remaining cases are handled below.
       return context.minimum_nonzero
     else
       # The next can compute the ulp value for the values that
       #   self.abs > context.minimum_normal && self.abs <= context.maximum_finite
-      # The cases self.abs < context.minimum_normal*DecNum.context have been handled above.
+      # The cases self.abs < context.minimum_normal*num_class.context have been handled above.
 
       # assert self.normal? && self.abs>context.minimum_nonzero
       norm = self.normalize
@@ -2453,7 +2622,7 @@ class Num < Numeric
     reduce.split == other.reduce.split
   end
 
-  # Compares like <=> but returns a DecNum value.
+  # Compares like <=> but returns a Num value.
   def compare(other, context=nil)
 
     other = _convert(other)
@@ -2476,7 +2645,7 @@ class Num < Numeric
     end
   end
 
-  # Synonym for DecNum#adjusted_exponent()
+  # Synonym for Num#adjusted_exponent()
   def scientific_exponent
     adjusted_exponent
   end
@@ -2719,7 +2888,7 @@ class Num < Numeric
   #   digit to be rounded (exponent == -places)
   # * :precision or :significan_digits is the number of digits
   # * :power 10^exponent, value of the digit to be rounded,
-  #   should be passed as a type convertible to DecNum.
+  #   should be passed as a type convertible to Num.
   # * :index 0-based index of the digit to be rounded
   # * :rindex right 0-based index of the digit to be rounded
   #
@@ -2744,7 +2913,7 @@ class Num < Numeric
     elsif v=(opt[:exponent])
       prec = adjusted_exponent + 1 - v
     elsif v=(opt[:power])
-      prec = adjusted_exponent + 1 - DecNum(v).adjusted_exponent
+      prec = adjusted_exponent + 1 - num_class.Num(v).adjusted_exponent
     elsif v=(opt[:index])
       prec = i+1
     elsif v=(opt[:rindex])
@@ -2870,13 +3039,31 @@ class Num < Numeric
     format(context, options.merge(:eng=>eng))
   end
 
-  # Raises to the power of x.
+  # Raises to the power of x, to modulo if given.
   #
-  # If self is negative then other
+  # With two arguments, compute self**other.  If self is negative then other
   # must be integral.  The result will be inexact unless other is
   # integral and the result is finite and can be expressed exactly
   # in 'precision' digits.
-  def power(other, context=nil)
+  #
+  # With three arguments, compute (self**other) % modulo.  For the
+  # three argument form, the following restrictions on the
+  # arguments hold:
+  #
+  #  - all three arguments must be integral
+  #  - other must be nonnegative
+  #  - at least one of self or other must be nonzero
+  #  - modulo must be nonzero and have at most 'precision' digits
+  #
+  # The result of a.power(b, modulo) is identical to the result
+  # that would be obtained by computing (a**b) % modulo with
+  # unbounded precision, but may be computed more efficiently.  It is
+  # always exact.
+  def power(other, modulo=nil, context=nil)
+    if context.nil? && (modulo.is_a?(Context) || modulo.is_a?(Hash))
+      context = modulo
+      modulo = nil
+    end
 
     context = num_class.define_context(context)
     other = _convert(other)
@@ -3046,6 +3233,9 @@ class Num < Numeric
       end
       context.exception Underflow if ans.adjusted_exponent < context.emin
     end
+
+    ans = ans % modulo if modulo
+
     # unlike exp, ln and log10, the power function respects the
     # rounding mode; no need to use ROUND_HALF_EVEN here
     ans._fix(context)
@@ -3265,7 +3455,7 @@ class Num < Numeric
 
       if number_of_digits > max_payload_len
           payload = payload.to_s[-max_payload_len..-1].to_i
-          return DecNum([@sign, payload, @exp])
+          return num_class.Num([@sign, payload, @exp])
       end
     end
     Num(self)
@@ -3422,7 +3612,7 @@ class Num < Numeric
       leftdigits = dec_pos
     end
 
-    # TODO: DRY (this code is duplicated in DecNum#format)
+    # TODO: DRY (this code is duplicated in num_class#format)
     if exp<=0 && leftdigits>-6
       dotplace = leftdigits
     elsif !eng

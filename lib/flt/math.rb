@@ -7,6 +7,13 @@ module Flt
   # * :rad for radians
   # * :deg for degrees
   # * :grad for gradians
+  #
+  # The methods defined here can be accessed by derived Math modules such as
+  # DecNum::Math or BinNum::Math (as module functions) and are also injected in
+  # Flt Contexts and are available through math blocks (e.g. DecNum.context.math{...}).
+  #
+  # Note that functions that are already defined in Flt::Num and Flt::ContextBase (and so available
+  # through math blocks) such as exp, log10, log2, etc. are not defined here.
   module MathBase
 
     # Cosine of an angle given in the units specified by DecNum.context.angle.
@@ -52,6 +59,20 @@ module Flt
     # Length of the hypotenuse of a right-angle triangle (modulus or absolute value of the complex x+i*y).
     def hypot(x, y)
       hypot_base(num_class.Num(x), num_class.Num(y))
+    end
+
+    # Logarithm of arbitrary base, e (natural base) by default
+    def log(x, b=nil)
+      x = num_class.Num(x)
+      if b.nil?
+        x.ln
+      elsif b==10
+        x.log10
+      elsif b==2
+        x.log2
+      else
+        num_class.context(:extra_precision=>3){x.ln/num_class.Num(b).ln}
+      end
     end
 
     private
