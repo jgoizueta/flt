@@ -445,6 +445,25 @@ module Flt
 
     #end
 
+    module Support
+      module_function
+      def iarccot(x, unity)
+        xpow = unity / x
+        n = 1
+        sign = 1
+        sum = 0
+        loop do
+            term = xpow / n
+            break if term == 0
+            sum += sign * (xpow/n)
+            xpow /= x*x
+            n += 2
+            sign = -sign
+        end
+        sum
+      end
+    end
+
   end # Trigonometry
 
   Num::ContextBase.class_eval{include Trigonometry}
@@ -525,5 +544,80 @@ module Flt
     DecNum::Context.class_eval{include DecNum::Trigonometry}
 
   end # DecNum
+
+  class BinNum
+
+    module Trigonometry
+
+      # Pi
+      @pi_cache = nil # truncated pi digits as a String. TODO: use an integer
+      @pi_cache_digits = 0
+      PI_MARGIN = 16
+      class <<self
+        attr_accessor :pi_cache, :pi_cache_digits
+      end
+
+      def pi(round_digits=nil)
+        round_digits ||= self.precision
+        digits = round_digits
+          if Trigonometry.pi_cache_digits <= digits # we need at least one more truncated digit
+             continue = true
+             while continue
+               margin = PI_MARGIN # margin to reduce recomputing with more digits to avoid ending in 0 or 5
+               digits += margin + 1
+               fudge = 16
+               unity = num_class.int_radix_power(digits+fudge)
+               v = 4*(4*Trigonometry.iarccot(5, unity) - Trigonometry.iarccot(239, unity))
+               v = v.to_s(num_class.radix)[0,digits]
+               # Since there's always more more nonzero digits in pi, we make sure we stop at a nonzero
+               # digit that's beyond the required rounding point to assure correct rounding.
+               # if the last digit is 0 or 5 the truncated value may not be good for rounding
+               loop do
+                 #last_digit = v%10
+                 last_digit = v[-1,1].to_i(2)
+                 continue = (last_digit==0)
+                 if continue && margin>4
+                   # if we have margin we back-up one digit
+                   margin -= 1
+                   v = v[0...-1]
+                 else
+                   break
+                 end
+               end
+             end
+             Trigonometry.pi_cache_digits = digits + margin - PI_MARGIN # @pi_cache.size
+             Trigonometry.pi_cache = v # DecNum(+1, v, 1-digits) # cache truncated value
+          end
+          l = Trigonometry.pi_cache.size
+          v = Trigonometry.pi_cache
+          num_class.context(self, :precision=>round_digits){+num_class.Num(+1,v.to_i(2),2-l)}
+      end
+
+      private
+
+      class <<self
+        def iarccot(x, unity)
+          xpow = unity / x
+          n = 1
+          sign = 1
+          sum = 0
+          loop do
+              term = xpow / n
+              break if term == 0
+              sum += sign * (xpow/n)
+              xpow /= x*x
+              n += 2
+              sign = -sign
+          end
+          sum
+        end
+      end
+
+
+    end # BinNum::Trigonometry
+
+    BinNum::Context.class_eval{include BinNum::Trigonometry}
+
+  end # BinNum
 
 end # Flt
