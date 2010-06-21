@@ -62,19 +62,21 @@ module Flt
       if Trigonometry.pi_digits < round_digits
         # provisional implementation (very slow)
         lasts = 0
-        t, s, n, na, d, da = [num_class[3], 3, 1, 0, 0, 24]
+        t, s, n, na, d, da = Trigonometry.pi_cache
         num_class.context(self) do |local_context|
           local_context.precision = round_digits + 6
-          while s != lasts
+          tol = Rational(1,num_class.int_radix_power(local_context.precision+1))
+          while (s-lasts)>tol
             lasts = s
             n, na = n+na, na+8
             d, da = d+da, da+32
             t = (t * n) / d
             s += t
           end
+          Trigonometry.pi_value = num_class[s]
+          Trigonometry.pi_digits = round_digits
+          Trigonometry.pi_cache = [t, s, n, na, d, da]
         end
-        Trigonometry.pi_value = s
-        Trigonometry.pi_digits = round_digits
       end
       num_class.context(self, :precision=>round_digits){+Trigonometry.pi_value}
     end
@@ -94,8 +96,9 @@ module Flt
 
     @pi_value = nil
     @pi_digits = 0
+    @pi_cache = [Rational(3), Rational(3), 1, 0, 0, 24]
     class <<self
-      attr_accessor :pi_value, :pi_digits
+      attr_accessor :pi_value, :pi_digits, :pi_cache
     end
 
     def cos_base(x)
