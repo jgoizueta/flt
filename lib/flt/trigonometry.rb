@@ -58,12 +58,8 @@ module Flt
 
     # Pi
     def pi(round_digits=nil)
-      unless defined?(@pi_cache)
-        @pi_value = nil
-        @pi_digits = 0
-      end
       round_digits ||= self.precision
-      if @pi_digits < round_digits
+      if Trigonometry.pi_digits < round_digits
         # provisional implementation (very slow)
         lasts = 0
         t, s, n, na, d, da = [num_class[3], 3, 1, 0, 0, 24]
@@ -77,10 +73,10 @@ module Flt
             s += t
           end
         end
-        @pi_value = s
-        @pi_digits = round_digits
+        Trigonometry.pi_value = s
+        Trigonometry.pi_digits = round_digits
       end
-      num_class.context(self, :precision=>round_digits){+@pi_value}
+      num_class.context(self, :precision=>round_digits){+Trigonometry.pi_value}
     end
 
     def e(digits=nil)
@@ -95,6 +91,12 @@ module Flt
     end
 
     protected
+
+    @pi_value = nil
+    @pi_digits = 0
+    class <<self
+      attr_accessor :pi_value, :pi_digits
+    end
 
     def cos_base(x)
       x = x.copy_sign(+1) # note that abs rounds; copy_sign does not.
