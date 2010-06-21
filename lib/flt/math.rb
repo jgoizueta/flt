@@ -16,41 +16,41 @@ module Flt
   # through math blocks) such as exp, log10, log2, etc. are not defined here.
   module MathBase
 
-    # Cosine of an angle given in the units specified by DecNum.context.angle.
+    # Cosine of an angle given in the units specified by num_class.context.angle.
     def cos(x)
       cos_base(num_class.Num(x))
     end
 
-    # Sine of an angle given in the units specified by DecNum.context.angle.
+    # Sine of an angle given in the units specified by num_class.context.angle.
     def sin(x)
       sin_base(num_class.Num(x))
     end
 
-    # Tangent of an angle given in the units specified by DecNum.context.angle.
+    # Tangent of an angle given in the units specified by num_class.context.angle.
     def tan(x)
       tan_base(num_class.Num(x))
     end
 
-    # Arc-tangent. The result is in the units specified by DecNum.context.angle.
+    # Arc-tangent. The result is in the units specified by num_class.context.angle.
     # If the angular units are radians the result is in [-pi/2, pi/2]; it is in [-90,90] in degrees.
     def atan(x)
       atan_base(num_class.Num(x))
     end
 
     # Arc-tangent with two arguments (principal value of the argument of the complex number x+i*y).
-    # The result is in the units specified by DecNum.context.angle.
+    # The result is in the units specified by num_class.context.angle.
     # If the angular units are radians the result is in [-pi, pi]; it is in [-180,180] in degrees.
     def atan2(y, x)
       atan2_base(num_class.Num(y), num_class.Num(x))
     end
 
-    # Arc-sine. The result is in the units specified by DecNum.context.angle.
+    # Arc-sine. The result is in the units specified by num_class.context.angle.
     # If the angular units are radians the result is in [-pi/2, pi/2]; it is in [-90,90] in degrees.
     def asin(x)
       asin_base(num_class.Num(x))
     end
 
-    # Arc-cosine. The result is in the units specified by DecNum.context.angle.
+    # Arc-cosine. The result is in the units specified by num_class.context.angle.
     # If the angular units are radians the result is in [-pi/2, pi/2]; it is in [-90,90] in degrees.
     def acos(x)
       acos_base(num_class.Num(x))
@@ -144,7 +144,7 @@ module Flt
       num_class.context do |local_context|
         local_context.precision += extra_prec
         if x == 0
-          return DecNum.zero
+          return num_class.zero
         elsif x.abs > 1
           if x.infinite?
             s = (quarter_cycle).copy_sign(x)
@@ -250,7 +250,7 @@ module Flt
         num_class.context(:precision=>required_precision+3) do
 
           # x = (1-x*x).sqrt # x*x may require double precision if x*x is near 1
-          x = (1-BinNum.context(:precision=>required_precision*2){x*x}).sqrt
+          x = (1-num_class.context(:precision=>required_precision*2){x*x}).sqrt
 
           x = asin(x)
         end
@@ -274,21 +274,21 @@ module Flt
     end
 
     def pi2(decimals=nil)
-      decimals ||= DecNum.context.precision
+      decimals ||= num_class.context.precision
       num_class.context(:precision=>decimals) do
         pi(decimals)*2
       end
     end
 
     def invpi(decimals=nil)
-      decimals ||= DecNum.context.precision
+      decimals ||= num_class.context.precision
       num_class.context(:precision=>decimals) do
         num_class.Num(1)/pi(decimals)
       end
     end
 
     def inv2pi(decimals=nil)
-      decimals ||= DecNum.context.precision
+      decimals ||= num_class.context.precision
       num_class.context(:precision=>decimals) do
         num_class.Num(1)/pi2(decimals)
       end
@@ -325,7 +325,7 @@ module Flt
       # Reduce angle to [0,Pi/k0) (result is not rounded to precision)
       def reduce_angle2(a,k0=nil) # divisor of pi or nil for pi*2
         # we could reduce first to pi*2 to avoid the mod k0 operation
-        k,r,divisor = DecNum.context do
+        k,r,divisor = num_class.context do
           num_class.context.precision *= 3
           m = k0.nil? ? one_cycle : half_cycle/k0
           a.divmod(m)+[m]
@@ -356,7 +356,7 @@ module Flt
       end
 
       def quarter_cycle
-        case DecNum.context.angle
+        case num_class.context.angle
         when :rad
           half*pi
         when :deg
@@ -385,7 +385,7 @@ module Flt
       end
 
       def to_grad(x)
-        case DecNum.context.angle
+        case num_class.context.angle
         when :deg
           +x
         else
@@ -540,7 +540,7 @@ module Flt
 
     module Math
 
-      extend Flt # to access constructor methods DecNum
+      extend Flt # to access constructor methods BinNum
 
       include MathBase # make available for instance methods
       extend MathBase # make available for class methods
