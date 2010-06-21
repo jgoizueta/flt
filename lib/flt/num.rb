@@ -3060,7 +3060,7 @@ class Num < Numeric
   # unbounded precision, but may be computed more efficiently.  It is
   # always exact.
   def power(other, modulo=nil, context=nil)
-    if context.nil? && (modulo.is_a?(Context) || modulo.is_a?(Hash))
+    if context.nil? && (modulo.kind_of?(ContextBase) || modulo.is_a?(Hash))
       context = modulo
       modulo = nil
     end
@@ -4319,7 +4319,7 @@ class Num < Numeric
     #   Flt::Num[10]['0.1'] # same as FLt::DecNum['0.1'] or Flt.DecNum('0.1') or Flt::DecNum.new('0.1')
     def [](*args)
       return self.Num(*args) if self!=Num # && self.ancestors.include?(Num)
-      raise RuntimeError, "Invalid number of arguments (#{args.size}) for Num.[]; 1 expected." unless args.size=1
+      raise RuntimeError, "Invalid number of arguments (#{args.size}) for Num.[]; 1 expected." unless args.size==1
       base = args.first
 
       case base
