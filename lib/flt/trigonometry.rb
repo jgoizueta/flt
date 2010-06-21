@@ -545,19 +545,20 @@ module Flt
 
   end # DecNum
 
-  class BinNum
+  Num[16].class_eval do
 
     module Trigonometry
 
       # Pi
-      @pi_cache = nil # truncated pi digits as a String. TODO: use an integer
+      @pi_cache = nil # truncated pi digits as a string
       @pi_cache_digits = 0
-      PI_MARGIN = 16
+      PI_MARGIN = 10
       class <<self
         attr_accessor :pi_cache, :pi_cache_digits
       end
 
-      def pi(round_digits=nil)
+      # truncated hex digits for rounding hexadecimally at round_digits
+      def pi_hex_digits(round_digits=nil)
         round_digits ||= self.precision
         digits = round_digits
           if Trigonometry.pi_cache_digits <= digits # we need at least one more truncated digit
@@ -566,17 +567,15 @@ module Flt
                margin = PI_MARGIN # margin to reduce recomputing with more digits to avoid ending in 0 or 5
                digits += margin + 1
                fudge = 16
-               unity = num_class.int_radix_power(digits+fudge)
+               unity = 16**(digits+fudge)
                v = 4*(4*Trigonometry.iarccot(5, unity) - Trigonometry.iarccot(239, unity))
-               v = v.to_s(num_class.radix)[0,digits]
-               # Since there's always more more nonzero digits in pi, we make sure we stop at a nonzero
-               # digit that's beyond the required rounding point to assure correct rounding.
-               # if the last digit is 0 or 5 the truncated value may not be good for rounding
+               v = v.to_s(16)[0,digits]
+               # if the last digit is 0 or 8 the truncated value may not be good for rounding
                loop do
-                 #last_digit = v%10
-                 last_digit = v[-1,1].to_i(2)
-                 continue = (last_digit==0)
-                 if continue && margin>4
+                 #last_digit = v%16
+                 last_digit = v[-1,1].to_i(16)
+                 continue = (last_digit==8 || last_digit==0)
+                 if continue && margin>0
                    # if we have margin we back-up one digit
                    margin -= 1
                    v = v[0...-1]
@@ -588,9 +587,18 @@ module Flt
              Trigonometry.pi_cache_digits = digits + margin - PI_MARGIN # @pi_cache.size
              Trigonometry.pi_cache = v # DecNum(+1, v, 1-digits) # cache truncated value
           end
-          l = Trigonometry.pi_cache.size
-          v = Trigonometry.pi_cache
-          num_class.context(self, :precision=>round_digits){+num_class.Num(+1,v.to_i(2),2-l)}
+          # Now we avoid rounding too much because it is slow
+          l = round_digits + 1
+          while (l<Trigonometry.pi_cache_digits) && [0,8].include?(Trigonometry.pi_cache[l-1,1].to_i(16))
+            l += 1
+          end
+          Trigonometry.pi_cache[0,l]
+      end
+
+      def pi(round_digits=nil)
+        v = pi_hex_digits(round_digits)
+        l = v.size
+        num_class.context(self, :precision=>round_digits){+num_class.Num(+1,v.to_i(16),1-l)}
       end
 
       private
@@ -613,11 +621,29 @@ module Flt
         end
       end
 
+    end # Num[16]::Trigonometry
 
-    end # BinNum::Trigonometry
+    Num[16]::Context.class_eval{include Num[16]::Trigonometry}
 
+  end # Num[16]
+
+  class BinNum
+    module Trigonometry
+      def pi(round_digits=nil)
+        round_digits ||= self.precision
+        nhexd = (round_digits+3)/4 + 1
+        v = pi_hex_digits(nhexd)
+        l = v.size
+        v = v.to_i(16)
+        e = (1-l)*4
+        # add trailing 01 for rounding (there always be some non null digit beyond the rounding point)
+        v <<= 2
+        v |= 1
+        e -= 2
+        num_class.context(self, :precision=>round_digits){+num_class.Num(+1,v,e)}
+      end
+    end
     BinNum::Context.class_eval{include BinNum::Trigonometry}
-
-  end # BinNum
+  end
 
 end # Flt
