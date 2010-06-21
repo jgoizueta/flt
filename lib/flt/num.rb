@@ -702,6 +702,11 @@ class Num < Numeric
       _convert(x).ln(self)
     end
 
+    # Ruby-style log function: arbitrary base logarithm which defaults to natural logarithm
+    def log(x, base=nil)
+      _convert(x).log(b, self)
+    end
+
     # Converts a number to a string
     def to_string(x, eng=false)
       _convert(x)._fix(self).to_s(eng, self)
@@ -2438,6 +2443,20 @@ class Num < Numeric
     return ans
   end
 
+  # Ruby-style logarithm of arbitrary base, e (natural base) by default
+  def log(b=nil, context=nil)
+    if b.nil?
+      x.ln(context)
+    elsif b==10
+      x.log10(context)
+    elsif b==2
+      x.log2(context)
+    else
+      context = num_class.define_context(context)
+      +num_class.context(:extra_precision=>3){x.ln(context)/num_class[b].ln(context)}
+    end
+  end
+
   # Returns the base 10 logarithm
   def log10(context=nil)
     context = num_class.define_context(context)
@@ -3060,7 +3079,7 @@ class Num < Numeric
   # unbounded precision, but may be computed more efficiently.  It is
   # always exact.
   def power(other, modulo=nil, context=nil)
-    if context.nil? && (modulo.is_a?(Context) || modulo.is_a?(Hash))
+    if context.nil? && (modulo.kind_of?(ContextBase) || modulo.is_a?(Hash))
       context = modulo
       modulo = nil
     end
@@ -4319,7 +4338,7 @@ class Num < Numeric
     #   Flt::Num[10]['0.1'] # same as FLt::DecNum['0.1'] or Flt.DecNum('0.1') or Flt::DecNum.new('0.1')
     def [](*args)
       return self.Num(*args) if self!=Num # && self.ancestors.include?(Num)
-      raise RuntimeError, "Invalid number of arguments (#{args.size}) for Num.[]; 1 expected." unless args.size=1
+      raise RuntimeError, "Invalid number of arguments (#{args.size}) for Num.[]; 1 expected." unless args.size==1
       base = args.first
 
       case base

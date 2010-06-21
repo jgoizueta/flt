@@ -502,21 +502,21 @@ Note also that if we normalize a value we will change it's precision to that of 
 
 There are two mathematical functions modules analogous to Ruby's Math for Float,
 Flt::DecNum::Math and Flt::BinNum::Math.
-Currently they consist of basic trigonometric functions, including hypot, and the
-constants e and pi.
+Currently they consist of basic trigonometric functions, including hypot, logarithms and the exponential
+function, and the constants e and pi.
 
 Its functions can be accessed in a number of ways:
 
   require 'flt/math'
   DecNum.context(:precision=>10) do |context|
-    # As module functions:
+    # As module functions, using the current context for the enclosing Num class:
     puts DecNum::Math.sin(1)*DecNum::Math.pi        # -> 2.643559064
     # As functions of a context object:
     puts context.sin(1)*context.pi                  # -> 2.643559064
     # Through a math block:
       puts DecNum.context.math{sin(1)*pi}           # -> 2.643559064
       puts DecNum.math{sin(1)*pi}                   # -> 2.643559064
-    # And can be included to be used ans private instance methods:
+    # And can be *included* to be used as private instance methods:
       include DecNum::Math
       puts sin(1)*pi                                # -> 2.643559064
   end
@@ -530,7 +530,7 @@ Its functions can be accessed in a number of ways:
 * Floating Point Tolerance: see the flt/tolerance.rb[link:files/lib/flt/tolerance_rb.html] file
   and the Flt::Tolerance class
 * Constructors: see Flt.DecNum(), Flt.BinNum() and Flt.Tolerance().
-* Mathematical functions: see Flt::MathBase.
+* Trigonometry functions: see Flt::Trigonometry..
 
 = DecNum vs BigDecimal
 
