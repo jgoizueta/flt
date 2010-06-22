@@ -92,6 +92,36 @@ module Flt
       num_class['0.5']
     end
 
+    # Hyperbolic sine
+    def sinh(x)
+      sinh_base(num_class[x])
+    end
+
+    # Hyperbolic cosine
+    def cosh(x)
+      cosh_base(num_class[x])
+    end
+
+    # Hyperbolic tangent
+    def tanh(x)
+      tanh_base(num_class[x])
+    end
+
+    # Hyperbolic arcsine
+    def asinh(x)
+      asinh_base(num_class[x])
+    end
+
+    # Hyperbolic arccosine
+    def acosh(x)
+      acosh_base(num_class[x])
+    end
+
+    # Hyperbolic arctangent
+    def atanh(x)
+      atanh_base(num_class[x])
+    end
+
     protected
 
     @pi_value = nil
@@ -289,6 +319,110 @@ module Flt
         local_context.precision += 3
         (x*x + y*y).sqrt
       end
+    end
+
+    def sinh_base(x)
+      sign = x.sign
+      s = nil
+      num_class.context(self) do |local_context|
+        local_context.precision += 3 # extra digits for intermediate steps
+        x = x.copy_sign(+1) if sign<0
+        if x > 1
+          s = half*(x.exp - (-x).exp)
+        else
+          i, lasts, fact, num = 1, 0, 1, num_class[x]
+          s = num
+          x2 = x*x
+          while s != lasts
+            lasts = s
+            i += 2
+            fact *= i * (i-1)
+            num *= x2
+            s += num / fact
+          end
+        end
+      end
+      return plus(s).copy_sign(sign)
+    end
+
+    def cosh_base(x)
+      s = nil
+      num_class.context(self) do |local_context|
+        local_context.precision += 3 # extra digits for intermediate steps
+        x = x.copy_sign(+1)
+        s = half*(x.exp + (-x).exp)
+      end
+      return plus(s)
+    end
+
+    def tanh_base(x)
+      s = nil
+      num_class.context(self) do |local_context|
+        local_context.precision += 3 # extra digits for intermediate steps
+        s = sinh_base(x)/cosh_base(x)
+      end
+      return plus(s)
+    end
+
+    def asinh_base(x)
+      sign = x.sign
+      x = x.copy_sign(+1)
+      s = nil
+
+      num_class.context(self) do |local_context|
+        x_squared = x ** 2
+        if x_squared.zero? || x_squared.subnormal?
+          s = x
+        else
+          # TODO: more accurate formula for small x: if x<...
+          if x.adjusted_exponent >= local_context.precision
+            s = local_context.ln(x+x)
+          else
+            s = local_context.ln(x + local_context.sqrt(x_squared + 1))
+          end
+        end
+      end
+      return plus(s).copy_sign(sign)
+    end
+
+    def acosh_base(x)
+
+      return self.exception(Num::InvalidOperation, 'acosh needs x >= 1') if x < 1
+
+      x = x.copy_sign(+1)
+      s = nil
+
+      num_class.context(self) do |local_context|
+        if x == 1
+          s = num_class.zero
+        else
+          if x.adjusted_exponent >= local_context.precision
+            s = x+x
+          else
+            s = x + local_context.sqrt((x+1)*(x-1))
+          end
+          s = local_context.ln(s)
+        end
+      end
+      return plus(s)
+    end
+
+    def atanh_base(x)
+      sign = x.sign
+      x = x.copy_sign(+1)
+      s = nil
+
+      return self.exception(Num::InvalidOperation, 'asinh needs -1 <= x <= 1') if x > 1
+
+      num_class.context(self) do |local_context|
+        if x.adjusted_exponent <= -local_context.precision
+          s = x
+        else
+          s = (1 + x) / (1 - x)
+          s = half*local_context.ln(s)
+        end
+      end
+      return plus(s).copy_sign(sign)
     end
 
     def pi2(decimals=nil)
