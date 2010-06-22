@@ -606,6 +606,8 @@ module Flt
 
     module Trigonometry
 
+      include Flt::Trigonometry::Support
+
       # Pi
       @pi_cache = nil # truncated pi digits as a string
       @pi_cache_digits = 0
@@ -624,7 +626,7 @@ module Flt
                digits += margin + 1
                fudge = 10
                unity = 10**(digits+fudge)
-               v = 4*(4*Trigonometry.iarccot(5, unity) - Trigonometry.iarccot(239, unity))
+               v = 4*(4*iarccot(5, unity) - iarccot(239, unity))
                v = v.to_s[0,digits]
                # if the last digit is 0 or 5 the truncated value may not be good for rounding
                loop do
@@ -645,33 +647,12 @@ module Flt
           end
           # Now we avoid rounding too much because it is slow
           l = round_digits + 1
-          while (l<Trigonometry.pi_cache_digits) && [0,5].include?(Trigonometry.pi_cache[l-1,1].to_i)
+          while (l<Num[16]::Trigonometry.pi_cache_digits) && [0,5].include?(Trigonometry.pi_cache[l-1,1].to_i)
             l += 1
           end
           v = Trigonometry.pi_cache[0,l]
           num_class.context(self, :precision=>round_digits){+num_class.Num(+1,v.to_i,1-l)}
       end
-
-      private
-
-      class <<self
-        def iarccot(x, unity)
-          xpow = unity / x
-          n = 1
-          sign = 1
-          sum = 0
-          loop do
-              term = xpow / n
-              break if term == 0
-              sum += sign * (xpow/n)
-              xpow /= x*x
-              n += 2
-              sign = -sign
-          end
-          sum
-        end
-      end
-
 
     end # DecNum::Trigonometry
 
@@ -681,7 +662,9 @@ module Flt
 
   Num[16].class_eval do
 
-    module Trigonometry
+    module Num[16]::Trigonometry
+
+      extend Flt::Trigonometry::Support
 
       # Pi
       @pi_cache = nil # truncated pi digits as a string
@@ -692,17 +675,17 @@ module Flt
       end
 
       # truncated hex digits for rounding hexadecimally at round_digits
-      def pi_hex_digits(round_digits=nil)
+      def self.pi_hex_digits(round_digits=nil)
         round_digits ||= self.precision
         digits = round_digits
-          if Trigonometry.pi_cache_digits <= digits # we need at least one more truncated digit
+          if Num[16]::Trigonometry.pi_cache_digits <= digits # we need at least one more truncated digit
              continue = true
              while continue
                margin = PI_MARGIN # margin to reduce recomputing with more digits to avoid ending in 0 or 5
                digits += margin + 1
                fudge = 16
                unity = 16**(digits+fudge)
-               v = 4*(4*Trigonometry.iarccot(5, unity) - Trigonometry.iarccot(239, unity))
+               v = 4*(4*iarccot(5, unity) - iarccot(239, unity))
                v = v.to_s(16)[0,digits]
                # if the last digit is 0 or 8 the truncated value may not be good for rounding
                loop do
@@ -718,41 +701,21 @@ module Flt
                  end
                end
              end
-             Trigonometry.pi_cache_digits = digits + margin - PI_MARGIN # @pi_cache.size
-             Trigonometry.pi_cache = v # DecNum(+1, v, 1-digits) # cache truncated value
+             Num[16]::Trigonometry.pi_cache_digits = digits + margin - PI_MARGIN # @pi_cache.size
+             Num[16]::Trigonometry.pi_cache = v # DecNum(+1, v, 1-digits) # cache truncated value
           end
           # Now we avoid rounding too much because it is slow
           l = round_digits + 1
-          while (l<Trigonometry.pi_cache_digits) && [0,8].include?(Trigonometry.pi_cache[l-1,1].to_i(16))
+          while (l<Num[16]::Trigonometry.pi_cache_digits) && [0,8].include?(Num[16]::Trigonometry.pi_cache[l-1,1].to_i(16))
             l += 1
           end
-          Trigonometry.pi_cache[0,l]
+          Num[16]::Trigonometry.pi_cache[0,l]
       end
 
       def pi(round_digits=nil)
-        v = pi_hex_digits(round_digits)
+        v = Num[16]::Trigonometry.pi_hex_digits(round_digits)
         l = v.size
         num_class.context(self, :precision=>round_digits){+num_class.Num(+1,v.to_i(16),1-l)}
-      end
-
-      private
-
-      class <<self
-        def iarccot(x, unity)
-          xpow = unity / x
-          n = 1
-          sign = 1
-          sum = 0
-          loop do
-              term = xpow / n
-              break if term == 0
-              sum += sign * (xpow/n)
-              xpow /= x*x
-              n += 2
-              sign = -sign
-          end
-          sum
-        end
       end
 
     end # Num[16]::Trigonometry
@@ -766,7 +729,7 @@ module Flt
       def pi(round_digits=nil)
         round_digits ||= self.precision
         nhexd = (round_digits+3)/4 + 1
-        v = pi_hex_digits(nhexd)
+        v = Num[16]::Trigonometry.pi_hex_digits(nhexd)
         l = v.size
         v = v.to_i(16)
         e = (1-l)*4
