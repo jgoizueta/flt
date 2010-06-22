@@ -280,9 +280,9 @@ module Flt
         # if ComplexContext is derived from ContextBase: return ComplexContext(self).math(*parameters, &blk)
         num_class.context(self) do
           if parameters.empty?
-            ComplexContext(num_class.context).instance_eval &blk
+            Flt.ComplexContext(num_class.context).instance_eval &blk
           else
-            ComplexContext(num_class.context).instance_exec *parameters, &blk
+            Flt.xiComplexContext(num_class.context).instance_exec *parameters, &blk
           end
         end
       end
