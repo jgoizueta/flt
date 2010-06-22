@@ -22,13 +22,8 @@ PROJ.email = 'javier@goizueta.info'
 PROJ.version = Flt::VERSION::STRING
 PROJ.rubyforge.name = 'flt'
 PROJ.url = "http://#{PROJ.rubyforge.name}.rubyforge.org"
-PROJ.rdoc.opts = [
-  "--main", "README.txt",
-  '--title', 'Ruby Flt Documentation',
-  "--opname", "index.html",
-  "--line-numbers",
-  "--inline-source"
-  ]
+PROJ.rdoc.main = "README.rdoc"
+PROJ.rdoc.opts = [ '--title', 'Ruby Flt Documentation' ]
 #PROJ.test.file = 'test/all_tests.rb'
 
 # EOF
