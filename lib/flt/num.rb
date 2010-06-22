@@ -704,7 +704,7 @@ class Num < Numeric
 
     # Ruby-style log function: arbitrary base logarithm which defaults to natural logarithm
     def log(x, base=nil)
-      _convert(x).log(b, self)
+      _convert(x).log(base, self)
     end
 
     # Converts a number to a string
