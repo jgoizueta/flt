@@ -1207,8 +1207,8 @@ class Num < Numeric
   private :define_context
 
   # The current context (thread-local).
-  # If arguments are passed they are interpreted as in Num.define_context() to change
-  # the current context.
+  # If arguments are passed they are interpreted as in Num.define_context() and an altered copy
+  # of the current context is returned.
   # If a block is given, this method is a synonym for Num.local_context().
   def self.context(*args, &blk)
     if blk
@@ -1220,17 +1220,23 @@ class Num < Numeric
       self._context = ctxt = self::DefaultContext.dup if ctxt.nil?
       ctxt
     else
-      # change the current context
-      # TODO: consider doing self._context = ... here
-      # so we would have DecNum.context = c that assigns a duplicate of c
-      # and DecNum.context c to set alias c
-      self.context = define_context(*args)
+      # Return a modified copy of the current context
+      if args.first.kind_of?(ContextBase)
+        self.define_context(*args)
+      else
+        self.define_context(self.context, *args)
+      end
     end
   end
 
   # Change the current context (thread-local).
   def self.context=(c)
     self._context = c.dup
+  end
+
+  # Modify the current context, e.g. DecNum.set_context(:precision=>10)
+  def self.set_context(*args)
+    self.context = define_context(*args)
   end
 
   # Defines a scope with a local context. A context can be passed which will be
