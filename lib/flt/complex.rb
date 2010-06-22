@@ -165,7 +165,89 @@ module Flt
       end
     end
 
-    # TODO: trigonometry; note asin(x) should use the Complex formula if x real when x.abs>1, etc.
+    math_function :sin do |mth, z|
+      [mth.sin(z.real)*mth.cosh(z.imag), mth.cos(z.real)*mth.sinh(z.imag)]
+    end
+
+    math_function :cos do |mth, z|
+      [mth.cos(z.real)*mth.cosh(z.imag), -mth.sin(z.real)*mth.sinh(z.imag)]
+    end
+
+    math_function :tan do |mth, z|
+      mth.cmath{sin(z)/cos(z)}.rectangular
+    end
+
+    math_function :atan do |mth, z|
+      i = Complex(0,mth.num_class[1])
+      mth.cmath{i*ln((i+z)/(i-z))*num_class.one_half}.rectangular
+    end
+
+    math_function :sinh do |mth, z|
+      [mth.sinh(z.real)*mth.cos(z.imag), mth.cosh(z.real)*mth.sin(z.imag)]
+    end
+
+    math_function :cosh do |mth, z|
+      [mth.cosh(z.real)*mth.cos(z.imag), mth.sinh(z.real)*mth.sin(z.imag)]
+    end
+
+    math_function :tanh do |mth, z|
+      mth.cmath{sinh(z)/cosh(z)}.rectangular
+    end
+
+    math_function :asinh do |mth, z|
+      mth.cmath{ln(z+sqrt(z*z+1))}.rectangular
+    end
+
+    def asin(z)
+      z_is_complex = z.kind_of?(Complex)
+      if z_is_complex || z.abs>1
+        # z = Complex(1) unless z_is_complex
+        i = Complex(0,@context.num_class[1])
+        fix num_class.context(:extra_precision=>3).cmath {
+          -i*ln(i*z + sqrt(1-z*z))
+        }
+      else
+        @context.asin(z)
+      end
+    end
+
+    def acos(z)
+      z_is_complex = z.kind_of?(Complex)
+      if z_is_complex || z.abs>1
+        # z = Complex(1) unless z_is_complex
+        i = Complex(0,@context.num_class[1])
+        fix num_class.context(:extra_precision=>3).cmath {
+          -i*ln(z + i*sqrt(1-z*z))
+        }
+      else
+        @context.acos(z)
+      end
+    end
+
+    def acosh(z)
+      z_is_complex = z.kind_of?(Complex)
+      if z_is_complex || z<=1
+        # z = Complex(1) unless z_is_complex
+        fix num_class.context(:extra_precision=>3).cmath{ ln(z + sqrt(z*z-1)) }
+      else
+        @context.acosh(z)
+      end
+    end
+
+    def atanh(z)
+      z_is_complex = z.kind_of?(Complex)
+      if z_is_complex || z.abs>1
+        # z = Complex(1) unless z_is_complex
+        i = Complex(0,@context.num_class[1])
+        fix num_class.context(:extra_precision=>3).cmath{ num_class.one_half*ln((1+z)/(1-z)) }
+      else
+        @context.atanh(z)
+      end
+    end
+
+    extend Forwardable
+    def_delegators :@context, :pi
+
 
     private
 
@@ -179,6 +261,10 @@ module Flt
         im = r*mth.sin(theta)
       end
       fix_rect(re, im)
+    end
+
+    def fix(z)
+      fix_rect *z.rectangular
     end
 
   end # ComplexContext
@@ -212,14 +298,14 @@ module Flt
   module DecNum::CMath
     include MathBase
     num_class(DecNum){num_class.ccontext}
-    # math_function *Trigonometry.public_instance_methods
+    math_function *Trigonometry.public_instance_methods
     math_function :exp, :log, :log2, :log10, :sqrt
   end
 
   module BinNum::CMath
     include MathBase
     num_class(BinNum){num_class.ccontext}
-    # math_function *Trigonometry.public_instance_methods
+    math_function *Trigonometry.public_instance_methods
     math_function :exp, :log, :log2, :log10, :sqrt
   end
 
