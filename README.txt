@@ -536,7 +536,8 @@ Its functions can be accessed in a number of ways:
 * Floating Point Tolerance: see the flt/tolerance.rb[link:files/lib/flt/tolerance_rb.html] file
   and the Flt::Tolerance class
 * Constructors: see Flt.DecNum(), Flt.BinNum() and Flt.Tolerance().
-* Trigonometry functions: see Flt::Trigonometry..
+* Trigonometry functions: see Flt::Trigonometry.
+* Complex number support: see the flt/complex.rb[link:files/lib/flt/complex.rb.html] file
 
 = DecNum vs BigDecimal
 
@@ -598,7 +599,6 @@ EXPAND+
 = Roadmap
 
 * Trigonometry optimizations
-* Complex support.
 * Implement the missing GDA functions:
   rotate, shift, trim, and, or, xor, invert,
   max, min, maxmag, minmag, comparetotal, comparetotmag
