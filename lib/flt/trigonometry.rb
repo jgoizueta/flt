@@ -89,7 +89,7 @@ module Flt
     end
 
     def half
-      num_class['0.5']
+      @half ||= num_class.one_half
     end
 
     protected
@@ -285,7 +285,7 @@ module Flt
     end
 
     def hypot_base(x, y)
-      num_class.context(self) do |local_context|
+      +num_class.context(self) do |local_context|
         local_context.precision += 3
         (x*x + y*y).sqrt
       end

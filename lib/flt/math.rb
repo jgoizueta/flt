@@ -11,21 +11,35 @@ module Flt
   #
   # The math functions provided by Math modules are trigonometric (sin, cos, tan, asin, acos, atan, hypot),
   # exp, log, log2, and log10.
+  #
+  # Example:
+  #   DecNum.context(:precision=>5) do
+  #     puts DecNum::Math.sqrt(2)        # => 1.4142
+  #   end
+  #   DecNum.context.precision = 10
+  #   include DecNum::Math
+  #   puts sqrt(2)                       # => 1.414213562
+  #
   module MathBase
 
     def self.included(base)
       base.extend ClassMethods
     end
 
-    def context
-      self.class_num.context
-    end
-
     module ClassMethods
+      def num_class(cls, &blk)
+        define_method(:num_class){cls}
+        if blk
+          define_method(:context, &blk)
+        else
+          define_method(:context){num_class.context}
+        end
+        module_function :num_class, :context
+      end
       def math_function(*fs)
         fs.each do |f|
           define_method f do |*args|
-            self.num_class.context.send f, *args
+            context.send f, *args
           end
           module_function f
         end
@@ -37,9 +51,7 @@ module Flt
   # Math module for DecNum; uses the current DecNum Context. See Flt::MathBase.
   module DecNum::Math
     include MathBase
-    def self.num_class
-      DecNum
-    end
+    num_class DecNum
     math_function *Trigonometry.public_instance_methods
     math_function :exp, :log, :log2, :log10, :sqrt
   end
@@ -47,9 +59,7 @@ module Flt
   # Math module for DecNum; uses the current DecNum Context. See Flt::MathBase.
   module BinNum::Math
     include MathBase
-    def self.num_class
-      BinNum
-    end
+    num_class BinNum
     math_function *Trigonometry.public_instance_methods
     math_function :exp, :log, :log2, :log10, :sqrt
   end
