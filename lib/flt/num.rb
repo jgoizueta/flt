@@ -2446,14 +2446,14 @@ class Num < Numeric
   # Ruby-style logarithm of arbitrary base, e (natural base) by default
   def log(b=nil, context=nil)
     if b.nil?
-      x.ln(context)
+      self.ln(context)
     elsif b==10
-      x.log10(context)
+      self.log10(context)
     elsif b==2
-      x.log2(context)
+      self.log2(context)
     else
       context = num_class.define_context(context)
-      +num_class.context(:extra_precision=>3){x.ln(context)/num_class[b].ln(context)}
+      +num_class.context(:extra_precision=>3){self.ln(context)/num_class[b].ln(context)}
     end
   end
 
