@@ -9,6 +9,8 @@ lib/flt/num.rb
 lib/flt/support.rb
 lib/flt/dec_num.rb
 lib/flt/math.rb
+lib/flt/trigonometry.rb
+lib/flt/complex.rb
 lib/flt/bin_num.rb
 lib/flt/float.rb
 lib/flt/bigdecimal.rb
@@ -18,6 +20,8 @@ lib/flt/d.rb
 lib/flt/b.rb
 lib/flt/sugar.rb
 setup.rb
+test/generate_trig_data.rb
+test/reader.rb
 test/all_tests.rb
 test/helper.rb
 test/test_basic.rb
@@ -38,5 +42,6 @@ test/test_bin.rb
 test/test_binfloat_conversion.rb
 test/test_bin_arithmetic.rb
 test/test_tol.rb
+test/test_trig.rb
 test/reader.rb
 test/test_num_constructor.rb

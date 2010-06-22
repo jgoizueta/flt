@@ -10,8 +10,8 @@ The Flt::Tolerance classes and the Flt.Tolerance() constructor handle floating p
 tolerances defined in flexible ways.
 
 Context classes are define in the files
-flt/float.rb[link:files/lib/flt/float_rb.html] and
-flt/bigdecimal.rb[link:files/lib/flt/bigdecimal_rb.html]
+flt/float.rb[link:lib/flt/float_rb.html] and
+flt/bigdecimal.rb[link:lib/flt/bigdecimal_rb.html]
 for Float and BigDecimal numbers that aid to the interchangeability of floating point types. This
 represent the only definition of identifiers outside the Flt namespace: the methods
 Float.context() and BigDecimal.context() and some contants in Float.
@@ -375,7 +375,7 @@ This file defines +D+ as a synonym for +DecNum+:
   puts +D('1.234')                                 # -> 1.23
 
 Some convenient methods are added to numeric classes by requiring the optional
-flt/sugar.rb[link:files/lib/flt/sugar_rb.html]. This must be explicitely required
+flt/sugar.rb[link:lib/flt/sugar_rb.html]. This must be explicitely required
 because it could cause conflicts with other extensions of these classes.
 
   require 'flt/sugar'
@@ -533,11 +533,11 @@ Its functions can be accessed in a number of ways:
 * Binary Floating point type: see the base Flt::Num class and the Flt::BinNum class
 * Floating Point Contexts: see documentation for classes Flt::Num::ContextBase,
   Flt::DecNum::Context and Flt::BinNum::Context
-* Floating Point Tolerance: see the flt/tolerance.rb[link:files/lib/flt/tolerance_rb.html] file
+* Floating Point Tolerance: see the flt/tolerance.rb[link:lib/flt/tolerance_rb.html] file
   and the Flt::Tolerance class
 * Constructors: see Flt.DecNum(), Flt.BinNum() and Flt.Tolerance().
 * Trigonometry functions: see Flt::Trigonometry.
-* Complex number support: see the flt/complex.rb[link:files/lib/flt/complex.rb.html] file
+* Complex number support: see the flt/complex.rb[link:lib/flt/complex_rb.html] file
 
 = DecNum vs BigDecimal
 
