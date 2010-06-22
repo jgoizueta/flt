@@ -401,6 +401,12 @@ decimal point):
   puts 100_000.000_001                            # -> 100000.000001
   puts 100_000.000_001.class                      # -> Float
 
+There's also one important caveat with this notation: negative numbers with a zero integral part must be
+parenthesed (otherwise the minus has no effect because it affects only the null integer part):
+
+  puts -0._5                                      # -> 0.5
+  puts -(0._5)                                    # -> -0.5
+
 == Error analysis
 
 The DecNum#ulp() method returns the value of a "unit in the last place" for a given number under
