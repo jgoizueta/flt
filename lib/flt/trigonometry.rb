@@ -571,6 +571,13 @@ module Flt
         ((4*s(1, n) - 2*s(4, n) - s(5, n) - s(6, n)) >> @ext_shift) & @external.mask
     end
 
+    def pi_str(n)
+      s = pi(n).to_s(16)
+      s = "0"*(@externaal.d-s.size)+s if s.size < @external.d
+      s
+    end
+
+
     private
       def s(j, n)
           # Left sum
@@ -615,7 +622,7 @@ module Flt
         if round_digits>=Trigonometry.pi_digits.size
           hp = HexPi.new(16)
           while Trigonometry.pi_digits.size<round_digits || (last=Trigonometry.pi_digits[-1,1].to_i(16))==0 || last==8
-            Trigonometry.pi_digits << hp.pi(Trigonometry.pi_digits.size).to_s(16)
+            Trigonometry.pi_digits << hp.pi_str(Trigonometry.pi_digits.size)
           end
         end
         num_class.context(self, :precision=>round_digits){+num_class.Num(+1,Trigonometry.pi_digits.to_i(16),1-Trigonometry.pi_digits.size)}
@@ -636,7 +643,7 @@ module Flt
           if nhexd>=Trigonometry.pi_digits.size
             hp = HexPi.new(16)
             while Trigonometry.pi_digits.size<nhexd
-              Trigonometry.pi_digits << hp.pi(Trigonometry.pi_digits.size).to_s(16)
+              Trigonometry.pi_digits << hp.pi_str(Trigonometry.pi_digits.size)
             end
           end
           v = (Trigonometry.pi_digits + "01").to_i(16)
