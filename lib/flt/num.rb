@@ -702,6 +702,11 @@ class Num < Numeric
       _convert(x).ln(self)
     end
 
+    # Ruby-style log function: arbitrary base logarithm which defaults to natural logarithm
+    def log(x, base=nil)
+      _convert(x).log(b, self)
+    end
+
     # Converts a number to a string
     def to_string(x, eng=false)
       _convert(x)._fix(self).to_s(eng, self)
@@ -2436,6 +2441,20 @@ class Num < Numeric
       context.flags = local_context.flags
     end
     return ans
+  end
+
+  # Ruby-style logarithm of arbitrary base, e (natural base) by default
+  def log(b=nil, context=nil)
+    if b.nil?
+      x.ln(context)
+    elsif b==10
+      x.log10(context)
+    elsif b==2
+      x.log2(context)
+    else
+      context = num_class.define_context(context)
+      +num_class.context(:extra_precision=>3){x.ln(context)/num_class[b].ln(context)}
+    end
   end
 
   # Returns the base 10 logarithm
