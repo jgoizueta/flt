@@ -1293,6 +1293,11 @@ class Num < Numeric
       new [+1, nil, :nan]
     end
 
+    # One half: 1/2
+    def one_half
+      new '0.5'
+    end
+
     def int_radix_power(n)
       self.radix**n
     end

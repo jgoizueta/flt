@@ -11,6 +11,10 @@ class BinNum < Num
       2
     end
 
+    def one_half
+      new [+1, 1, -1]
+    end
+
     # Integral power of the base: radix**n for integer n; returns an integer.
     def int_radix_power(n)
       (n < 0) ? (2**n) : (1<<n)
