@@ -545,61 +545,47 @@ module Flt
 
   end # DecNum
 
-  # Hexadecimal truncated digits of Pi using the BBP formula
-  class HexPi
+  # Hexadecimal truncated digits of Pi using the BBP formula and Float.
+  module HexPi
 
-    class Mask
-      def initialize(d)
-        @d = d
-        # @shift = d * 4
-        @shift = (d << 2)
-        # @m = 16**d
-        @m = 1 << @shift
-        @mask = @m - 1
-      end
-      attr_reader :d, :shift, :m, :mask
-    end
+    N = 8 # Each computation generates 8 hex. digits.
 
-    def initialize(digits)
-      @external = Mask.new(digits)
-      @internal = Mask.new(digits+8)
-      @ext_shift = @internal.shift - @external.shift
-    end
-
-    def pi(n)
+    def self.pi(n)
         n -= 1
-        ((4*s(1, n) - 2*s(4, n) - s(5, n) - s(6, n)) >> @ext_shift) & @external.mask
+        v = (4*s(1, n) - 2*s(4, n) - s(5, n) - s(6, n)) % 1.0
+        (v*(1<<(N<<2))).to_i
     end
 
-    private
-      def s(j, n)
-          # Left sum
-          s = 0
-          k = 0
-          while k <= n
-              r = 8*k+j
-              # s = (s + ((16**(n-k) % r)<<@internal.shift)/r) & @internal.mask
-              shft = ((n-k)<<2)
-              s = (s + (((1<<shft) % r)<<@internal.shift)/r) & @internal.mask
-              k += 1
-          end
-          # Right sum
-          t = 0
-          k = n + 1
-          while true
-              # xp = (16**(n-k) * @m).to_i
-              shft = ((k-n)<<2)
-              xp = (@internal.m/(1<<shft))
-              newt = t + xp / (8*k+j)
-              # Iterate until t no longer changes
-              if t == newt
-                  break
-              else
-                  t = newt
-              end
-              k += 1
-          end
-          s + t
+    def self.pi_str(n)
+      s = pi(n).to_s(16)
+      s = "0"*(N-s.size)+s if s.size < N
+      s
+    end
+
+      def self.s(j, n)
+
+        # Left sum
+           s = 0.0
+           k = 0
+           while k <= n
+               r = 8*k+j
+               s = (s + Float((16**(n-k))%r) / r) % 1.0
+               k += 1
+           end
+           # Right sum
+           t = 0.0
+           k = n + 1
+           while 1
+               newt = t + (16**(n-k)) / (8*k+j)
+               # Iterate until t no longer changes
+               if t == newt
+                   break
+               else
+                   t = newt
+               end
+               k += 1
+           end
+          s+t
       end
 
   end
@@ -613,9 +599,8 @@ module Flt
       def pi(round_digits=nil)
         round_digits ||= self.precision
         if round_digits>=Trigonometry.pi_digits.size
-          hp = HexPi.new(16)
           while Trigonometry.pi_digits.size<round_digits || (last=Trigonometry.pi_digits[-1,1].to_i(16))==0 || last==8
-            Trigonometry.pi_digits << hp.pi(Trigonometry.pi_digits.size).to_s(16)
+            Trigonometry.pi_digits << HexpPi.pi_str(Trigonometry.pi_digits.size)
           end
         end
         num_class.context(self, :precision=>round_digits){+num_class.Num(+1,Trigonometry.pi_digits.to_i(16),1-Trigonometry.pi_digits.size)}
@@ -634,9 +619,8 @@ module Flt
           round_digits ||= self.precision
           nhexd = (round_digits+3)/4 + 1
           if nhexd>=Trigonometry.pi_digits.size
-            hp = HexPi.new(16)
             while Trigonometry.pi_digits.size<nhexd
-              Trigonometry.pi_digits << hp.pi(Trigonometry.pi_digits.size).to_s(16)
+              Trigonometry.pi_digits << HexPi.pi_str(Trigonometry.pi_digits.size)
             end
           end
           v = (Trigonometry.pi_digits + "01").to_i(16)
