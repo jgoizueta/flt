@@ -1,3 +1,28 @@
+== 1.3.0 2010-06-22
+
+* New features
+  - Complex math
+  - Hyperbolic trigonometry
+
+* Bugfixes
+  - Num.context use was counter-intuitive
+  - Various math corrections
+
+== 1.2.1 2010-06-16
+
+* New features
+  - Trigonometry for BinNum and reorganization of Math modules.
+
+* Bugfixes
+  - Context#elimit= didn't work
+  - atan could be inaccurate for small arguments
+  - asin could be inaccurate for arguments near 1
+
+== 1.2.0 2010-06-15
+
+* New Features
+  - Trigonometry in radians/degrees/gradians
+
 == 1.1.2 2010-06-01
 
 * New Features
