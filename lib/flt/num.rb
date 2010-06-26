@@ -3,19 +3,21 @@
 #--
 # =Notes on the representation of Flt::Num numbers.
 #
-# @sign is +1 for plus and -1 for minus
-# @coeff is the integral significand stored as an integer (so leading zeros cannot be kept)
-# @exp is the exponent to be applied to @coeff as an integer or one of :inf, :nan, :snan for special values
+# * @sign is +1 for plus and -1 for minus
+# * @coeff is the integral significand stored as an integer (so leading zeros cannot be kept)
+# * @exp is the exponent to be applied to @coeff as an integer or one of :inf, :nan, :snan for special values
 #
+# The value represented is @sign*@coeff*b**@exp with b = num_class.radix the radix for the the Num-derived class.
+
 # The original Python Decimal representation has these slots:
-# _sign is 1 for minus, 0 for plus
-# _int is the integral significand as a string of digits (leading zeroes are not kept)
-# _exp is the exponent as an integer or 'F' for infinity, 'n' for NaN , 'N' for sNaN
-# _is_especial is true for special values (infinity, NaN, sNaN)
+# * _sign is 1 for minus, 0 for plus
+# * _int is the integral significand as a string of digits (leading zeroes are not kept)
+# * _exp is the exponent as an integer or 'F' for infinity, 'n' for NaN , 'N' for sNaN
+# * _is_especial is true for special values (infinity, NaN, sNaN)
 # An additional class _WorkRep is used in Python for non-special decimal values with:
-# sign
-# int (significand as an integer)
-# exp
+# * sign
+# * int (significand as an integer)
+# * exp
 #
 # =Exponent values
 #
@@ -24,9 +26,15 @@
 #
 # The reduce operation (originally called 'normalize') removes trailing 0s and increments the exponent if necessary;
 # the representation is rescaled to use the maximum exponent possible (while maintaining an integral significand.)
+# So, a reduced number uses as few digits as possible to retain it's value; information about digit significance
+# is lost.
 #
-# A classical floating-point normalize opwration would remove leading 0s and decrement the exponent instead,
-# rescaling to the minimum exponent theat maintains the significand value under some conventional limit (1 or the radix).
+# A classical floating-point normalize operation would remove leading 0s and decrement the exponent instead,
+# rescaling to the minimum exponent that maintains the significand value under some conventional limit
+# (1 for fractional normalization; the radix for scientific or adjusted normalization and the maximum
+# integral significand with as many digits as determined by the context precision for integral normalization.)
+# So, normalization is meaningful given some fixed limited precision, as given by the context precision in our case.
+# Normalization uses all the available precision digits and loses information about digit significance too.
 #
 # The logb and adjusted operations return the exponent that applies to the most significand digit (logb as a Decimal
 # and adjusted as an integer.) This is the normalized scientific exponent.
@@ -40,15 +48,25 @@
 # The number of (kept) significand digits is s = a - e + 1
 # where a is the adjusted exponent and e is the internal exponent (the unnormalized integral exponent.)
 #
-# The number of significant digits (excluding leading and trailing zeroes) is sr = a - re + 1
+# The number of significant digits (excluding leading and trailing zeroes) is sr = a - re + 1 = s + e - re
 # where re is the internal exponent of the reduced value.
 #
-# The normalized integral exponent is e - (p - s) = a - p + 1
+# The normalized integral exponent is ei = e - (p - s) = a - p + 1
 # where p is the fixed precision.
 #
-# The normalized fractional exponent is e + s = a + 1
+# The normalized fractional exponent is ef = e + s = a + 1
 #
-# ==Example: 0.01204
+# For context c and a number x we have:
+# * e == x.exponent == x.to_int_scale.last == x.integral_exponent
+# * ei == c.normalized_integral_exponent(x) == c.normalize(x).exponent == c.to_normalized_int_scale(x).last
+# * a == c.adjusted_exponent == c.scientific_exponent == c.logb(x).to_i == c.a
+# * re == c.reduce(x).exponent.to_i == c.reduced_exponent # the first uses c because it rounds to it
+# * s == x.number_of_digits == x.digits.size
+# * sr == c.reduce(x).number_of_digits
+# * p == c.precision
+# * ne == x.fractional_exponent
+#
+# ==Example: 0.0120400
 #
 # * The integral significand is 120400 and the internal exponent that applies to it is e = -7
 # * The number of significand digits is s = 6
@@ -60,13 +78,25 @@
 #
 # ==Exponent limits
 #
-# The (integral) exponent e must be within this limits: etiny <= e <= etop
-# The adjusted exponent a must: emin <= a <= emax
-# emin, emax are the limite of the exponent shown in scientific notation and are use to defined
-# the exponent limits in the contexts.
-# etiny = emin-precision+1 and etop=emax-precision+1 are the limits of the internal exponent.
-# Note that for significands with less than precision digits we can use exponents greater than etop
-# without causing overflow: +Decimal(+1,1,emax) == Decimal(+1,K,etop) where K=10**(precision-1)
+# A context defines the limits for adjusted (scientific) exponents, emin, emax, and equivalently,
+# the limits for internal (integral) exponents, etiny, etop. The emin, emax are the limits of the exponent
+# shown in scientific notation (except for subnormal numbers) and are use to define the context exponent
+# limits. We have etiny == emin-p+1 and etop==emax-p+1 where p is the context precision.
+#
+# For a given context a number with an integral significand not exceeding the context precision in number of digits
+# and with integral exponents e in the range:
+#   etiny <= e <= etop
+# is always valid.
+# The adjusted exponent, a, of valid normal numbers within the context must verify:
+#   emin <= a <= emax
+# If the significand is normalized (uses the full precision of the context)
+# the internal exponent cannot exceed etop. Significands with less digits than the context precision
+# can have internal exponents greater than etop withoug causing overflow:
+#  +DecNum(1,context.emax) == DecNum(10**(context.precision-1),context.etop)
+# The maximum finite value, which has a normalized (full precision) significand has internal exponent e==etop.
+# The minimum normal value and all adjusted subnormal values have e==etiny, but non-adjusted subnormal values
+# can have e<etiny: +DecNum(10,context.etiny-1) == Decimal(1,context.etiny) == context.minimum_nonzero
+# Subnormal numbers have adjusted exponents in the range: context.etiny <= a < context.emin
 #
 # =Interoperatibility with other numeric types
 #
@@ -932,7 +962,7 @@ class Num < Numeric
     # Maximum finite number
     def maximum_finite(sign=+1)
       return exception(InvalidOperation, "Exact context maximum finite value") if exact?
-      # equals +Num(+1, 1, emax)
+      # equals Num(+1, 1, emax+1) - Num(+1, 1, etop)
       # equals Num.infinity.next_minus(self)
       Num(sign, num_class.int_radix_power(precision)-1, etop)
     end
@@ -2257,6 +2287,24 @@ class Num < Numeric
       end_d -= 1
     end
     return Num(dup.sign, coeff/num_class.int_radix_power(nd-end_d), exp)
+  end
+
+  # Exponent corresponding to the integral significand with all trailing digits removed.
+  # Does not use any context; equals the value of self.reduce.exponent (but as an integer rather than a Num)
+  # except for special values and when the number is rounded under the context or exceeds its limits.
+  def reduced_exponent
+    if self.special? || self.zero?
+      0
+    else
+      exp = self.exponent
+      dgs = self.digits
+      nd = dgs.size # self.number_of_digits
+        while dgs[nd-1]==0
+        exp += 1
+        nd -= 1
+      end
+      exp
+    end
   end
 
   # Normalizes (changes quantum) so that the coefficient has precision digits, unless it is subnormal.
