@@ -102,6 +102,9 @@ end
 
 # Shortcut to define DecNums, e.g. 1._234567890123456789 produces Flt::DecNum('1.234567890123456789')
 # Based on http://coderrr.wordpress.com/2009/12/22/get-arbitrarily-precise-bigdecimals-in-ruby-for-just-one-extra-character/
+# There's a problem with negative numbers with a null integer part: -0._1 is parsed as (-0)._1 and -0 is 0.
+# The problem cannot be solved by redefinition of -@ for integers because -0 is interpreted as 0 by the Ruby parser
+# (no runtime method call is involved). Such numbers have to be entered as -(0._1)
 class Integer
   def method_missing(m, *a, &b)
     return Flt::DecNum("#{self}.#{$1.tr('_','')}")  if m.to_s =~ /^_(\d[_\d]*)$/
