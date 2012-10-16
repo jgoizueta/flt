@@ -160,7 +160,7 @@ module Flt
     end
 
     # strongly equals: x == y within tolerance (strict)
-    def seq?
+    def seq?(x, y)
       (x-y).abs <= relative_to_many(:min, x, y)
     end
 
