@@ -20,7 +20,7 @@ This library is the successor of the ruby-decimal gem, that defined the Decimal 
 for decimal floating point; that class has been renamed to Flt::DecNum and support
 has been added for binary floating point and tolerances.
 
-The documentation for this package is available at http://flt.rubyforge.org/
+The documentation for this package is available at http://rdoc.info/github/jgoizueta/flt/frames
 
 The code is at http://github.com/jgoizueta/flt/
 
@@ -31,14 +31,14 @@ It is based on the Python Decimal class.
 
 == Standars compliance.
 
-DecNum pretends to be conformant to the General Decimal Arithmetic Specification
+DecNum is designed to be conformant to the General Decimal Arithmetic Specification
 and the revised IEEE 754 standard (IEEE 754-2008).
 
 = Examples of use
 
-To install the library use gem from the command line: (you may not need +sudo+)
-FIXME: The flt gem is not publicly available yet.
-  sudo gem install flt
+To install the library use gem from the command line:
+
+  gem install flt
 
 Then require the library in your code (if it fails you may need to <tt>require 'rubygems'</tt> first)
   require 'flt'
@@ -60,7 +60,7 @@ Each thread has an active context that can be accessed like this:
 
   puts DecNum.context.precision                    # -> 28
 
-The active context can be globally for the current thread:
+The active context can be modified globally for the current thread:
 
   DecNum.context.precision = 2
   puts DecNum.context.precision                    # -> 2
@@ -85,7 +85,7 @@ The block for a local context can be passed the current context as an argument:
   end
   puts DecNum.context.precision                    # -> 9
 
-A context object can be used to define the local context:
+A context object can also be used to define the local context:
 
   my_context = DecNum::Context(:precision=>20)
   DecNum.context(my_context) do |context|
@@ -100,7 +100,6 @@ And individual parameters can be assigned like this:
     puts context.precision                         # -> 9
     puts context.rounding                          # -> down
   end
-
 
 Contexts created with the DecNum::Context() constructor
 inherit from DecNum::DefaultContext.
@@ -168,7 +167,7 @@ the plus operator to force rounding here:
   puts x                                           # -> 123.45678
   puts +x                                          # -> 123.5
 
-Precision can be also set to exact to avoid rounding, by using
+Precision can be also set to 'exact' to avoid rounding, by using
 the exact property or using a 0 precision. In exact mode results
 are never rounded and results that have an infinite number of
 digits trigger the DecNum::Inexact exception.
@@ -186,7 +185,7 @@ digits trigger the DecNum::Inexact exception.
   puts DecNum(1)/DecNum(3)                         # -> 0.33333
 
 There are also some methods for explicit rounding that provide
-an interface compatible with the Ruby interface of Float:
+an interface compatible with that of the Ruby Float class:
 
   puts DecNum('101.5').round                       # -> 102
   puts DecNum('101.5').round(0)                    # -> 102
@@ -204,8 +203,8 @@ an interface compatible with the Ruby interface of Float:
 In addition to finite numbers, a DecNum object can represent some special values:
 * Infinity (+Infinity, -Infinity). The method DecNum#infinite? returns true for these to values.
   DecNum.infinity DecNum.infinity(-1) can be used to get these values.
-* NaN (not a number) represents indefined results. The method DecNum#nan? returns true for it and
-  DecNum.nan can be used to obtain it. There is a variant, sNaN (signaling NaN) that casues
+* NaN (not a number) represents undefined results. The method DecNum#nan? returns true for it and
+  DecNum.nan can be used to obtain it. There is a variant, sNaN (signaling NaN) that causes
   an invalid operation condition if used; it can be detected with DecNum.snan?.
   A NaN can also include diagnostic information in its sign and coefficient.
 
@@ -213,8 +212,8 @@ Any of the special values can be detected with DecNum#special?
 Finite numbers can be clasified with
 these methods:
 * DecNum#zero? detects a zero value (note that there are two zero values: +0 and -0)
-* DecNum#normal? detects normal values: those whose adjusted exponents are not less than the the emin.
-* DecNum#subnormal? detects subnormal values: those whose adjusted exponents are less than the the emin.
+* DecNum#normal? detects normal values: those whose adjusted exponents are not less than @emin@.
+* DecNum#subnormal? detects subnormal values: those whose adjusted exponents are less than @emin@.
 
 ==Exceptions
 
@@ -557,21 +556,30 @@ the code cleaner and the results more easily predictable.
 
   DecNum.context.precision = 10
   puts DecNum(1)/DecNum(3)
+
 Contexts are thread-safe and can be used for individual operations:
+
   puts DecNum(1).divide(DecNum(e), DecNum::Context(:precision=>4))
+
 Which can be abbreviated:
-puts DecNum(1).divide(DecNum(e), :precision=>4)
+
+  puts DecNum(1).divide(DecNum(e), :precision=>4)
+
 Or use locally in a block without affecting other code:
+
   DecNum.context {
     DecNum.context.precision = 3
     puts DecNum(1)/DecNum(3)
   }
   puts DecNum.context.precision
+
 Which can also be abbreviated:
+
   DecNum.context(:precision=>3) { puts DecNum(1)/DecNum(3) }
 
 This allows in general to write simpler code; e.g. this is an exponential function, adapted from the
 'recipes' in Python's Decimal:
+
     def exp(x, c=nil)
       i, lasts, s, fact, num = 0, 0, 1, 1, 1
       DecNum.context(c) do |context|
