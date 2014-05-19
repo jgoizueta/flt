@@ -1,5 +1,6 @@
-$:.unshift File.dirname(__FILE__)
+# $:.unshift File.dirname(__FILE__)
 
+require 'flt/version'
 require 'flt/support'
 require 'flt/float'
 require 'flt/bigdecimal'

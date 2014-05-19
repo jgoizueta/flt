@@ -1,25 +1,4 @@
-require 'rubygems'
-require 'rake'
-
-begin
-  require 'jeweler'
-  Jeweler::Tasks.new do |gem|
-    gem.name = 'flt'
-    gem.summary = "Floating Point Numbers"
-    gem.description = %{Decimal and binary arbitrary precision floating point numbers in pure Ruby.}
-    gem.email = "jgoizueta@gmail.com"
-    gem.homepage = "http://github.com/jgoizueta/flt"
-    gem.authors = ["Javier Goizueta"]
-    gem.add_development_dependency "shoulda"
-    gem.rubyforge_project = 'flt'
-  end
-  Jeweler::GemcutterTasks.new
-  Jeweler::RubyforgeTasks.new do |rubyforge|
-    rubyforge.doc_task = "rdoc"
-  end
-rescue LoadError
-  puts "Jeweler (or a dependency) not available. Install it with: gem install jeweler"
-end
+require "bundler/gem_tasks"
 
 require 'rake/testtask'
 Rake::TestTask.new(:test) do |test|
@@ -28,31 +7,13 @@ Rake::TestTask.new(:test) do |test|
   test.verbose = true
 end
 
-begin
-  require 'rcov/rcovtask'
-  Rcov::RcovTask.new do |test|
-    test.libs << 'test'
-    test.pattern = 'test/**/test_*.rb'
-    test.verbose = true
-  end
-rescue LoadError
-  task :rcov do
-    abort "RCov is not available. In order to run rcov, you must: sudo gem install spicycode-rcov"
-  end
-end
-
-task :test => :check_dependencies
-
-task :default => :test
-
 require 'rdoc/task'
 Rake::RDocTask.new do |rdoc|
-  version = File.exist?('VERSION') ? File.read('VERSION').strip : ""
+  version = File.exist?('VERSION') ? File.read('VERSION').strip : Flt::VERSION
 
   rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = "Nio #{version}"
+  rdoc.title = "Flt #{version}"
   rdoc.main = "README.rdoc"
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end
-
