@@ -4,7 +4,6 @@ Manifest.txt
 README.rdoc
 Rakefile
 lib/flt.rb
-lib/flt/version.rb
 lib/flt/num.rb
 lib/flt/support.rb
 lib/flt/dec_num.rb

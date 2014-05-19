@@ -1,29 +1,58 @@
-# Look in the tasks/setup.rb file for the various options that can be
-# configured in this Rakefile. The .rake files in the tasks directory
-# are where the options are used.
+require 'rubygems'
+require 'rake'
 
 begin
-  require 'bones'
-  Bones.setup
+  require 'jeweler'
+  Jeweler::Tasks.new do |gem|
+    gem.name = 'flt'
+    gem.summary = "Floating Point Numbers"
+    gem.description = %{Decimal and binary arbitrary precision floating point numbers in pure Ruby.}
+    gem.email = "jgoizueta@gmail.com"
+    gem.homepage = "http://github.com/jgoizueta/flt"
+    gem.authors = ["Javier Goizueta"]
+    gem.add_development_dependency "shoulda"
+    gem.rubyforge_project = 'flt'
+  end
+  Jeweler::GemcutterTasks.new
+  Jeweler::RubyforgeTasks.new do |rubyforge|
+    rubyforge.doc_task = "rdoc"
+  end
 rescue LoadError
-  load 'tasks/setup.rb'
+  puts "Jeweler (or a dependency) not available. Install it with: gem install jeweler"
 end
 
-ensure_in_path 'lib'
-require 'flt/version'
+require 'rake/testtask'
+Rake::TestTask.new(:test) do |test|
+  test.libs << 'lib' << 'test'
+  test.pattern = 'test/**/test_*.rb'
+  test.verbose = true
+end
 
-task :default => 'spec:run'
+begin
+  require 'rcov/rcovtask'
+  Rcov::RcovTask.new do |test|
+    test.libs << 'test'
+    test.pattern = 'test/**/test_*.rb'
+    test.verbose = true
+  end
+rescue LoadError
+  task :rcov do
+    abort "RCov is not available. In order to run rcov, you must: sudo gem install spicycode-rcov"
+  end
+end
 
+task :test => :check_dependencies
 
-PROJ.name = 'flt'
-PROJ.description = "Floating Point Numbers"
-PROJ.authors = 'Javier Goizueta'
-PROJ.email = 'javier@goizueta.info'
-PROJ.version = Flt::VERSION::STRING
-PROJ.rubyforge.name = 'flt'
-PROJ.url = "http://#{PROJ.rubyforge.name}.rubyforge.org"
-PROJ.rdoc.main = "README.rdoc"
-PROJ.rdoc.opts = [ '--title', 'Ruby Flt Documentation' ]
-#PROJ.test.file = 'test/all_tests.rb'
+task :default => :test
 
-# EOF
+require 'rdoc/task'
+Rake::RDocTask.new do |rdoc|
+  version = File.exist?('VERSION') ? File.read('VERSION').strip : ""
+
+  rdoc.rdoc_dir = 'rdoc'
+  rdoc.title = "Nio #{version}"
+  rdoc.main = "README.rdoc"
+  rdoc.rdoc_files.include('README*')
+  rdoc.rdoc_files.include('lib/**/*.rb')
+end
+

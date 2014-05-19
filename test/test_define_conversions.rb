@@ -55,7 +55,7 @@ class TestDefineConversions < Test::Unit::TestCase
       end
     end
 
-    assert_raise(TypeError) { DecNum('0') == BigDecimal.new('0') }
+    assert_raise(TypeError, RuntimeError) { DecNum('0') == BigDecimal.new('0') }
     unless Num < Numeric
       # BigDecimal#eql? is weird
       assert_not_equal BigDecimal.new('0'), DecNum('0')
@@ -64,11 +64,11 @@ class TestDefineConversions < Test::Unit::TestCase
       assert_not_equal BigDecimal.new('1.2345'), DecNum('0.0012345000E3')
       assert_raise(TypeError) { BigDecimal.new('7')+DecNum('0.1') }
     end
-    assert_raise(TypeError) { DecNum('7')+BigDecimal.new('0.1') }
-    assert_raise(TypeError) { DecNum(BigDecimal.new('1.1')) }
+    assert_raise(TypeError, RuntimeError) { DecNum('7')+BigDecimal.new('0.1') }
+    assert_raise(TypeError, RuntimeError) { DecNum(BigDecimal.new('1.1')) }
 
     ['0.1', '-0.1', '0.0', '1234567.1234567', '-1234567.1234567', '1.234E7', '1.234E-7'].each do |n|
-      assert_raise(TypeError) { DecNum(n).convert_to(BigDecimal) }
+      assert_raise(TypeError, RuntimeError) { DecNum(n).convert_to(BigDecimal) }
     end
 
   end

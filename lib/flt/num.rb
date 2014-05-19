@@ -126,7 +126,6 @@
 #++
 
 require 'flt/support'
-require 'flt/version'
 
 require 'bigdecimal'
 require 'forwardable'
@@ -2689,6 +2688,21 @@ class Num < Numeric
   def ==(other)
     (self<=>other) == 0
   end
+
+  # For MRI this is unnecesary, but it is needed for Rubinius because of the coercion done in Numeric#< etc.
+  def <=(other)
+    (self<=>other) <= 0
+  end
+  def <(other)
+    (self<=>other) < 0
+  end
+  def >=(other)
+    (self<=>other) >= 0
+  end
+  def >(other)
+    (self<=>other) > 0
+  end
+
   include Comparable
 
   def hash
@@ -4253,7 +4267,6 @@ class Num < Numeric
       (1...t).to_a.reverse.each do |k|
          w = _div_nearest(m, k) - _div_nearest(yshift*w, m)
       end
-
       return _div_nearest(w*y, m)
     end
 

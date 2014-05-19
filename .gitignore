@@ -4,3 +4,7 @@ ruby-decimal.gemspec
 html
 .DS_Store
 pkg
+.rbx
+rdoc
+test/trigtest
+test/tmp
