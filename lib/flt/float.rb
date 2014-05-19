@@ -459,7 +459,7 @@ class Flt::FloatContext
   end
 
   def pi
-    Float::PI
+    Math::PI
   end
 
   def eval
