@@ -10,7 +10,7 @@ could be improved in the future by using a C extension based on the decNumber li
 The Flt::Tolerance classes and the Flt.Tolerance() constructor handle floating point
 tolerances defined in flexible ways.
 
-Context classes are define in the files
+Context classes are defined in the files
 flt/float.rb[link:lib/flt/float_rb.html] and
 flt/bigdecimal.rb[link:lib/flt/bigdecimal_rb.html]
 for Float and BigDecimal numbers that aid to the interchangeability of floating point types. This
