@@ -1,5 +1,6 @@
 = Introduction
 {<img src="https://badge.fury.io/rb/flt.svg" alt="Gem Version" />}[http://badge.fury.io/rb/flt]
+{<img src="https://travis-ci.org/jgoizueta/flt.svg?branch=master" alt="Build tests" />}[https://travis-ci.org/jgoizueta/flt]
 
 This library provides arbitrary precision floating-point types for Ruby. All types and
 functions are within a namespace called Flt. Decimal and Binary floating point numbers
