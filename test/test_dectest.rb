@@ -63,6 +63,7 @@ PENDING = %w{
   minmag
   comparetotal
   comparetotmag
+  comparesig
 }
 IGNORED = PENDING + %w{
   copy
