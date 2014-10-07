@@ -2347,7 +2347,7 @@ class Num < Numeric
     return ans if ans
     return num_class.infinity if infinite?
     return context.exception(DivisionByZero,'logb(0)',-1) if zero?
-    Num(adjusted_exponent)
+    Num(adjusted_exponent)._fix(context)
   end
 
   # Adds a value to the exponent.
