@@ -24,54 +24,74 @@ class TestTrig < Test::Unit::TestCase
     BinNum.context = BinNum::IEEEDoubleContext
   end
 
+  def trig_test_data_present?(radix, angle)
+    present = @data && @data[radix] && @data[radix][angle]
+    skip unless present
+    present
+  end
+
   def check(f, radix=10, angle=:rad)
-    class_num = Num[radix]
-    @data[radix][angle].keys.each do |prec|
-      class_num.context(:precision=>prec, :angle=>angle) do
-        class_num.context.traps[DecNum::DivisionByZero] = false
-        data = @data[radix][angle][prec][f]
-        data.each do |x, result|
-          assert_equal result, class_num::Math.send(f, x), "#{f}(#{x})==#{result}\ninput: #{x.to_int_scale.inspect} [#{radix} #{angle} #{prec}]"
+    if trig_test_data_present?(radix, angle)
+      class_num = Num[radix]
+      @data[radix][angle].keys.each do |prec|
+        class_num.context(:precision=>prec, :angle=>angle) do
+          class_num.context.traps[DecNum::DivisionByZero] = false
+          data = @data[radix][angle][prec][f]
+          data.each do |x, result|
+            msg = "#{f}(#{x})==#{result}\ninput: #{x.to_int_scale.inspect} [#{radix} #{angle} #{prec}]"
+            assert_equal result, class_num::Math.send(f, x), msg
+          end
         end
       end
     end
   end
 
   def check_relaxed(f, radix=10, angle=:rad, ulps=1)
-    class_num = Num[radix]
-    @data[radix][angle].keys.each do |prec|
-      class_num.context(:precision=>prec, :angle=>angle) do
-        class_num.context.traps[DecNum::DivisionByZero] = false
-        data = @data[radix][angle][prec][f]
-        unless data.nil?
-          data.each do |x, result|
-            y = class_num::Math.send(f, x)
-            if result.special?
-              assert_equal result, y, "#{f}(#{x})==#{result} [#{radix} #{angle} #{prec}]"
-            else
-              err_ulps = (y-result).abs/result.ulp
-              assert err_ulps<=ulps, "#{f}(#{x})==#{result} to within #{ulps} ulps; error: #{err_ulps} ulps (#{y})\ninput: #{x.to_int_scale.inspect} [#{radix} #{angle} #{prec}]"
+    if trig_test_data_present?(radix, angle)
+      class_num = Num[radix]
+      @data[radix][angle].keys.each do |prec|
+        class_num.context(:precision=>prec, :angle=>angle) do
+          class_num.context.traps[DecNum::DivisionByZero] = false
+          data = @data[radix][angle][prec][f]
+          unless data.nil?
+            data.each do |x, result|
+              y = class_num::Math.send(f, x)
+              if result.special?
+                assert_equal result, y, "#{f}(#{x})==#{result} [#{radix} #{angle} #{prec}]"
+              else
+                err_ulps = (y-result).abs/result.ulp
+                msg = "#{f}(#{x})==#{result} to within #{ulps} ulps; error: #{err_ulps} ulps (#{y})\ninput: #{x.to_int_scale.inspect} [#{radix} #{angle} #{prec}]"
+                assert err_ulps<=ulps, msg
+              end
             end
+          else
+            skip "Missing data for radix #{radix.inspect} angle #{angle.inspect} prec #{prec.inspect} #{f.inspect}"
           end
-        else
-          STDERR.puts "Missing data for radix #{radix.inspect} angle #{angle.inspect} prec #{prec.inspect} #{f.inspect}"
         end
       end
     end
   end
 
   def check_bin(f)
-    class_num = BinNum
-    @data[2][:rad].keys.each do |prec|
-      class_num.context do
-        #class_num.context.traps[DecNum::DivisionByZero] = false
-        data = @data[2][:rad][53][f]
-        data.each do |x, result|
-          x = class_num.Num(x)
-          result = ::Math.send(f, x.to_f)
-          assert_equal result, class_num::Math.send(f, x), "#{f}(#{x})==#{result} [bin]"
+    if trig_test_data_present?(2, :rad)
+      class_num = BinNum
+      @data[2][:rad].keys.each do |prec|
+        class_num.context do
+          #class_num.context.traps[DecNum::DivisionByZero] = false
+          data = @data[2][:rad][53][f]
+          data.each do |x, result|
+            x = class_num.Num(x)
+            result = ::Math.send(f, x.to_f)
+            assert_equal result, class_num::Math.send(f, x), "#{f}(#{x})==#{result} [bin]"
+          end
         end
       end
+    end
+  end
+
+  def test_data_present
+    if @data.empty?
+      skip "No data for trigonometry tests. Generate it with tst/generate_trig_data.rb"
     end
   end
 

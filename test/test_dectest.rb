@@ -110,97 +110,98 @@ end
 class TestBasic < Test::Unit::TestCase
 
   def test_dec
-   missing = []
+    missing = []
     dir = File.join(File.dirname(__FILE__), 'dectest')
-    dir = nil unless File.exists?(dir)
-    if dir
-      Dir[File.join(dir, '*.decTest')].each do |fn|
+    if !File.exists?(dir)
+      skip "No dectest data present. Get it from http://speleotrove.com/decimal/dectest.zip and put it in test/dectest"
+      return
+    end
+    Dir[File.join(dir, '*.decTest')].each do |fn|
 
-        name = File.basename(fn,'.decTest').downcase
-        next if %w{ds dd dq}.include?(name[0,2]) ||
-                 %w{decsingle decdouble decquad testall}.include?(name)
+      name = File.basename(fn,'.decTest').downcase
+      next if %w{ds dd dq}.include?(name[0,2]) ||
+               %w{decsingle decdouble decquad testall}.include?(name)
 
-        initialize_context
+      initialize_context
 
 
-        File.open(fn,'r') do |file|
-          file.each_line do |line|
-            line = line.split('--').first.strip if line.include?('--')
-            next if line.strip.empty?
+      File.open(fn,'r') do |file|
+        file.each_line do |line|
+          line = line.split('--').first.strip if line.include?('--')
+          next if line.strip.empty?
 
-            if line.include?(' -> ')
-              # test
-              # to do :remove inline comments --... on the right of ->
-              sides = line.split('->')
-              # now split by whitespace but avoid breaking quoted strings (and take care or repeated quotes!)
-              lhs = sides.first.strip.scan(/"(?:[^"]|"")*"|'(?:[^']|'')*'|\S+/)
-              id = lhs.first
-              funct = lhs[1].downcase
-              valstemp = lhs[2..-1]
-              rhs = sides.last.strip.split
-              ans = rhs.first
-              flags = rhs[1..-1].map{|f| DecNum.class_eval(FLAG_NAMES[f.downcase].to_s)}.compact
+          if line.include?(' -> ')
+            # test
+            # to do :remove inline comments --... on the right of ->
+            sides = line.split('->')
+            # now split by whitespace but avoid breaking quoted strings (and take care or repeated quotes!)
+            lhs = sides.first.strip.scan(/"(?:[^"]|"")*"|'(?:[^']|'')*'|\S+/)
+            id = lhs.first
+            funct = lhs[1].downcase
+            valstemp = lhs[2..-1]
+            rhs = sides.last.strip.split
+            ans = rhs.first
+            flags = rhs[1..-1].map{|f| DecNum.class_eval(FLAG_NAMES[f.downcase].to_s)}.compact
 
-              next unless valstemp.grep(/#/).empty?
+            next unless valstemp.grep(/#/).empty?
 
-              $test_id = id
-              funct = FUNCTIONS[original_funct=funct]
-              next if EXCEPTIONS.include?(id)
-              if funct
-                # do test
-                msg = "  Test #{id}: #{funct}(#{valstemp.join(',')}) = #{ans}"
-                #File.open('dectests.txt','a'){|f| f.puts msg}
-                expected = result = result_flags = nil
-                DecNum.local_context do |context|
-                  context.flags.clear!
-                  exact_input = !['apply','to_sci_string', 'to_eng_string'].include?(funct)
-                  if exact_input
-                    p = context.precision
-                    context.exact = true
-                  end
-                  valstemp.map!{|v| DecNum(unquote(v))}
-                  context.precision = p if exact_input
-                  result = context.send(funct, *valstemp)
-                  result_flags = context.flags.dup
-                  expected = unquote(ans)
+            $test_id = id
+            funct = FUNCTIONS[original_funct=funct]
+            next if EXCEPTIONS.include?(id)
+            if funct
+              # do test
+              msg = "  Test #{id}: #{funct}(#{valstemp.join(',')}) = #{ans} : #{name} [#{line}]"
+              #File.open('dectests.txt','a'){|f| f.puts msg}
+              expected = result = result_flags = nil
+              DecNum.local_context do |context|
+                context.flags.clear!
+                exact_input = !['apply','to_sci_string', 'to_eng_string'].include?(funct)
+                if exact_input
+                  p = context.precision
                   context.exact = true
-                  expected = DecNum(expected) unless result.is_a?(String)
                 end
-                result = 1 if result==true
-                result = 0 if result==false
-                expected_flags = DecNum::Flags(*flags)
-                if ans!='?'
-                  assert_equal expected.to_s, result.to_s, msg
-                end
-                assert_equal expected_flags, result_flags, msg
-
-              else
-                missing << original_funct unless IGNORED.include?(original_funct) || missing.include?(original_funct)
+                valstemp.map!{|v| DecNum(unquote(v))}
+                context.precision = p if exact_input
+                result = context.send(funct, *valstemp)
+                result_flags = context.flags.dup
+                expected = unquote(ans)
+                context.exact = true
+                expected = DecNum(expected) unless result.is_a?(String)
               end
+              result = 1 if result==true
+              result = 0 if result==false
+              expected_flags = DecNum::Flags(*flags)
+              if ans!='?'
+                assert_equal expected.to_s, result.to_s, msg
+              end
+              assert_equal expected_flags, result_flags, msg
 
-            elsif line.include?(':')
-              # directive
-              funct,value = line.split(':').map{|x| x.strip.downcase}
+            else
+              missing << original_funct unless IGNORED.include?(original_funct) || missing.include?(original_funct)
+            end
+
+          elsif line.include?(':')
+            # directive
+            funct,value = line.split(':').map{|x| x.strip.downcase}
+            case funct
+              when 'rounding'
+                value = ROUNDINGS[value]
+              else
+                value = value.to_i
+            end
+            if value.nil?
+              #raise "error"
+              # to do: skip untill next valid value of same funct
+            else
               case funct
-                when 'rounding'
-                  value = ROUNDINGS[value]
-                else
-                  value = value.to_i
-              end
-              if value.nil?
-                #raise "error"
-                # to do: skip untill next valid value of same funct
-              else
-                case funct
-                  when 'rounding','precision'
-                    DecNum.context.send "#{funct}=", value
-                  when 'maxexponent'
-                    DecNum.context.emax = value
-                  when 'minexponent'
-                    DecNum.context.emin = value
-                  when 'clamp'
-                    DecNum.context.clamp = (value==0 ? false : true)
-                end
+                when 'rounding','precision'
+                  DecNum.context.send "#{funct}=", value
+                when 'maxexponent'
+                  DecNum.context.emax = value
+                when 'minexponent'
+                  DecNum.context.emin = value
+                when 'clamp'
+                  DecNum.context.clamp = (value==0 ? false : true)
               end
             end
           end
