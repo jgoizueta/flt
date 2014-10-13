@@ -1,5 +1,9 @@
 module Flt
   module Support
+
+    class InfiniteLoopError < StandardError
+    end
+
     # This class assigns bit-values to a set of symbols
     # so they can be used as flags and stored as an integer.
     #   fv = FlagValues.new(:flag1, :flag2, :flag3)
@@ -353,23 +357,22 @@ module Flt
       round_mode
     end
 
-
     # Floating-point reading and printing (from/to text literals).
     #
-    # Here are methods for floating-point reading using algorithms by William D. Clinger and
-    # printing using algorithms by Robert G. Burger and R. Kent Dybvig.
+    # Here are methods for floating-point reading, using algorithms by William D. Clinger, and
+    # printing, using algorithms by Robert G. Burger and R. Kent Dybvig.
     #
-    # Reading and printing can also viewed as floating-point conversion betwen a fixed-precision
-    # floating-point format (the floating-point numbers) and and a free floating-point format (text) which
-    # may use different numerical bases.
+    # Reading and printing can also viewed as floating-point conversion between a fixed-precision
+    # floating-point format (the floating-point numbers) and and a free floating-point format (text),
+    # which may use different numerical bases.
     #
-    # The Reader class implements, in the default :free mode, converts a free-form numeric value
+    # The Reader class, in the default :free mode, converts a free-form numeric value
     # (as a text literal, i.e. a free floating-point format, usually in base 10) which is taken
     # as an exact value, to a correctly-rounded floating-point of specified precision and with a
     # specified rounding mode. It also has a :fixed mode that uses the Formatter class indirectly.
     #
     # The Formatter class implements the Burger-Dybvig printing algorithm which converts a
-    # fixed-precision floating point value and produces a text literal in same base, usually 10,
+    # fixed-precision floating point value and produces a text literal in some base, usually 10,
     # (equivalently, it produces a floating-point free-format value) so that it rounds back to
     # the original value (with some specified rounding-mode or any round-to-nearest mode) and with
     # the same original precision (e.g. using the Clinger algorithm)
@@ -822,14 +825,27 @@ module Flt
     # p is the input floating point precision
     class Formatter
 
-      # This Object-oriented implementation is slower than the functional one for two reasons:
+      # This Object-oriented implementation is slower than the original functional one for two reasons:
       # * The overhead of object creation
       # * The use of instance variables instead of local variables
       # But if scale is optimized or local variables are used in the inner loops, then this implementation
       # is on par with the functional one for Float and it is more efficient for Flt types, where the variables
       # passed as parameters hold larger objects.
 
-      def initialize(input_b, input_min_e, output_b)
+      # A Formatted object is created to format floating point numbers given:
+      # * The input base in which numbers to be formatted are defined
+      # * The input minimum expeonent
+      # * The output base to which the input is converted.
+      # * The :raise_on_repeat option, true by default specifies that when
+      #   an infinite sequence of repeating significant digits is found on the output
+      #   (which may occur when using the all-digits options and using directed-rounding)
+      #   an InfiniteLoopError exception is raised. If this option is false, then
+      #   no exception occurs, and instead of generating an infinite sequence of digits,
+      #   the formatter object will have a 'repeat' property which designs the first digit
+      #   to be repeated (it is an index into digits). If this equals the size of digits,
+      #   it is assumend, that the digit to be repeated is a zero which follows the last
+      #   digit present in digits.
+      def initialize(input_b, input_min_e, output_b, options={})
         @b = input_b
         @min_e = input_min_e
         @output_b = output_b
@@ -844,35 +860,49 @@ module Flt
         #   for round-to-nearest it is atie.
         # * it is :hi otherwise (the value should be rounded-up except for the :down mode)
         @round_up = nil
+
+        options = { raise_on_repeat: true }.merge(options)
+        # when significant repeating digits occur (+all+ parameter and directed rounding)
+        # @repeat is set to the index of the first repeating digit in @digits;
+        # (if equal to @digits.size, that would indicate an infinite sequence of significant zeros)
+        @repeat = nil
+        # the :raise_on_repeat options (by default true) causes exceptions when repeating is found
+        @raise_on_repeat = options[:raise_on_repeat]
       end
 
-      # This method converts v = f*b**e into a sequence of output_b-base digits,
+      # This method converts v = f*b**e into a sequence of +output_b+-base digits,
       # so that if the digits are converted back to a floating-point value
-      # of precision p (correctly rounded), the result is v.
-      # If round_mode is not nil, just enough digits to produce v using
+      # of precision p (correctly rounded), the result is exactly v.
+      #
+      # If +round_mode+ is not nil, then just enough digits to produce v using
       # that rounding is used; otherwise enough digits to produce v with
       # any rounding are delivered.
       #
       # If the +all+ parameter is true, all significant digits are generated without rounding,
-      # i.e. all digits that, if used on input, cannot arbitrarily change
+      # Significant digits here are all digits that, if used on input, cannot arbitrarily change
       # while preserving the parsed value of the floating point number. Since the digits are not rounded
       # more digits may be needed to assure round-trip value preservation.
+      #
       # This is useful to reflect the precision of the floating point value in the output; in particular
       # trailing significant zeros are shown. But note that, for directed rounding and base conversion
-      # this may need to produce an infinite number of digits, in which case an exception will be raised.
-      # This is specially frequent for the :up rounding mode, in which any number with a finite number
-      # of nonzero digits equal to or less than the precision will haver and infinite sequence of zero
-      # significant digits.
+      # this may need to produce an infinite number of digits, in which case an exception will be raised
+      # unless the :raise_on_repeat option has been set to false in the Formatter object. In that case
+      # the formatter objetct will have a +repeat+ property that specifies the point in the digit
+      # sequence where irepetition starts. The digits from that point to the end to the digits sequence
+      # repeat indefinitely.
       #
-      # With :down rounding (truncation) this could be used to show the exact value of the floating
-      # point but beware: when used with directed rounding, if the value has not an exact representation
-      # in the output base this will lead to an infinite loop.
-      # formatting '0.1' (as a decimal floating-point number) in base 2 with :down rounding
+      # This digit-repetition is specially frequent for the :up rounding mode, in which any number
+      # with a finite numberof nonzero digits equal to or less than the precision will haver and infinite
+      # sequence of zero significant digits.
+      #
+      # The:down rounding (truncation) could be used to show the exact value of the floating
+      # point but beware: if the value has not an exact representation in the output base this will
+      # lead to an infinite loop or repeating squence.
       #
       # When the +all+ parameters is used the result is not rounded (is truncated), and the round_up flag
       # is set to indicate that nonzero digits exists beyond the returned digits; the possible values
       # of the round_up flag are:
-      # * nil : the rest of digits are zero (the result is exact)
+      # * nil : the rest of digits are zero or repeat (the result is exact)
       # * :lo : there exist non-zero digits beyond the significant ones (those returned), but
       #   the value is below the tie (the value must be rounded up only for :up rounding mode)
       # * :tie : there exists exactly one nonzero digit after the significant and it is radix/2,
@@ -883,6 +913,7 @@ module Flt
       # it is the rounding mode that applied to *input* preserves the original floating-point
       # value (with the same precision as input).
       # should be rounded-up.
+      #
       def format(v, f, e, round_mode, p=nil, all=false)
         context = v.class.context
         # TODO: consider removing parameters f,e and using v.split instead
@@ -976,7 +1007,7 @@ module Flt
         return @k, @digits
       end
 
-      attr_reader :round_up
+      attr_reader :round_up, :repeat
 
 
       # Access rounded result of format operation: scaling (position of radix point) and digits
@@ -1078,17 +1109,67 @@ module Flt
         @output_b**n
       end
 
+      def start_repetition_dectection
+        @may_repeat = (@m_p == 0 || @m_m == 0)
+        @n_iters = 0
+        @rs = []
+      end
+
+      ITERATIONS_BEFORE_KEEPING_TRACK_OF_REMAINDERS = 10000
+
+      # Detect indefinite repetitions in generate_max
+      # returns the number of digits that are being repeated
+      # (0 indicates the next digit would repeat and it would be a zero)
+      def detect_repetitions(r)
+        return nil unless @may_repeat
+        @n_iters += 1
+        if r == 0 && @m_p == 0
+          repeat_count = 0
+        elsif (@n_iters > ITERATIONS_BEFORE_KEEPING_TRACK_OF_REMAINDERS)
+          if @rs.include?(r)
+            repeat_count = @rs.index(r) - @rs.size
+          else
+            @rs << r
+          end
+        end
+        if repeat_count
+          raise InfiniteLoopError, "Infinite digit sequence." if @raise_on_repeat
+          repeat_count
+        else
+          nil
+        end
+      end
+
+      def remove_redundant_repetitions
+        if ITERATIONS_BEFORE_KEEPING_TRACK_OF_REMAINDERS > 0 && @repeat
+          if @repeat < @digits.size
+            repeating_digits = @digits[@repeat..-1]
+            l = repeating_digits.size
+            pos = @repeat - l
+            while pos >= 0 && @digits[pos, l] == repeating_digits
+              pos -= l
+            end
+            first_repeat = pos + l
+            if first_repeat < @repeat
+              @repeat = first_repeat
+              @digits = @digits[0, @repeat+l]
+            end
+          end
+        end
+        @digits
+      end
+
       def generate_max
         @round_up = false
         list = []
         r, s, m_p, m_m, = @r, @s, @m_p, @m_m
-        n_iters, rs = 0, []
+
+        start_repetition_dectection
+
         loop do
-          if (n_iters > 10000)
-            raise "Infinite digit sequence." if rs.include?(r)
-            rs << r
-          else
-            n_iters += 1
+          if repeat_count = detect_repetitions(r)
+            @repeat = list.size + repeat_count
+            break
           end
 
           d,r = (r*@output_b).divmod(s)
@@ -1116,6 +1197,7 @@ module Flt
           end
         end
         @digits = list
+        remove_redundant_repetitions
       end
 
       def generate
