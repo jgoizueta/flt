@@ -580,7 +580,7 @@ class Num < Numeric
     # If 0 is set the precision turns to be exact.
     def precision=(n)
       @precision = n
-      @exact = false unless n==0
+      @exact = false
       update_precision
       n
     end
@@ -624,9 +624,12 @@ class Num < Numeric
         @clamp = options[:clamp ] unless options[:clamp ].nil?
         @exact = options[:exact ] unless options[:exact ].nil?
         @angle = options[:angle ] unless options[:angle ].nil?
-        @precision += options[:extra_precision] unless options[:extra_precision].nil?
         update_precision
+        if options[:extra_precision] && !@exact
+          @precision += options[:extra_precision]
+        end
       end
+      self
     end
 
     attr_reader :coercible_type_handlers, :conversions
@@ -1194,13 +1197,14 @@ class Num < Numeric
       elsif @emin && !@emax
         @emax = 1 - @emin
       end
-      if @exact || @precision==0
+      if @exact || @precision == 0 || @precision == :exact
         quiet = (@exact == :quiet)
         @exact = true
         @precision = 0
         @traps << Inexact unless quiet
         @ignored_flags[Inexact] = false
       else
+        @exact = false
         @traps[Inexact] = false
       end
     end

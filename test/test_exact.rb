@@ -144,4 +144,22 @@ class TestExact < Test::Unit::TestCase
 
   end
 
+  def test_exact_precision
+    DecNum.context.precision = 10
+    refute DecNum.context.exact?
+    assert_equal 10, DecNum.context.precision
+    DecNum.context(exact: true) do
+      assert DecNum.context.exact?
+      assert_equal 0, DecNum.context.precision
+    end
+    refute DecNum.context.exact?
+    assert_equal 10, DecNum.context.precision
+    DecNum.context(precision: :exact) do
+      assert DecNum.context.exact?
+      assert_equal 0, DecNum.context.precision
+    end
+    refute DecNum.context.exact?
+    assert_equal 10, DecNum.context.precision
+  end
+
 end
