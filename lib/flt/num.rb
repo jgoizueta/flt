@@ -1452,7 +1452,7 @@ class Num < Numeric
               options.delete(:exponent) || 0]
     end
     mode ||= options && options.delete(:mode)
-    base = (options && options.delete(:base)) || 10
+    base = (options && options.delete(:base))
     context = options if context.nil? && options && !options.empty?
     context = define_context(context)
 
@@ -1488,7 +1488,7 @@ class Num < Numeric
           @sign,@coeff,@exp = context.exception(ConversionSyntax, "no trailing or leading whitespace is permitted").split
           return
         end
-        m = _parser(arg)
+        m = _parser(arg, base: base)
         if m.nil?
           @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for DecNum: #{arg.inspect}").split
           return
@@ -1503,13 +1503,22 @@ class Num < Numeric
             intpart = ''
             fracpart = m.onlyfrac
           end
+          fracpart ||= ''
+          base = m.base
           exp = m.exp.to_i
-          if fracpart
-            coeff = (intpart+fracpart).to_i(base)
-            exp -= fracpart.size
-          else
-            coeff = intpart.to_i(base)
+          coeff = (intpart+fracpart).to_i(base)
+          if m.exp_base && m.exp_base != base
+            # The exponent uses a different base;
+            # compute exponent in base; assume base = exp_base**k
+            k = Math.log(base, m.exp_base).round
+            r = (exp % k)
+            if r != 0
+              coeff *= m.exp_base**r
+              exp -= r
+            end
+            exp /= k
           end
+          exp -= fracpart.size
 
           if false
             # Old behaviour: use :fixed format when num_class.radix != base
@@ -3769,6 +3778,8 @@ class Num < Numeric
       dotplace = (leftdigits-1)%3 + 1
     end
 
+    # TODO: option to produce %a/%A format
+
     if dotplace <=0
       intpart = '0'
       fracpart = '.' + '0'*(-dotplace) + ds
@@ -4071,11 +4082,20 @@ class Num < Numeric
     end
 
     # Parse numeric text literals (internal use)
-    def _parser(txt)
+    def _parser(txt, options={})
+      base = options[:base]
       md = /^\s*([-+])?(?:(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:E([-+]?\d+))?|Inf(?:inity)?|(s)?NaN(\d*))\s*$/i.match(txt)
       if md
+        base ||= 10
         OpenStruct.new :sign=>md[1], :int=>md[2], :frac=>md[3], :onlyfrac=>md[4], :exp=>md[5],
-                       :signal=>md[6], :diag=>md[7]
+                       :signal=>md[6], :diag=>md[7], :base=>base
+      else
+        md = /^\s*([-+])?0x(?:(?:([\da-f]+)(?:\.([\da-f]*))?|\.([\da-f]+))(?:P([-+]?\d+))?)\s*$/i.match(txt)
+        if md
+          base = 16
+          OpenStruct.new :sign=>md[1], :int=>md[2], :frac=>md[3], :onlyfrac=>md[4], :exp=>md[5],
+                         :signal=>nil, :diag=>nil, :base=>base, :exp_base=>2
+        end
       end
     end
 
