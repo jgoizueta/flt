@@ -3724,6 +3724,13 @@ class Num < Numeric
   def format(num_context, options={})
     # TODO: support options (base, all_digits, any_rounding, eng) and context options in the same hash
     output_radix = options[:base] || 10
+    output_exp_radix = options[:exp_base]
+    if output_radix == :hex_bin
+      output_radix = 16
+      output_exp_radix = 2
+      first_digit_1 = true
+    end
+    output_exp_radix ||= output_radix
     rounding = options[:rounding]
     all_digits = options[:all_digits]
     eng = options[:eng]
@@ -3746,12 +3753,40 @@ class Num < Numeric
     rounding ||= context.rounding
     output_rounding ||= rounding
 
-    if output_radix == num_class.radix && !all_digits
+    if output_radix != output_exp_radix
+      k = Math.log(output_radix, output_exp_radix).round
+      if output_radix != output_exp_radix**k
+        raise "When different bases are used for the coefficient and exponent, the first must be a power of the second"
+      end
+    end
+
+    if output_exp_radix == num_class.radix && !all_digits && output_radix != output_exp_radix
+      if first_digit_1
+        # make the first digit a 1
+        c = @coeff
+        exp = integral_exponent
+        nb = _nbits(c)
+        r = (nb % k)
+        d = (k + 1 - r) % k
+        if d != 0
+          c <<= d
+          exp -= d
+        end
+      else
+        c = @coeff
+        exp = integral_exponent
+      end
+      ds = c.to_s(output_radix)
+      n_ds = ds.size
+      leftdigits = exp + n_ds
+      exp_radix = num_class.radix
+    elsif output_radix == num_class.radix && !all_digits && output_radix == output_exp_radix
       # show exactly inner representation and precision
       ds = @coeff.to_s(output_radix)
       n_ds = ds.size
       exp = integral_exponent
       leftdigits = exp + n_ds
+      exp_radix = num_class.radix
     else
       p = self.number_of_digits # context.precision
       formatter = Flt::Support::Formatter.new(num_class.radix, context.etiny, output_radix)
@@ -3762,17 +3797,50 @@ class Num < Numeric
       n_ds = ds.size
       exp = dec_pos - n_ds
       leftdigits = dec_pos
+      exp_radix = output_radix
     end
 
-    # TODO: DRY (this code is duplicated in num_class#format)
-    if exp<=0 && leftdigits>-6
-      dotplace = leftdigits
-    elsif !eng
-      dotplace = 1
-    elsif @coeff==0
-      dotplace = (leftdigits+1)%3 - 1
+    if output_exp_radix == 2 && output_radix == 16
+      a_format = true
+      digits_prefix = "0x"
+      exp_letter = (context.capitals ? 'P' : 'p')
+      show_exp = true
     else
-      dotplace = (leftdigits-1)%3 + 1
+      a_format = false
+      digits_prefix = ""
+      exp_letter = (context.capitals ? 'E' : 'e')
+      show_exp = false
+    end
+
+    if output_exp_radix != exp_radix
+      # k = Math.log(exp_radix, output_exp_radix).round
+      if leftdigits != 1
+        exp += (ds.size - 1)
+        leftdigits = 1
+        dotplace = 1
+      end
+      exp *= k
+    elsif a_format
+      # k = Math.log(output_radix, output_exp_radix).round
+      if leftdigits != 1
+        exp += (ds.size - 1)*4
+        leftdigits = 1
+        dotplace = 1
+        ds = ds[0...-1] while ds[-1,1] == '0' && ds.size>1
+        n_ds = ds.size
+      end
+    else
+      # TODO: DRY (this code is duplicated in num_class#format)
+      if exp<=0 && leftdigits>-6
+        dotplace = leftdigits
+      elsif !eng
+        dotplace = 1
+      elsif @coeff==0
+        dotplace = (leftdigits+1)%3 - 1
+      else
+        dotplace = (leftdigits-1)%3 + 1
+      end
+      exp = leftdigits-dotplace
     end
 
     # TODO: option to produce %a/%A format
@@ -3788,14 +3856,13 @@ class Num < Numeric
       fracpart = '.' + ds[dotplace..-1]
     end
 
-    if leftdigits == dotplace
+    if exp == 0 && !show_exp
       e = ''
     else
-      e = (context.capitals ? 'E' : 'e') + "%+d"%(leftdigits-dotplace)
+      e = exp_letter + "%+d"%(exp)
     end
 
-    sgn + intpart + fracpart + e
-
+    sgn + digits_prefix + intpart + fracpart + e
   end
 
   # Auxiliar Methods
