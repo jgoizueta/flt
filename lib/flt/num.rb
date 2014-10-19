@@ -1148,6 +1148,36 @@ class Num < Numeric
       _convert(x).zero?
     end
 
+    # Maximum number of base b digits that can be stored in a context floating point number
+    # and then preserved when converted back to base b.
+    #
+    # To store a base b number in a floating point number and be able to get then back exactly
+    # the number cannot have more than these significant digits.
+    def representable_digits(b)
+      unless exact?
+        if b == radix
+          precision
+        else
+          ((precision-1)*log(radix, b)).floor
+        end
+      end
+    end
+
+    # Mininum number of base b digits necessary to store any context floating point number
+    # while being able to convert the digits back to the same exact context floating point number
+    #
+    # To convert any floating point number to base b and be able to round the result back to
+    # the same floating point number, at least this many base b digits are needed.
+    def necessary_digits(b)
+      unless exact?
+        if b == radix
+          precision
+        else
+          (precision*log(radix, b)).ceil + 1
+        end
+      end
+    end
+
     private
 
     def _convert(x)

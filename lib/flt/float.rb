@@ -475,6 +475,25 @@ class Flt::FloatContext
     end
   end
 
+  def representable_digits(b)
+    if b == 10
+      Float::DIG
+    elsif b == radix
+      precision
+    else
+     ((precision-1)*log(radix, b)).floor
+    end
+  end
+
+  def necessary_digits(b)
+    if b == 10
+      Float::DECIMAL_DIG
+    elsif b == radix
+      precision
+    else
+     (precision*log(radix, b)).ceil + 1
+    end
+  end
 
 end
 
