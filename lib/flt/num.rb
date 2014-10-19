@@ -1511,14 +1511,11 @@ class Num < Numeric
             # The exponent uses a different base;
             # compute exponent in base; assume base = exp_base**k
             k = Math.log(base, m.exp_base).round
-            r = (exp % k)
-            if r != 0
-              coeff *= m.exp_base**r
-              exp -= r
-            end
-            exp /= k
+            exp -= fracpart.size*k
+            base = m.exp_base
+          else
+            exp -= fracpart.size
           end
-          exp -= fracpart.size
 
           if false
             # Old behaviour: use :fixed format when num_class.radix != base
