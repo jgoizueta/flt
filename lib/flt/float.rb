@@ -127,6 +127,10 @@ class Flt::FloatContext
     (sign < 0) ? -1.0/0.0 : 1.0/0.0 # Ruby 1.9.2: (sing < 0) ? -Float::INFINITY : Float::INFINITY
   end
 
+  def one_half
+    0.5
+  end
+
   def int_radix_power(n)
     1 << n
   end

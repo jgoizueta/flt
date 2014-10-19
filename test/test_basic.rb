@@ -381,6 +381,26 @@ class TestBasic < Test::Unit::TestCase
     assert_equal(-1, neg.sign)
   end
 
+  def test_special_constructors
+    [DecNum, BinNum, Float].each do |num_class|
+      context = num_class.context
+      assert context.nan.nan?
+      assert context.zero.zero?
+      assert_equal +1, context.sign(context.zero)
+      assert context.zero(+1).zero?
+      assert_equal +1, context.sign(context.zero(+1))
+      assert context.zero(-1).zero?
+      assert_equal -1, context.sign(context.zero(-1))
+      assert context.infinity.infinite?
+      assert_equal +1, context.sign(context.infinity)
+      assert context.infinity(+1).infinite?
+      assert_equal +1, context.sign(context.infinity(+1))
+      assert context.infinity(-1).infinite?
+      assert_equal -1, context.sign(context.infinity(-1))
+      assert_equal context.Num(1)/2, context.one_half
+    end
+  end
+
   def test_context_parameters
     #DecNum.context = DecNum.Context
     DecNum.context.precision = 3

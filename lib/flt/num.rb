@@ -1181,6 +1181,26 @@ class Num < Numeric
       end
     end
 
+    # A floating-point number with value zero and the specified sign
+    def zero(sign = +1)
+      num_class.zero(sign)
+    end
+
+    # A floating-point infinite number with the specified sign
+    def infinity(sign = +1)
+      num_class.infinity(sign)
+    end
+
+    # A floating-point NaN (not a number)
+    def nan
+      num_class.nan
+    end
+
+    # One half: 1/2
+    def one_half
+      num_class.one_half
+    end
+
     private
 
     def _convert(x)
