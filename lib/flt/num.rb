@@ -3716,11 +3716,17 @@ class Num < Numeric
   # If it is not passed and :all_digits is true, then :rounding or the context rounding mode
   # will be used.
   #
-  # Note that when :base=>10 (the default) we're regarding the binary number x
+  # Note that when :base is different from the floating point radix,
+  # we're regarding the floating point number x
   # as an approximation with x.number_of_digits precision and showing that
   # inexact value in decimal without introducing additional precision.
-  # If the exact value of the number expressed in decimal is desired (we consider
+  #
+  # If the exact value of the number expressed in other base is desired (we consider
   # the Flt an exact number), this can be done with Num.convert_exact.
+  #
+  # The :hex_bin option produces the %A/%a format of printf, which sho2 the significand
+  # as an hexadecimal number and the binary exponent in decimal.
+  #
   def format(num_context, options={})
     # TODO: support options (base, all_digits, any_rounding, eng) and context options in the same hash
     output_radix = options[:base] || 10
@@ -3800,6 +3806,7 @@ class Num < Numeric
       exp_radix = output_radix
     end
 
+    # TODO: this doesn't need to be so ugly...
     if output_exp_radix == 2 && output_radix == 16
       a_format = true
       digits_prefix = "0x"
@@ -3842,8 +3849,6 @@ class Num < Numeric
       end
       exp = leftdigits-dotplace
     end
-
-    # TODO: option to produce %a/%A format
 
     if dotplace <=0
       intpart = '0'
