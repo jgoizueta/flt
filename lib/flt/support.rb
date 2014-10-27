@@ -357,6 +357,51 @@ module Flt
       round_mode
     end
 
+    # Adjust truncated digits based on the rounding mode (:round_mode option)
+    # and on the information about the following digits contained in the :round_up
+    # parameter (nil for only zeros, :lo for nonzero values below tie, :tie for a :tie
+    # and :hi for nonzero digits over the tie). Other parameters: :negative to consider
+    # the number negative, :base the base of the number.
+    def adjust_digits(dec_pos, digits, options={})
+      round_mode = options[:round_mode]
+      negative   = options[:negative]
+      round_up   = options[:round_up]
+      base       = options[:base]
+      round_mode = simplified_round_mode(round_mode, negative)
+
+      increment = (round_up && (round_mode != :down)) &&
+                    ((round_mode == :up) ||
+                     (round_up == :hi) ||
+                     ((round_up == :tie) &&
+                      ((round_mode==:half_up) ||
+                       ((round_mode==:half_even) && ((digits.last % 2)==1)))))
+
+      if increment
+        digits = digits.dup
+        # carry = increment ? 1 : 0
+        # digits = digits.reverse.map{|d| d += carry; d>=base ? 0 : (carry=0;d)}.reverse
+        # if carry != 0
+        #   digits.unshift carry
+        #   dec_pos += 1
+        # end
+        i = digits.size - 1
+        while i>=0
+          digits[i] += 1
+          if digits[i] == base
+            digits[i] = 0
+          else
+            break
+          end
+          i -= 1
+        end
+        if i<0
+          dec_pos += 1
+          digits.unshift 1
+        end
+      end
+      [dec_pos, digits]
+    end
+
     # Floating-point reading and printing (from/to text literals).
     #
     # Here are methods for floating-point reading, using algorithms by William D. Clinger, and
@@ -1009,47 +1054,14 @@ module Flt
 
       attr_reader :round_up, :repeat
 
-
       # Access rounded result of format operation: scaling (position of radix point) and digits
       def adjusted_digits(round_mode)
-        round_mode = Support.simplified_round_mode(round_mode, @minus)
         if @adjusted_digits.nil? && !@digits.nil?
-          increment = (@round_up && (round_mode != :down)) &&
-                      ((round_mode == :up) ||
-                      (@round_up == :hi) ||
-                      ((@round_up == :tie) &&
-                       ((round_mode==:half_up) || ((round_mode==:half_even) && ((@digits.last % 2)==1)))))
-          # increment = (@round_up == :tie) || (@round_up == :hi) # old behaviour (:half_up)
-          if increment
-            base = @output_b
-            dec_pos = @k
-            digits = @digits.dup
-            # carry = increment ? 1 : 0
-            # digits = digits.reverse.map{|d| d += carry; d>=base ? 0 : (carry=0;d)}.reverse
-            # if carry != 0
-            #   digits.unshift carry
-            #   dec_pos += 1
-            # end
-            i = digits.size - 1
-            while i>=0
-              digits[i] += 1
-              if digits[i] == base
-                digits[i] = 0
-              else
-                break
-              end
-              i -= 1
-            end
-            if i<0
-              dec_pos += 1
-              digits.unshift 1
-            end
-            @adjusted_k = dec_pos
-            @adjusted_digits = digits
-          else
-            @adjusted_k = @k
-            @adjusted_digits = @digits
-          end
+          @adjusted_k, @adjusted_digits = Support.adjust_digits(@k, @digits,
+                                                                :round_mode => round_mode,
+                                                                :negative => @minus,
+                                                                :round_up => @round_up,
+                                                                :base => @output_b)
         end
         return @adjusted_k, @adjusted_digits
       end
