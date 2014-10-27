@@ -1,3 +1,12 @@
+== 1.3.4 2014-10-27
+
+* New features
+  - Context methods necessary_digits and representable_digits
+  - Assign :exact as the precision value to define an :exact context
+  - Constructors for nan, infinite, zero replicated in context
+  - Hexadecimal (%A) representation of binary floating point numbers
+  - Support.adjust_digits (to be used in Numerals gem)
+
 == 1.3.3 2014-10-13
 
   Formatter has a new raise_on_repeat options
