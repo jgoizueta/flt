@@ -130,19 +130,7 @@ module Flt
       # This algorithm is derived from exercise 39 of 4.5.3 in
       # "The Art of Computer Programming", by Donald E. Knuth.
       def rationalize_Knuth(x)
-        return Rationalizer.rationalize_special(x) if special?(x)
-        num_tol = @tol.kind_of?(Numeric)
-        if !num_tol && @tol.zero?(x)
-          # num, den = num_den(x)
-          num,den = 0,1
-        else
-          negans = false
-          if x < 0
-            negans = true
-            x = -x
-          end
-          dx = num_tol ? @tol : @tol.value(x)
-
+        rationalization(x) do |x, dx|
           x     = to_r(x)
           dx    = to_r(dx)
           xp,xq = num_den(x-dx)
@@ -169,30 +157,13 @@ module Flt
           a[-1] += 1 if xp != 0 && a.size > 0
           p,q = 1,0
           (1..a.size).each{|i| p, q = q+p*a[-i], p}
-          num,den = q,p
-
-          num = -num if negans
+          [q, p]
         end
-        return num,den
       end
 
       # This is algorithm PDQ2 by Joe Horn.
       def rationalize_Horn(x)
-        return Rationalizer.rationalize_special(x) if special?(x)
-        num_tol = @tol.kind_of?(Numeric)
-        if !num_tol && @tol.zero?(x)
-          # num,den = num_den(x)
-          num,den = 0,1
-        else
-          negans = false
-          if x < 0
-            negans = true
-            x = -x
-          end
-          dx = num_tol ? @tol : @tol.value(x)
-
-          z,t = x,dx # renaming
-
+        rationalization(x) do |z, t|
           a,b = num_den(t)
           n0,d0 = (n,d = num_den(z))
           cn,x,pn,cd,y,pd,lo,hi,mid,q,r = 1,1,0,0,0,1,0,1,1,0,0
@@ -222,31 +193,13 @@ module Flt
             x = cn - pn*lo
             y = cd - pd*lo
           end
-
-          num,den = x,y # renaming
-
-          num = -num if negans
+          [x, y]
         end
-        return num,den
       end
 
       # This is from a RPL program by Tony Hutchins (PDR6).
       def rationalize_HornHutchins(x)
-        return Rationalizer.rationalize_special(x) if special?(x)
-        num_tol = @tol.kind_of?(Numeric)
-        if !num_tol && @tol.zero?(x)
-          # num,den = num_den(x)
-          num,den = 0,1
-        else
-          negans = false
-          if x < 0
-            negans = true
-            x = -x
-          end
-          dx = num_tol ? @tol : @tol.value(x)
-
-          z,t = x,dx # renaming
-
+        rationalization(x) do |z, t|
           a,b = num_den(t)
           n0,d0 = (n,d = num_den(z))
           cn,x,pn,cd,y,pd,lo,hi,mid,q,r = 1,1,0,0,0,1,0,1,1,0,0
@@ -276,12 +229,8 @@ module Flt
             x = cn - pn*lo
             y = cd - pd*lo
           end
-
-          num,den = x,y # renaming
-
-          num = -num if negans
+          [x, y]
         end
-        return num,den
       end
 
       # Best fraction given maximum denominator
@@ -332,6 +281,29 @@ module Flt
         else
           [sign(x), 0]
         end
+      end
+
+      private
+
+      def rationalization(x)
+        return Rationalizer.rationalize_special(x) if special?(x)
+        num_tol = @tol.kind_of?(Numeric)
+        if !num_tol && @tol.zero?(x)
+          # num,den = num_den(x)
+          num,den = 0,1
+        else
+          negans = false
+          if x<0
+            negans = true
+            x = -x
+          end
+          dx = num_tol ? @tol : @tol.value(x)
+
+          num, den = yield x, dx
+
+          num = -num if negans
+        end
+        [num, den]
       end
 
     end
