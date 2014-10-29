@@ -6,7 +6,7 @@ class TestTrig < Test::Unit::TestCase
 
   def setup
     @data = {}
-    Dir[File.join(File.dirname(__FILE__), "trigtest/*.txt")].each do |fn|
+    Dir[File.join(File.dirname(__FILE__), "data/trigtest/*.txt")].each do |fn|
       if File.basename(fn) =~ /\A([a-z]+)(\d+)_(\d+)_([a-z]+)\.txt\Z/
         method = $1.to_sym
         radix = $2.to_i

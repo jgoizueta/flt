@@ -549,6 +549,7 @@ module Flt
   #
   # Finally any additional parameters admitted by the class constructor can be passed.
   def Tolerance(*args)
+    return args.first if args.size == 1 && Tolerance === args.first
     if args.first.is_a?(Symbol)
       value = nil
     else

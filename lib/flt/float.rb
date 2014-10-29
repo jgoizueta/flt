@@ -384,6 +384,25 @@ class Flt::FloatContext
     -x.to_f
   end
 
+  def to_r(x)
+    Support::Rationalizer.to_r(x)
+  end
+
+  def rationalize(x, tol = Flt.Tolerance(:epsilon), strict=false)
+    if !strict && x.respond_to?(:rationalize) && !(Integer === tol)
+      # Float#rationalize was introduced in Ruby 1.9.1
+      tol = Tolerance(tol)
+      x.rationalize(tol[x])
+    else
+      case tol
+      when Integer
+        Rational(*Support::Rationalizer.max_denominator(x, tol, Float))
+      else
+        Rational(*Support::Rationalizer[tol].rationalize(x))
+      end
+    end
+  end
+
   class << self
     # Compute the adjacent floating point values: largest value not larger than
     # this and smallest not smaller.

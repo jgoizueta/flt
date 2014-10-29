@@ -126,6 +126,20 @@ class Flt::BigDecimalContext
     -x
   end
 
+  def to_r(x)
+    Support::Rationalizer.to_r(x)
+  end
+
+  def rationalize(x, tol = nil)
+    tol ||= Flt::Tolerance([precs[0], Float::DIG].max,:sig_decimals)
+    case tol
+    when Integer
+      Rational(*Support::Rationalizer.max_denominator(x, tol, BigDecimal))
+    else
+      Rational(*Support::Rationalizer[tol].rationalize(x))
+    end
+  end
+
   class << self
 
     def big_decimal_method(*methods) #:nodoc:

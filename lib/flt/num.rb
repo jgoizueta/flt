@@ -1201,6 +1201,16 @@ class Num < Numeric
       num_class.one_half
     end
 
+    # Exact conversion to Rational
+    def to_r(x)
+      x.to_r
+    end
+
+    # Approximate conversion to Rational within given tolerance
+    def rationalize(x, tol = nil)
+      x.rationalize(tol)
+    end
+
     private
 
     def _convert(x)
@@ -2622,6 +2632,17 @@ class Num < Numeric
       else
         Rational(num_class.int_mult_radix_power(@sign*@coeff,@exp), 1)
       end
+    end
+  end
+
+  # Approximate conversion to Rational within given tolerance
+  def rationalize(tol=nil)
+    tol ||= Flt.Tolerance(Rational(1,2),:ulps)
+    case tol
+    when Integer
+      Rational(*Support::Rationalizer.max_denominator(self, tol, num_class))
+    else
+      Rational(*Support::Rationalizer[tol].rationalize(self))
     end
   end
 

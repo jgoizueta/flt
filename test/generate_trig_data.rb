@@ -1,4 +1,4 @@
-# Generate test data for trigonometry tests (test_trig.rbG)
+# Generate test data for trigonometry tests (test_trig.rb)
 
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 require File.dirname(__FILE__) + '/../lib/flt/math'
@@ -83,7 +83,7 @@ end
 
 
 def gen_test_data(num_class, prec, angle_units=:rad)
-  dir = File.dirname(__FILE__)+'/trigtest'
+  dir = File.dirname(__FILE__)+'/data/trigtest'
   num_class.context(:precision=>prec) do
     num_class.context.angle = angle_units
     DecNum.context.traps[DecNum::DivisionByZero] = false

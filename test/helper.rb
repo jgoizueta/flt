@@ -2,6 +2,7 @@ require 'test/unit'
 $: << "." unless $:.include?(".") # for Ruby 1.9.2
 require File.expand_path(File.join(File.dirname(__FILE__),'/../lib/flt'))
 require 'enumerator'
+require 'yaml'
 include Flt
 
 def initialize_context
@@ -91,6 +92,40 @@ end
 def float_split(x)
   s,e = Math.frexp(x)
   [Math.ldexp(s,Float::MANT_DIG).to_i,e-Float::MANT_DIG]
+end
+
+def float_data
+  data_file = File.join(File.dirname(__FILE__) ,'data/float_data.yml')
+  if File.exists?(data_file)
+    YAML.load(File.read(data_file)).map{|x| [x].pack('H*').unpack('E')[0]}
+  else
+    srand 349842
+    data = []
+    100.times do
+      x = rand
+      x *= rand(1000) if rand<0.5
+      x /= rand(1000) if rand<0.5
+      x *= rand(9999) if rand<0.5
+      x /= rand(9999) if rand<0.5
+      data << x
+    end
+    data << 1.0/3
+    data << 10.0/3
+    data << 100.0/3
+    data << 1.0/30
+    data << 1.0/300
+    data << 0.1
+    data << 0.01
+    data << 0.001
+    50.times do
+      data << random_num(Float)
+    end
+    data += data.map{|x| -x}
+    data += special_nums(Float)
+    data += singular_nums(Float)
+    File.open(data_file,'w') { |out| out << data.map{|x| [x].pack('E').unpack('H*')[0].upcase }.to_yaml }
+    data
+  end
 end
 
 def each_pair(array, &blk)

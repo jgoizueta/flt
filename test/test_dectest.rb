@@ -112,9 +112,9 @@ class TestBasic < Test::Unit::TestCase
 
   def test_dec
     missing = []
-    dir = File.join(File.dirname(__FILE__), 'dectest')
+    dir = File.join(File.dirname(__FILE__), 'data/dectest')
     if !File.exists?(dir)
-      skip "No dectest data present. Get it from http://speleotrove.com/decimal/dectest.zip and put it in test/dectest"
+      skip "No dectest data present. Get it from http://speleotrove.com/decimal/dectest.zip and put it in test/data/dectest"
       return
     end
     Dir[File.join(dir, '*.decTest')].each do |fn|
