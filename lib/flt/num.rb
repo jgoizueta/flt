@@ -1498,7 +1498,7 @@ class Num < Numeric
           @sign,@coeff,@exp = context.exception(ConversionSyntax, "no trailing or leading whitespace is permitted").split
           return
         end
-        m = _parser(arg, base: base)
+        m = _parser(arg, :base => base)
         if m.nil?
           @sign,@coeff,@exp = context.exception(ConversionSyntax, "Invalid literal for DecNum: #{arg.inspect}").split
           return

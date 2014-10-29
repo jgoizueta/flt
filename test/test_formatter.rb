@@ -60,7 +60,7 @@ class TestExact < Test::Unit::TestCase
 
 def test_binary_to_repeating_decimal_formatter
     Flt::BinNum.context = Flt::BinNum::IEEEDoubleContext
-    formatter = Flt::Support::Formatter.new(BinNum.radix, BinNum.context.etiny, 10, raise_on_repeat: false)
+    formatter = Flt::Support::Formatter.new(BinNum.radix, BinNum.context.etiny, 10, :raise_on_repeat => false)
 
     x = BinNum(0.1)
     s, f, e = x.split
@@ -154,7 +154,7 @@ def test_binary_to_repeating_decimal_formatter
 
   def test_decimal_to_repeating_binary_formatter
     Flt::DecNum.context.precision = 8
-    formatter = Flt::Support::Formatter.new(DecNum.radix, DecNum.context.etiny, 2, raise_on_repeat: false)
+    formatter = Flt::Support::Formatter.new(DecNum.radix, DecNum.context.etiny, 2, :raise_on_repeat => false)
 
     x = DecNum('0.1')
     s, f, e = x.split

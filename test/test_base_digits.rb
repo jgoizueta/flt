@@ -25,25 +25,25 @@ class TestBaseDigits < Test::Unit::TestCase
 
 
     [10,15,20,100].each do |precision|
-      DecNum.context(precision: precision) do
+      DecNum.context(:precision => precision) do
         assert_equal precision, DecNum.context.representable_digits(10)
         assert_equal precision, DecNum.context.necessary_digits(10)
       end
 
-      BinNum.context(precision: precision) do
+      BinNum.context(:precision => precision) do
         assert_equal precision, BinNum.context.representable_digits(2)
         assert_equal precision, BinNum.context.necessary_digits(2)
       end
     end
 
-    DecNum.context(exact: true) do
+    DecNum.context(:exact => true) do
       assert_nil DecNum.context.representable_digits(10)
       assert_nil DecNum.context.necessary_digits(10)
       assert_nil DecNum.context.representable_digits(2)
       assert_nil DecNum.context.necessary_digits(2)
     end
 
-    BinNum.context(exact: true) do
+    BinNum.context(:exact => true) do
       assert_nil BinNum.context.representable_digits(10)
       assert_nil BinNum.context.necessary_digits(10)
       assert_nil BinNum.context.representable_digits(2)

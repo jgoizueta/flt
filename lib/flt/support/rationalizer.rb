@@ -61,7 +61,7 @@ module Flt
         private
 
         def num_den(x)
-          x = x.to_r
+          x = to_r(x)
           [x.numerator, x.denominator]
         end
 

@@ -83,7 +83,7 @@ module Flt
         # * it is :hi otherwise (the value should be rounded-up except for the :down mode)
         @round_up = nil
 
-        options = { raise_on_repeat: true }.merge(options)
+        options = { :raise_on_repeat => true }.merge(options)
         # when significant repeating digits occur (+all+ parameter and directed rounding)
         # @repeat is set to the index of the first repeating digit in @digits;
         # (if equal to @digits.size, that would indicate an infinite sequence of significant zeros)
