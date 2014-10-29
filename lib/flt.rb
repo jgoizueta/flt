@@ -2,6 +2,9 @@
 
 require 'flt/version'
 require 'flt/support'
+require 'flt/support/flag_values'
+require 'flt/support/reader'
+require 'flt/support/formatter'
 require 'flt/float'
 require 'flt/bigdecimal'
 require 'flt/num'
