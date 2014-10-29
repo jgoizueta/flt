@@ -126,6 +126,10 @@
 #++
 
 require 'flt/support'
+require 'flt/support/flag_values'
+require 'flt/support/reader'
+require 'flt/support/formatter'
+require 'flt/support/rationalizer'
 
 require 'bigdecimal'
 require 'forwardable'

@@ -1,3 +1,7 @@
+== 1.4.1 2014-10-29
+
+  Minor correction to allow partially requiring some files
+
 == 1.4.0 2014-10-29
 
 * New features
