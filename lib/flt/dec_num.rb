@@ -104,7 +104,7 @@ class DecNum < Num
   #   DecNum('0.1000')                                  # -> 0.1000
   #   DecNum('0.12345')                                 # -> 0.12345
   #   DecNum('1.2345E-1')                               # -> 0.12345
-  #   DecNum('0.1000', :short)                          # -> 0.1000
+  #   DecNum('0.1000', :short)                          # -> 0.1
   #   DecNum('0.1000',:fixed, :precision=>20)           # -> 0.10000000000000000000
   #   DecNum('0.12345',:fixed, :precision=>20)          # -> 0.12345000000000000000
   #   DecNum('0.100110E3', :base=>2)                    # -> 4.8

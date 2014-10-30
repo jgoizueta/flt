@@ -41,13 +41,13 @@ class TestNumConstructor < Test::Unit::TestCase
     assert_equal [1, 1, -1], DecNum('0.1', :free).split
     assert_equal [1, 1000, -4], DecNum('0.1000', :free).split
     assert_equal [1, 1, -1],  DecNum('0.1',:short).split
-    assert_equal [1, 1000, -4], DecNum('0.1000',:short).split
+    assert_equal [1, 1, -1], DecNum('0.1000',:short).split
 
     assert_equal [1, 1, -3], BinNum('0.1E-2', :free, :base=>2).split
     assert_equal [1, 1, -1], BinNum('0.1', :free, :base=>2).split
     assert_equal [1, 8, -4], BinNum('0.1000', :free, :base=>2).split
     assert_equal [1, 1, -1], BinNum('0.1',:short, :base=>2).split
-    assert_equal [1, 8, -4], BinNum('0.1000',:short, :base=>2).split
+    assert_equal [1, 1, -1], BinNum('0.1000',:short, :base=>2).split
   end
 
   def test_literal_free_base

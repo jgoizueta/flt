@@ -1,6 +1,5 @@
 # Base classes for floating-point numbers and contexts.
 
-#--
 # =Notes on the representation of Flt::Num numbers.
 #
 # * @sign is +1 for plus and -1 for minus
@@ -111,7 +110,6 @@
 #
 # The known or 'coercible' types for DecNum are initially Integer and Rational, but this can be extended to
 # other types using define_conversion_from() in a Context object.
-#++
 
 #--
 # TODO: selecting the kind of ulp is awkward; consider one of these options:
@@ -1446,7 +1444,13 @@ class Num < Numeric
   #   meaning here that if the digit is changed and the value converted back to a literal of the same base and
   #   precision, the original literal will not be obtained.
   # * :short is a variation of :free in which only the minimun number of digits that are necessary to
-  #   produce the original literal when the value is converted back with the same original precision.
+  #   produce the original literal when the value is converted back with the same original precision;
+  #   namely, given an input in base b1, its :short representation in base 2 is the shortest number in base b2
+  #   such that when converted back to base b2 with the same precision that the input had, the result is identical
+  #   to the input:
+  #     short = Num[b2].new(input, :short, base: b1)
+  #     Num[b1].context.precision = precision_of_inpu
+  #     Num[b1].new(short.to_s(base: b2), :fixed, base: b2)) == Num[b1].new(input, :free, base: b1)
   # * :fixed will round and normalize the value to the precision specified by the context (normalize meaning
   #   that exaclty the number of digits specified by the precision will be generated, even if the original
   #   literal has fewer digits.) This may fail returning NaN (and raising Inexact) if the context precision is
@@ -1544,8 +1548,23 @@ class Num < Numeric
             mode ||= :free
           end
 
-          if [:free, :short].include?(mode) && base == num_class.radix
+          if mode == :free && base == num_class.radix
             # simple case, the job is already done
+            #
+            # :free mode with same base must not be handled by the Reader;
+            # note that if we used the Reader for the same base case in :free mode,
+            # an extra 'significative' digit would be added, because that digit
+            # is significative in the sense that (under non-directed rounding,
+            # and with the significance interpretation of Reader wit the all-digits option)
+            # it's not free to take any value without affecting the value of
+            # the other digits: e.g. input: '0.1', the result of :free
+            # conversion with the Reader is '0.10' because de last digit is not free;
+            # if it was 9 for example the actual value would round to '0.2' with the input
+            # precision given here.
+            #
+            # On the other hand, :short, should be handled by the Reader even when
+            # the input and output bases are the same because we want to find the shortest
+            # number that can be converted back to the input with the same input precision.
           else
             rounding = context.rounding
             reader = Support::Reader.new(:mode=>mode)
