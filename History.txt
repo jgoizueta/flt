@@ -1,3 +1,7 @@
+== 1.4.2 2014-10-30
+
+  Change definition of numbers in :free mode with no change of base involved.
+
 == 1.4.1 2014-10-29
 
   Minor correction to allow partially requiring some files
