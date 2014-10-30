@@ -1,5 +1,37 @@
 # Base classes for floating-point numbers and contexts.
 
+#--
+# TODO: selecting the kind of ulp is awkward; consider one of these options:
+#       * don't support variant ulps; always use Muller's ulp
+#       * use an options hash for the kind of ulp parameter
+#       * keep the kind of ulp in the context
+#       also, note that Tolerance uses only the Muller king of ulp.
+# TODO: move the exception classes from Flt::Num to Flt ? move also Flt::Num::ContextBas to Flt ?
+# TODO: find better name for :all_digits (:preserve_precision, :mantain_precision, ...) ?
+# TODO: should the context determine the mode for cross-base literal-to-Num conversion (:free, :fixed)?
+#           BinNum.context.input = :fixed; x = BinNum('0.1')
+#++
+
+require 'flt/support'
+require 'flt/support/flag_values'
+require 'flt/support/reader'
+require 'flt/support/formatter'
+require 'flt/support/rationalizer'
+
+require 'bigdecimal'
+require 'forwardable'
+require 'rational'
+require 'monitor'
+require 'ostruct'
+
+module Flt
+
+# Generic radix arbitrary-precision, floating-point numbers. This is a base class for
+# floating point types of specific radix.
+#
+# The implementation of floating-point arithmetic is largely based on the Decimal module of Python,
+# written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
+#
 # =Notes on the representation of Flt::Num numbers.
 #
 # * @sign is +1 for plus and -1 for minus
@@ -7,7 +39,7 @@
 # * @exp is the exponent to be applied to @coeff as an integer or one of :inf, :nan, :snan for special values
 #
 # The value represented is @sign*@coeff*b**@exp with b = num_class.radix the radix for the the Num-derived class.
-
+#
 # The original Python Decimal representation has these slots:
 # * _sign is 1 for minus, 0 for plus
 # * _int is the integral significand as a string of digits (leading zeroes are not kept)
@@ -110,38 +142,7 @@
 #
 # The known or 'coercible' types for DecNum are initially Integer and Rational, but this can be extended to
 # other types using define_conversion_from() in a Context object.
-
-#--
-# TODO: selecting the kind of ulp is awkward; consider one of these options:
-#       * don't support variant ulps; always use Muller's ulp
-#       * use an options hash for the kind of ulp parameter
-#       * keep the kind of ulp in the context
-#       also, note that Tolerance uses only the Muller king of ulp.
-# TODO: move the exception classes from Flt::Num to Flt ? move also Flt::Num::ContextBas to Flt ?
-# TODO: find better name for :all_digits (:preserve_precision, :mantain_precision, ...) ?
-# TODO: should the context determine the mode for cross-base literal-to-Num conversion (:free, :fixed)?
-#           BinNum.context.input = :fixed; x = BinNum('0.1')
-#++
-
-require 'flt/support'
-require 'flt/support/flag_values'
-require 'flt/support/reader'
-require 'flt/support/formatter'
-require 'flt/support/rationalizer'
-
-require 'bigdecimal'
-require 'forwardable'
-require 'rational'
-require 'monitor'
-require 'ostruct'
-
-module Flt
-
-# Generic radix arbitrary-precision, floating-point numbers. This is a base class for
-# floating point types of specific radix.
 #
-# The implementation of floating-point arithmetic is largely based on the Decimal module of Python,
-# written by Eric Price, Facundo Batista, Raymond Hettinger, Aahz and Tim Peters.
 class Num < Numeric
 
   extend Support # allows use of unqualified FlagValues(), Flags(), etc.

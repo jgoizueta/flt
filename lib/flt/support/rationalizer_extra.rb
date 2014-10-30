@@ -1,9 +1,9 @@
-# Some rationalization algorithms currently not being used
-
 module Flt
   module Support
 
     class Rationalizer
+      # Some rationalization algorithms currently not being used
+
 
       # Simple Rationalization by Joe Horn
       def rationalize_Horn_simple(x, smallest_denominator = false)
