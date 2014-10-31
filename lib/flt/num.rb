@@ -1150,6 +1150,10 @@ class Num < Numeric
       _convert(x).infinite?
     end
 
+    def special?(x)
+      _convert(x).special?
+    end
+
     def zero?(x)
       _convert(x).zero?
     end
