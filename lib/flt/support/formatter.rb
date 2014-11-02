@@ -15,7 +15,7 @@ module Flt
     #
     # The variables used by the algorithm are stored in instance variables:
     # @v - The number to be formatted = @f*@b**@e
-    # @b - The numberic base of the input floating-point representation of @v
+    # @b - The numeric base of the input floating-point representation of @v
     # @f - The significand or characteristic (fraction)
     # @e - The exponent
     #
@@ -43,7 +43,7 @@ module Flt
     #   @k = 1+floor(logB((@r+@m_p)/2))
     #
     # @output_b is the output base
-    # @output_min_e is the output minimum exponent
+    # @min_e is the input minimum exponent
     # p is the input floating point precision
     class Formatter
 
@@ -154,7 +154,7 @@ module Flt
         case @round_mode
           when :half_even
             # rounding rage is (v-m-,v+m+) if v is odd and [v+m-,v+m+] if even
-            @round_l = @round_h = ((@f%2)==0)
+            @round_l = @round_h = ((@f % 2) == 0)
           when :up
             # rounding rage is (v-,v]
             # ceiling is treated here assuming f>0
@@ -192,7 +192,7 @@ module Flt
             @r, @s, @m_p, @m_m = @f*be1*2, @b*2, be1, be
           end
         else
-          if @e==@min_e or @f != b_power(p-1)
+          if @e == @min_e || @f != b_power(p-1)
             @r, @s, @m_p, @m_m = @f*2, b_power(-@e)*2, 1, 1
           else
             @r, @s, @m_p, @m_m = @f*@b*2, b_power(1-@e)*2, @b, 1
@@ -234,11 +234,12 @@ module Flt
       # Access rounded result of format operation: scaling (position of radix point) and digits
       def adjusted_digits(round_mode)
         if @adjusted_digits.nil? && !@digits.nil?
-          @adjusted_k, @adjusted_digits = Support.adjust_digits(@k, @digits,
-                                                                :round_mode => round_mode,
-                                                                :negative => @minus,
-                                                                :round_up => @round_up,
-                                                                :base => @output_b)
+          @adjusted_k, @adjusted_digits = Support.adjust_digits(
+                                            @k, @digits,
+                                            :round_mode => round_mode,
+                                            :negative => @minus,
+                                            :round_up => @round_up,
+                                            :base => @output_b)
         end
         return @adjusted_k, @adjusted_digits
       end
