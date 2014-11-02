@@ -1,6 +1,7 @@
 # Support classes for homogeneous treatment of BigDecimal and Num values by defining BigDecimal.context
 
 require 'flt/num'
+require 'flt/dec_num'
 
 require 'bigdecimal'
 require 'bigdecimal/math'
@@ -25,7 +26,7 @@ class Flt::BigDecimalContext
   def Num(*args)
     args = *args if args.size==1 && args.first.is_a?(Array)
     if args.size > 1
-      BigDecimal.new(DecNum(*args).to_s)
+      BigDecimal.new(Flt::DecNum(*args).to_s)
     else
       x = args.first
       case x
