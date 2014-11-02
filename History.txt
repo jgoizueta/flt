@@ -1,3 +1,12 @@
+== 1.4.3 2014-11-02
+
+* New features
+  - operator [] for contexts (define new context based on it)
+  - new Context#special? method
+
+* Bugfixed
+  - some bugs related to BigDecimal
+
 == 1.4.2 2014-10-30
 
   Change definition of numbers in :free mode with no change of base involved.
