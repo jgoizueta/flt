@@ -660,6 +660,12 @@ class Num < Numeric
       self.class.new(self)
     end
 
+    # Create a context as a copy of the current one with some options
+    # changed.
+    def [](options={})
+      self.class.new self, options
+    end
+
     CONDITION_MAP = {
       #ConversionSyntax=>InvalidOperation,
       #DivisionImpossible=>InvalidOperation,

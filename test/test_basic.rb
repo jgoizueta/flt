@@ -134,6 +134,14 @@ class TestBasic < Test::Unit::TestCase
     assert_equal :half_even, DecNum.context.rounding
     assert_equal 10, DecNum.context.precision
 
+    context_a = DecNum::BasicContext
+    assert_equal :half_up, context_a.rounding
+    assert_equal 9, context_a.precision
+    context_b = context_a[precision: 11]
+    assert_equal 9, context_a.precision
+    assert_equal 11, context_b.precision
+    assert_equal :half_up, context_a.rounding
+    assert_equal :half_up, context_b.rounding
 
     assert_equal DecNum("0."+"3"*100), DecNum(1)./(DecNum(3),DecNum.Context(:precision=>100))
     assert_equal 10, DecNum.context.precision
