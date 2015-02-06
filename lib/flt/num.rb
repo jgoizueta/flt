@@ -3893,7 +3893,7 @@ class Num < Numeric
       end
     else
       # TODO: DRY (this code is duplicated in num_class#format)
-      if exp<=0 && leftdigits>-6
+      if exp<=0
         dotplace = leftdigits
       elsif !eng
         dotplace = 1
