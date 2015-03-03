@@ -175,6 +175,14 @@ class TestBin < Test::Unit::TestCase
 
   end
 
+  def test_context_constructor
+    BinNum.context.precision = 16
+    BinNum.context.rounding = :half_even
+    context = BinNum.context[precision: 8]
+    assert_equal "11001101", context.Num('0.1', :fixed).split[1].to_s(2)
+    assert_equal "1100110011001101", BinNum('0.1', :fixed).split[1].to_s(2)
+  end
+
   def test_text_to_float_exact
     BinNum.context.exact = :quiet
     %w{

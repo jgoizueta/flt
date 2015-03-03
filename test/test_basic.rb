@@ -441,4 +441,12 @@ class TestBasic < Test::Unit::TestCase
 
   end
 
+  def test_context_constructor
+    DecNum.context.precision = 8
+    DecNum.context.rounding = :half_even
+    context = DecNum.context[precision: 4]
+    assert_equal "1000", context.Num('0.1', :fixed).split[1].to_s
+    assert_equal "10000000", DecNum('0.1', :fixed).split[1].to_s
+  end
+
 end
