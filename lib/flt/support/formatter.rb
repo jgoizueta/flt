@@ -6,7 +6,7 @@ module Flt
     # (Robert G. Burger, R. Kent Dybvig)
     #
     # This algorithm formats arbitrary base floating point numbers as decimal
-    # text literals. The floating-point (with fixed precision) is interpreted as an approximated
+    # text literals. The floating-point (with fixed precision) is interpreted as an approximate
     # value, representing any value in its 'rounding-range' (the interval where all values round
     # to the floating-point value, with the given precision and rounding mode).
     # An alternative approach which is not taken here would be to represent the exact floating-point
@@ -56,7 +56,7 @@ module Flt
 
       # A Formatted object is created to format floating point numbers given:
       # * The input base in which numbers to be formatted are defined
-      # * The input minimum expeonent
+      # * The input minimum exponent
       # * The output base to which the input is converted.
       # * The :raise_on_repeat option, true by default specifies that when
       #   an infinite sequence of repeating significant digits is found on the output

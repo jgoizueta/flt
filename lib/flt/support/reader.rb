@@ -26,7 +26,7 @@ module Flt
     # (William D. Clinger)
     class Reader
 
-      # There are two different reading approaches, selected by the :mode parameter:
+      # There are three different reading approaches, selected by the :mode parameter:
       # * :fixed (the destination context defines the resulting precision) input is rounded as specified
       #   by the context; if the context precision is 'exact', the exact input value will be represented
       #   in the destination base, which can lead to a Inexact exception (or a NaN result and an Inexact flag)
