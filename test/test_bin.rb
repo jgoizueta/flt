@@ -180,6 +180,7 @@ class TestBin < Test::Unit::TestCase
     BinNum.context.rounding = :half_even
     context = BinNum.context[precision: 8]
     assert_equal "11001101", context.Num('0.1', :fixed).split[1].to_s(2)
+    assert_equal "11001101", context.Num('0.1', :fixed, :base => 10).split[1].to_s(2)
     assert_equal "1100110011001101", BinNum('0.1', :fixed).split[1].to_s(2)
   end
 

@@ -487,7 +487,7 @@ class Num < Numeric
     def Num(*args)
       context = { context: self }
       if args.last.kind_of?(Hash)
-        args = args[0..-1] + [ context.merge(args.last) ]
+        args = args[0...-1] + [ context.merge(args.last) ]
       else
         args << context
       end
