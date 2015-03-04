@@ -3798,6 +3798,13 @@ class Num < Numeric
   # :exact interprets the number as an exact value, not an approximation so
   # that the exact original value can be rendered in a different base.
   #
+  # :format specifies the numeric format:
+  #
+  # * :sci selects scientific notation
+  # * :fix selects fixed format (no exponent is shown)
+  # * :eng is equivalent to :sci and setting the :eng option
+  # * :auto selects :fix or :sci automatically (the default)
+  #
   # ## Note: approximate vs exact values
   #
   # In order to represent a floating point value `x`, we can take
@@ -3815,6 +3822,9 @@ class Num < Numeric
   def format(*args)
     options = format_legacy_parameters(*args)
 
+    format_mode = options[:format] || :auto
+    max_leading_zeros = 6
+
     num_context = options[:context]
     output_radix = options[:base] || 10
     output_exp_radix = options[:exp_base]
@@ -3827,6 +3837,10 @@ class Num < Numeric
     rounding = options[:rounding]
     all_digits = options[:all_digits]
     eng = options[:eng]
+    if format_mode == :eng
+      format_mode = :sci
+      eng = true
+    end
     output_rounding = options[:output_rounding]
     exact = options[:exact]
     simplified = options[:simplified]
@@ -3933,7 +3947,16 @@ class Num < Numeric
         n_ds = ds.size
       end
     else
-      if exp<=0 && leftdigits>-6
+      if format_mode == :auto
+        fix = exp <= 0
+        fix &&= leftdigits > -max_leading_zeros if max_leading_zeros
+        if fix
+          format_mode = :fix
+        else
+          format_mode = :sci
+        end
+      end
+      if format_mode == :fix
         dotplace = leftdigits
       elsif !eng
         dotplace = 1

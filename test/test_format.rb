@@ -46,4 +46,35 @@ class TestFormat < Test::Unit::TestCase
     assert_equal '0.099609375', value.to_s(:all_digits => true, :rounding => :down)
   end
 
+  def test_sci_format
+    assert_equal '1.23E-3', DecNum('0.00123').to_s(format: :sci)
+    assert_equal '1.23E-6', DecNum('0.00000123').to_s(format: :sci)
+    assert_equal '1.23E-9', DecNum('0.00000000123').to_s(format: :sci)
+    assert_equal '1.23E-12', DecNum('0.00000000000123').to_s(format: :sci)
+    n = 1000
+    assert_equal "1.23E#{-n+2}", DecNum("123E-#{n}").to_s(format: :sci)
+    assert_equal "1.23E+#{n+2}", DecNum("123E#{n}").to_s(format: :sci)
+  end
+
+  def test_fix_format
+    assert_equal '0.00123', DecNum('0.00123').to_s(format: :fix)
+    assert_equal '0.00000123', DecNum('0.00000123').to_s(format: :fix)
+    assert_equal '0.00000000123', DecNum('0.00000000123').to_s(format: :fix)
+    assert_equal '0.00000000000123', DecNum('0.00000000000123').to_s(format: :fix)
+    n = 1000
+    assert_equal '0.'+'0'*(n-3)+'123', DecNum("123E-#{n}").to_s(format: :fix)
+    assert_equal '123'+'0'*n, DecNum("123E#{n}").to_s(format: :fix)
+  end
+
+  def test_auto_format
+    assert_equal '0.00123', DecNum('0.00123').to_s(format: :auto)
+    assert_equal '0.00000123', DecNum('0.00000123').to_s(format: :auto)
+    assert_equal '1.23E-7', DecNum('0.000000123').to_s(format: :auto)
+    assert_equal '1.23E-9', DecNum('0.00000000123').to_s(format: :auto)
+    assert_equal '1.23E-12', DecNum('0.00000000000123').to_s(format: :auto)
+    n = 1000
+    assert_equal "1.23E#{-n+2}", DecNum("123E-#{n}").to_s(format: :auto)
+    assert_equal "1.23E+#{n+2}", DecNum("123E#{n}").to_s(format: :auto)
+  end
+
 end
