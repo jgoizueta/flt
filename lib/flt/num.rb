@@ -3933,7 +3933,6 @@ class Num < Numeric
         n_ds = ds.size
       end
     else
-      # TODO: DRY (this code is duplicated in num_class#format)
       if exp<=0 && leftdigits>-6
         dotplace = leftdigits
       elsif !eng
