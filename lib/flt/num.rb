@@ -3192,64 +3192,9 @@ class Num < Numeric
     return product.add(third, context)
   end
 
-  # Convert to a text literal in the specified base (10 by default).
-  #
-  # If the output base is the floating-point radix, the rendered value is the exact value of the number,
-  # showing trailing zeros up to the stored precision.
-  #
-  # With bases different from the radix, the floating-point number is treated
-  # as an approximation with a precision of number_of_digits, representing any value
-  # within its rounding range. In that case, this method always renders
-  # that aproximated value in other base without introducing additional precision.
-  #
-  # The resulting text numeral is such that it has as few digits as possible while
-  # preserving the original while if converted back to the same type of floating-point value with
-  # the same context precision that the original number had (number_of_digits).
-  #
-  # To render the exact value of a Num x in a different base b this can be used
-  #   Flt::Num.convert_exact(x, b).to_s(:base=>b)
-  # Or, to represent a BinNum x in decimal:
-  #   x.to_decimal_exact(:exact=>true).to_s
-  #
-  # Options:
-  # :base output base, 10 by default
-  #
-  # :rounding is used to override the context rounding, but it's main use is specify :nearest
-  # as the rounding-mode, which means that the text literal will have enough digits to be
-  # converted back to self in any round-to_nearest rounding mode. Otherwise only enough
-  # digits for conversion in a specific rounding mode are produced.
-  #
-  # :all_digits if true all significant digits are shown. A digit
-  # is considered as significant here if when used on input, cannot
-  # arbitrarily change its value and preserve the parsed value of the
-  # floating point number.
-  # Using all_digits will show trailing zeros up to the precision of the floating-point, so
-  # the output will preserve the input precision. With all_digits and the :down rounding-mod
-  # (truncation), the result will be the exact value floating-point value in the output base
-  # (if it is conmensurable with the floating-point base).
+  # Representation as text of a number: this is an alias of Num#format
   def to_s(*args)
-    eng=false
-    context=nil
-
-    # admit legacy arguments eng, context in that order
-    if [true,false].include?(args.first)
-      eng = args.shift
-    end
-    if args.first.is_a?(Num::ContextBase)
-      context = args.shift
-    end
-    # admit also :eng to specify the eng mode
-    if args.first == :eng
-      eng = true
-      args.shift
-    end
-    raise TypeError, "Invalid arguments to #{num_class}#to_s" if args.size>1 || (args.size==1 && !args.first.is_a?(Hash))
-    # an admit arguments through a final parameters Hash
-    options = args.first || {}
-    context = options.delete(:context) if options.has_key?(:context)
-    eng = options.delete(:eng) if options.has_key?(:eng)
-
-    format(context, options.merge(:eng=>eng))
+    format *args
   end
 
   # Raises to the power of x, to modulo if given.
@@ -3754,42 +3699,123 @@ class Num < Numeric
 
   end
 
-  # Convert to a text literal in the specified base. If the result is
-  # converted to BinNum with the specified context rounding and the
-  # same precision that self has (self.number_of_digits), the same
-  # number will be produced.
+  # Internal method to allow format (and to_s) to admit legacy
+  # parameters.
+  def format_legacy_parameters(*args)
+    eng = false
+    context = nil
+
+    # formerly the eng value and the context could be passed
+    # as separate values in that order
+    if [true,false].include?(args.first)
+      eng = args.shift
+    end
+    if args.first.is_a?(Num::ContextBase)
+      context = args.shift
+    end
+
+    # and the :eng symbol could be passed to enable it
+    if args.first == :eng
+      eng = true
+      args.shift
+    end
+
+    if args.size > 1 || (args.size == 1 && !args.first.is_a?(Hash))
+      raise TypeError, "Invalid arguments to #{num_class}#format"
+    end
+
+    # now all arguments should be passed in a hash
+    options = args.first || {}
+    { :eng => eng, :context => context }.merge(options)
+  end
+  private :format_legacy_parameters
+
+  # Conversion to a text literal
   #
-  # Options:
-  # :base output base, 10 by default
+  # The base of the produced literal can be specified by the :base option,
+  # which is 10 by default.
   #
-  # :rounding is used to override the context rounding, but it's main use is specify :nearest
-  # as the rounding-mode, which means that the text literal will have enough digits to be
-  # converted back to self in any round-to_nearest rounding mode. Otherwise only enough
+  # ## Same base
+  #
+  # If the output base is the floating-point radix the actual internal value
+  # of the number is produced, by default showing trailing zeros up to the
+  # stored precision, e.g. 0.100.
+  #
+  # The :simplified option can be used in this case to remove the trailing
+  # zeros, producing 0.1. The actual effect of this options is to regard
+  # the number an *approximation* (see below) and show only as few digits
+  # as possible while making sure that the result rounds back to the original
+  # value (if rounded to its original precision).
+  #
+  # With the :all_digits option the number will be considered also an
+  # approximation and all its 'significant' digits are shown. A digit
+  # is considered significant here if when used on input, cannot
+  # arbitrarily change its value and preserve the parsed value of the
+  # floating point number (to the original precision).
+  # In our case the result would be 0.1000, because the additional shown 0
+  # is a digit that if changed arbitrarily could make the number round to
+  # a different value from the original 0.100.
+  #
+  # ## Different bases
+  #
+  # For bases different from the radix, by default the floating-point number
+  # is treated as an approximation and is redendered as if with the
+  # :simplified option mention above.
+  #
+  # The :all_digits option acts as in the same-base case. Note that
+  # aproximated values are formatted without introducing additional precision.
+  #
+  # The :exact options can be used to render the exact value in the output
+  # base (by using Flt::Num.convert_exact)
+  #
+  # ## All available options:
+  #
+  # :base defines the output base, 10 by default. If the output base is defined
+  # as :hex_bin, then the %A/%a format of printf is used, which shows the
+  # significand as an hexadecimal number and the binary exponent in decimal.
+  #
+  # :exp_base allows to define a different base for the exponent
+  # than for the coefficient, as occurs with the :hex_bin base; the base for the
+  # coefficient must be a power of that of the exponent.
+  #
+  # :rounding is used to override the context rounding. It allows to
+  # specify the :nearest as the rounding-mode, which means that the text
+  # literal will have enough digits to be converted back to the original value
+  # in any of the round-to-nearest rounding modes. Otherwise only enough
   # digits for conversion in a specific rounding mode are produced.
   #
-  # :all_digits if true all significant digits are shown. A digit
-  # is considere as significant here if when used on input, cannot
-  # arbitrarily change its value and preserve the parsed value of the
-  # floating point number.
+  # :all_digits makes all 'significant' digits visible, considering
+  # the number approximate as explained below.
+  # Using :all_digits will show trailing zeros up to the precision of the
+  # floating-point, so the output will preserve the input precision.
+  # With :all_digits and the :down rounding-mode (truncation), the result will
+  # be the exact value floating-point value in the output base
+  # (if it is conmensurable with the floating-point radix).
   #
-  # :output_rounding implies :all_digits; it defines the rounding mode for the output,
-  # that will show all significant digits rounded.
-  # If it is not passed and :all_digits is true, then :rounding or the context rounding mode
-  # will be used.
+  # :simplify shows only the digits necessary to preserve the original value
+  # (which is the default when output base differs from radix)
   #
-  # Note that when :base is different from the floating point radix,
-  # we're regarding the floating point number x
-  # as an approximation with x.number_of_digits precision and showing that
-  # inexact value in decimal without introducing additional precision.
+  # :exact interprets the number as an exact value, not an approximation so
+  # that the exact original value can be rendered in a different base.
   #
-  # If the exact value of the number expressed in other base is desired (we consider
-  # the Flt an exact number), this can be done with Num.convert_exact.
+  # ## Note: approximate vs exact values
   #
-  # The :hex_bin option produces the %A/%a format of printf, which sho2 the significand
-  # as an hexadecimal number and the binary exponent in decimal.
+  # In order to represent a floating point value `x`, we can take
+  # two approaches:
   #
-  def format(num_context, options={})
-    # TODO: support options (base, all_digits, any_rounding, eng) and context options in the same hash
+  # * Consider it an *exact* value, namely:
+  #   `x.sign*x.integral_significand*radix**x.integral_exponent`
+  # * Consider it an *approximation* with its particular precision,
+  #   that represents any value within its rounding range.
+  #   The exact rounding range depends on the rounding mode used to create
+  #   the floating point mode; in the case of nearest rounding it is the
+  #   set of numbers that line closer to the floating point value than to
+  #   any other floating point value.
+  #
+  def format(*args)
+    options = format_legacy_parameters(*args)
+
+    num_context = options[:context]
     output_radix = options[:base] || 10
     output_exp_radix = options[:exp_base]
     if output_radix == :hex_bin
@@ -3802,6 +3828,8 @@ class Num < Numeric
     all_digits = options[:all_digits]
     eng = options[:eng]
     output_rounding = options[:output_rounding]
+    exact = options[:exact]
+    simplified = options[:simplified]
     all_digits ||= output_rounding
 
     sgn = @sign<0 ? '-' : ''
@@ -3827,6 +3855,13 @@ class Num < Numeric
       end
     end
 
+    if output_radix != num_class.radix && exact && !all_digits && !simplified
+      value = Num[output_radix].context(exact: true){ Num.convert_exact(self, output_radix) }
+      options = options.dup
+      options.delete :context
+      return value.format(options)
+    end
+
     if output_exp_radix == num_class.radix && !all_digits && output_radix != output_exp_radix
       if first_digit_1
         # make the first digit a 1
@@ -3847,7 +3882,7 @@ class Num < Numeric
       n_ds = ds.size
       leftdigits = exp + n_ds
       exp_radix = num_class.radix
-    elsif output_radix == num_class.radix && !all_digits && output_radix == output_exp_radix
+    elsif output_radix == num_class.radix && !all_digits && output_radix == output_exp_radix && !simplified
       # show exactly inner representation and precision
       ds = @coeff.to_s(output_radix)
       n_ds = ds.size
