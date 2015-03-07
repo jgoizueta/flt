@@ -83,20 +83,25 @@ class Flt::BigDecimalContext
     ROUNDING_MODES[BigDecimal.mode(BigDecimal::ROUND_MODE, nil)]
   end
 
-  # Sign: -1 for minus, +1 for plus, nil for nan (note that Float zero is signed)
+  # Sign: -1 for minus, +1 for plus, nil for nan (note that BigDecimal zero is signed)
   def sign(x)
-    x.sign < 0 ? -1 : +1
+    big_dec_sign = x.sign
+    if big_dec_sign < 0
+      -1
+    elsif big_dec_sign > 0
+      +1
+    end
   end
 
   # Return copy of x with the sign of y
   def copy_sign(x, y)
-    self_sign = x.sign
+    self_sign = sign(x)
     other_sign = y.is_a?(Integer) ? (y < 0 ? -1 : +1) : y.sign
     if self_sign && other_sign
       if self_sign == other_sign
-        x.to_f
+        x
       else
-        -x.to_f
+        -x
       end
     else
       nan
