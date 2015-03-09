@@ -3916,10 +3916,11 @@ class Num < Numeric
       exp_radix = output_radix
     end
 
-    # TODO: this doesn't need to be so ugly...
+    ds = ds.upcase if context.capitals
+
     if output_exp_radix == 2 && output_radix == 16
       a_format = true
-      digits_prefix = "0x"
+      digits_prefix = (context.capitals ? '0X' : '0x')
       exp_letter = (context.capitals ? 'P' : 'p')
       show_exp = true
     else

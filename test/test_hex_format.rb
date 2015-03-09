@@ -32,10 +32,17 @@ class TestHexFormat< Test::Unit::TestCase
       BinNum.context(BinNum::FloatContext) do
         @hex_test_data.each do |number|
           hex_upcase = "%A" % number
+          hex_downcase = "%a" % number
           number = BinNum(number)
           # text = number.to_s(:base => :hex_bin, :all_digits => false,  :output_rounding => BinNum.context.rounding)
-          text = number.to_s(:base => :hex_bin, :all_digits => false,  :output_rounding => nil)
-          assert_equal hex_upcase, text.upcase, "Write #{hex_upcase} (number)"
+          text_up = BinNum.context(:capitals => true){
+            number.to_s(:base => :hex_bin, :all_digits => false,  :output_rounding => nil)
+          }
+          assert_equal hex_upcase, text_up.upcase, "Write #{hex_upcase} (number)"
+          text_down = BinNum.context(:capitals => false){
+            number.to_s(:base => :hex_bin, :all_digits => false,  :output_rounding => nil)
+          }
+          assert_equal hex_upcase, text_down.upcase, "Write #{hex_upcase} (number)"
         end
       end
     end
