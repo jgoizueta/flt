@@ -1,4 +1,9 @@
-== 1.4.6 2015-04-07
+== 1.4.7 2015-04-05
+
+* Bugfix
+  - The normalize method used the default context
+
+== 1.4.6 2015-03-07
 
 * Bugfix
   - BigDecimal.context.copy_sign returned a Float
