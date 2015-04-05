@@ -450,4 +450,18 @@ class TestBasic < Test::Unit::TestCase
     assert_equal "10000000", DecNum('0.1', :fixed).split[1].to_s
   end
 
+  def test_normalizetion
+    DecNum.context.precision = 20
+    DecNum.context.emin = -1000
+    x = DecNum('5.10000000000E-502')
+    assert_equal [1, 510000000000, -513], x.split
+    context = DecNum.context(precision: 12, emin: -499)
+    assert_equal [1, 510000000, -510], x.normalize(context).split
+    assert_equal [1, 510000000, -510], context.normalize(x).split
+    DecNum.context = context
+    assert_equal [1, 510000000, -510], x.normalize(context).split
+    assert_equal [1, 510000000, -510], context.normalize(x).split
+    assert_equal [1, 510000000000, -513], x.split
+  end
+
 end

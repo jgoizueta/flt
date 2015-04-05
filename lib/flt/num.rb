@@ -2429,7 +2429,7 @@ class Num < Numeric
     context = define_context(context)
     return Num(self) if self.special? || self.zero? || context.exact?
     sign, coeff, exp = self._fix(context).split
-    if self.subnormal?
+    if self.subnormal?(context)
       context.exception Subnormal
       if exp > context.etiny
         coeff = num_class.int_mult_radix_power(coeff, exp - context.etiny)
