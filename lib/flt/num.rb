@@ -422,6 +422,7 @@ class Num < Numeric
     #   taken as emin and emax=1-emin. Such limits comply with IEEE 754-2008
     # * :capitals : (true or false) to use capitals in text representations
     # * :clamp : (true or false) enables clamping
+    # * :normalized : (true or false) normalizes all results
     #
     # See also the context constructor method Flt::Num.Context().
     def initialize(num_class, *options)
@@ -441,6 +442,7 @@ class Num < Numeric
         @coercible_type_handlers = num_class.base_coercible_types.dup
         @conversions = num_class.base_conversions.dup
         @angle = :rad # angular units: :rad (radians) / :deg (degrees) / :grad (gradians)
+        @normalized = false
       end
       assign options.first
 
@@ -515,7 +517,11 @@ class Num < Numeric
       @num_class.int_div_radix_power(x,n)
     end
 
-    attr_accessor :rounding, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp, :angle
+    attr_accessor :rounding, :emin, :emax, :flags, :traps, :ignored_flags, :capitals, :clamp, :angle, :normalized
+
+    def normalized?
+      normalized
+    end
 
     # TODO: consider the convenience of adding accessors of this kind:
     # def rounding(new_rounding=nil)
@@ -630,9 +636,10 @@ class Num < Numeric
         @emin = options[:emin] unless options[:emin].nil?
         @emax = options[:emax] unless options[:emax].nil?
         @capitals = options[:capitals ] unless options[:capitals ].nil?
-        @clamp = options[:clamp ] unless options[:clamp ].nil?
-        @exact = options[:exact ] unless options[:exact ].nil?
-        @angle = options[:angle ] unless options[:angle ].nil?
+        @clamp = options[:clamp] unless options[:clamp].nil?
+        @exact = options[:exact] unless options[:exact].nil?
+        @angle = options[:angle] unless options[:angle].nil?
+        @normalized = options[:normalized] unless options[:normalized].nil?
         update_precision
         if options[:extra_precision] && !@exact
           @precision += options[:extra_precision]
@@ -660,6 +667,7 @@ class Num < Numeric
       @coercible_type_handlers = other.coercible_type_handlers.dup
       @conversions = other.conversions.dup
       @angle = other.angle
+      @normalized = other.normalized
     end
 
     def dup
@@ -1477,18 +1485,19 @@ class Num < Numeric
   # * :base is the numeric base of the input, 10 by default.
   def initialize(*args)
     options = args.pop if args.last.is_a?(Hash)
-    context = args.pop if args.size>0 && (args.last.kind_of?(ContextBase) || args.last.nil?)
-    context ||= options && options.delete(:context)
+    options ||= {}
+    context = args.pop if args.size > 0 && (args.last.kind_of?(ContextBase) || args.last.nil?)
+    context ||= options.delete(:context)
     mode = args.pop if args.last.is_a?(Symbol) && ![:inf, :nan, :snan].include?(args.last)
     args = args.first if args.size==1 && args.first.is_a?(Array)
-    if args.empty? && options
+    if args.empty? && !options.empty?
       args = [options.delete(:sign)||+1,
               options.delete(:coefficient) || 0,
               options.delete(:exponent) || 0]
     end
-    mode ||= options && options.delete(:mode)
-    base = (options && options.delete(:base))
-    context = options if context.nil? && options && !options.empty?
+    mode ||= options.delete(:mode)
+    base = options.delete(:base)
+    context = options if context.nil? && !options.empty?
     context = define_context(context)
 
     case args.size
@@ -3593,6 +3602,26 @@ class Num < Numeric
       return ans
     end
 
+    if context.normalized?
+      exp = @exp
+      coeff = @coeff
+      if self_is_subnormal
+        if exp > context.etiny
+          coeff = num_class.int_mult_radix_power(coeff, exp - context.etiny)
+          exp = context.etiny
+        end
+      else
+        min_normal_coeff = context.minimum_normalized_coefficient
+        while coeff < min_normal_coeff
+          coeff = num_class.int_mult_radix_power(coeff, 1)
+          exp -= 1
+        end
+      end
+      if exp != @exp || coeff != @coeff
+        return Num(@sign, coeff, exp)
+      end
+    end
+
     if context.clamp? &&  @exp>etop
       context.exception Clamped
       self_padded = num_class.int_mult_radix_power(@coeff, @exp-etop)
@@ -3600,7 +3629,6 @@ class Num < Numeric
     end
 
     return Num(self)
-
   end
 
   # adjust payload of a NaN to the context
