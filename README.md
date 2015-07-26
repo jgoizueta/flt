@@ -1,4 +1,4 @@
-# DecNum
+# Flt
 
 [![Gem Version](https://badge.fury.io/rb/flt.svg)](http://badge.fury.io/rb/flt)
 [![Build Status](https://travis-ci.org/jgoizueta/flt.svg)](https://travis-ci.org/jgoizueta/flt)
@@ -28,6 +28,8 @@ The documentation for this package is available at
 http://www.rubydoc.info/github/jgoizueta/flt/master
 
 The code is at http://github.com/jgoizueta/flt/
+
+## DecNum
 
 `Flt::DecNum` is a standards-compliant arbitrary precision decimal
 floating-point type for Ruby. It is based on the Python Decimal class.
