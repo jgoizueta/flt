@@ -1,3 +1,5 @@
+# TODO: adapt for Github-Flavored-Markdown
+
 require 'irb/ruby-lex'
 require 'stringio'
 
