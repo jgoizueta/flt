@@ -80,8 +80,8 @@ class Float
   # Minimum non zero positive denormal number == 0.0.next
   MIN_D = Math.ldexp(1,Float::MIN_EXP-Float::MANT_DIG);
 
-  # Maximum significand  == Math.ldexp(Math.ldexp(1,Float::MANT_DIG)-1,-Float::MANT_DIG)
-  MAX_F = Math.frexp(Float::MAX)[0]   == Math.ldexp(Math.ldexp(1,Float::MANT_DIG)-1,-Float::MANT_DIG)
+  # Maximum significand == Math.ldexp(Math.ldexp(1,Float::MANT_DIG)-1,-Float::MANT_DIG)
+  MAX_F = Math.frexp(Float::MAX)[0]
 
 end
 
