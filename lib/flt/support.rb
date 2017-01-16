@@ -74,7 +74,7 @@ module Flt
       # Number of bits in binary representation of the positive integer n, or 0 if n == 0.
       def _nbits(x)
         raise  TypeError, "The argument to _nbits should be nonnegative." if x < 0
-        if x.is_a?(Fixnum)
+        if x <= MAXIMUM_SMALLISH_INTEGER
           return 0 if x==0
           x.to_s(2).length
         elsif x <= NBITS_LIMIT
@@ -92,13 +92,14 @@ module Flt
       end
       NBITS_BLOCK = 32
       NBITS_LIMIT = Math.ldexp(1,Float::MANT_DIG).to_i
+      MAXIMUM_SMALLISH_INTEGER = (2 << 63) - 1
 
       # Number of base b digits in an integer
       def _ndigits(x, b)
         raise  TypeError, "The argument to _ndigits should be nonnegative." if x < 0
         return 0 unless x.is_a?(Integer)
         return _nbits(x) if b==2
-        if x.is_a?(Fixnum)
+        if x <= MAXIMUM_SMALLISH_INTEGER
           return 0 if x==0
           x.to_s(b).length
         elsif x <= NDIGITS_LIMIT

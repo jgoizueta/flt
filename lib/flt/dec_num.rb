@@ -1188,7 +1188,7 @@ class DecNum < Num
     # number of bits in a nonnegative integer
     def _number_of_digits(i)
       raise  TypeError, "The argument to _number_of_digits should be nonnegative." if i < 0
-      if i.is_a?(Fixnum) || (i > NUMBER_OF_DIGITS_MAX_VALID_LOG)
+      if i <= MAXIMUM_SMALLISH_INTEGER || (i > NUMBER_OF_DIGITS_MAX_VALID_LOG)
         # for short integers this is faster
         # note that here we return 1 for 0
         i.to_s.length
@@ -1197,6 +1197,7 @@ class DecNum < Num
       end
     end
     NUMBER_OF_DIGITS_MAX_VALID_LOG = 10**(Float::DIG-1)
+    MAXIMUM_SMALLISH_INTEGER = (2 << 63) - 1
 
   end # AuxiliarFunctions
 
