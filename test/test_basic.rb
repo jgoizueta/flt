@@ -63,7 +63,7 @@ def return_from_local_context
   end
 end
 
-class TestBasic < Test::Unit::TestCase
+class TestBasic < Minitest::Test
 
 
   def setup

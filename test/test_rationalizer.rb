@@ -11,7 +11,7 @@ else
   end
 end
 
-class TestRationalizer < Test::Unit::TestCase
+class TestRationalizer < Minitest::Test
 
   def setup
     initialize_context

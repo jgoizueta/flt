@@ -1,7 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 
-class TestExact < Test::Unit::TestCase
+class TestExact < Minitest::Test
 
 
   def setup
@@ -25,7 +25,7 @@ class TestExact < Test::Unit::TestCase
     digits = formatter.format(x, f, e, :up, BinNum.context.precision, false)
     assert_equal [1], digits
 
-    assert_raise(Flt::Support::InfiniteLoopError) { formatter.format(x, f, e, :up, BinNum.context.precision, true) }
+    assert_raises(Flt::Support::InfiniteLoopError) { formatter.format(x, f, e, :up, BinNum.context.precision, true) }
 
     digits = formatter.format(x, f, e, :down, BinNum.context.precision, false)
     assert_equal [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
@@ -48,7 +48,7 @@ class TestExact < Test::Unit::TestCase
     digits = formatter.format(x, f, e, :up, BinNum.context.precision, false)
     assert_equal [5], digits
 
-    assert_raise(Flt::Support::InfiniteLoopError) { formatter.format(x, f, e, :up, BinNum.context.precision, true) }
+    assert_raises(Flt::Support::InfiniteLoopError) { formatter.format(x, f, e, :up, BinNum.context.precision, true) }
 
     digits = formatter.format(x, f, e, :down, BinNum.context.precision, false)
     assert_equal [5], digits
@@ -144,12 +144,12 @@ def test_binary_to_repeating_decimal_formatter
     digits = formatter.format(x, f, e, :up, DecNum.context.precision, false)
     assert_equal [1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1], digits
 
-    assert_raise(Support::InfiniteLoopError) { formatter.format(x, f, e, :up, DecNum.context.precision, true) }
+    assert_raises(Support::InfiniteLoopError) { formatter.format(x, f, e, :up, DecNum.context.precision, true) }
 
     digits = formatter.format(x, f, e, :down, DecNum.context.precision, false)
     assert_equal [1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1], digits
 
-    assert_raise(Support::InfiniteLoopError) { formatter.format(x, f, e, :down, DecNum.context.precision, true) }
+    assert_raises(Support::InfiniteLoopError) { formatter.format(x, f, e, :down, DecNum.context.precision, true) }
   end
 
   def test_decimal_to_repeating_binary_formatter

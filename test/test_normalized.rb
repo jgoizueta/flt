@@ -1,7 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 
-class TestNormalized < Test::Unit::TestCase
+class TestNormalized < Minitest::Test
 
   include Flt
 

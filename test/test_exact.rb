@@ -1,7 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 
-class TestExact < Test::Unit::TestCase
+class TestExact < Minitest::Test
 
 
   def setup
@@ -133,14 +133,14 @@ class TestExact < Test::Unit::TestCase
     assert_equal DecNum(0), DecNum(1).ln
     assert !DecNum.context.flags[DecNum::Inexact]
 
-    assert_raise(DecNum::Inexact){ DecNum(2).sqrt }
-    assert_raise(DecNum::Inexact){ DecNum(1)/DecNum(3) }
-    assert_raise(DecNum::Inexact){ DecNum(18).power(DecNum('0.5')) }
-    assert_raise(DecNum::Inexact){ DecNum(18).power(DecNum('1.5')) }
-    assert_raise(DecNum::Inexact){ DecNum(18).log10 }
-    assert_raise(DecNum::Inexact){ DecNum(1).exp }
-    assert_raise(DecNum::Inexact){ DecNum('1.2').exp }
-    assert_raise(DecNum::Inexact){ DecNum('1.2').ln }
+    assert_raises(DecNum::Inexact){ DecNum(2).sqrt }
+    assert_raises(DecNum::Inexact){ DecNum(1)/DecNum(3) }
+    assert_raises(DecNum::Inexact){ DecNum(18).power(DecNum('0.5')) }
+    assert_raises(DecNum::Inexact){ DecNum(18).power(DecNum('1.5')) }
+    assert_raises(DecNum::Inexact){ DecNum(18).log10 }
+    assert_raises(DecNum::Inexact){ DecNum(1).exp }
+    assert_raises(DecNum::Inexact){ DecNum('1.2').exp }
+    assert_raises(DecNum::Inexact){ DecNum('1.2').ln }
 
   end
 

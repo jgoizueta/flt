@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestHexFormat< Test::Unit::TestCase
+class TestHexFormat< Minitest::Test
 
   def setup
     @hex_test_data = [0.1, 1.0/3, 0.1e10, 1e10/3.0, 0.1e-10, 1e-10/3.0, 123456.789,

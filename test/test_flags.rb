@@ -1,7 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 
-class TestFlags < Test::Unit::TestCase
+class TestFlags < Minitest::Test
 
   def test_flags
     f = Flt::Support::Flags(:flag_one, :flag_three)

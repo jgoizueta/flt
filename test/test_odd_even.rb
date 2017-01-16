@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestOddEven < Test::Unit::TestCase
+class TestOddEven < Minitest::Test
 
 
   def setup

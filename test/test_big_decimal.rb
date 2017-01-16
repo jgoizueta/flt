@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestBigDecimal < Test::Unit::TestCase
+class TestBigDecimal < Minitest::Test
 
   def setup
     initialize_context

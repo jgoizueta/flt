@@ -1,7 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 require File.dirname(__FILE__) + '/../lib/flt/math'
 
-class TestTrig < Test::Unit::TestCase
+class TestTrig < Minitest::Test
 
 
   def setup

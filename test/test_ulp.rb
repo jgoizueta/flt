@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestUlp < Test::Unit::TestCase
+class TestUlp < Minitest::Test
 
 
   def setup
@@ -67,7 +67,7 @@ class TestUlp < Test::Unit::TestCase
     DecNum.context.exact = true
     assert DecNum(1).ulp.nan?, "No ulps can be computed in exact contexts"
     DecNum.context.traps[DecNum::InvalidOperation] = true
-    assert_raise(DecNum::InvalidOperation) { DecNum(1).ulp }
+    assert_raises(DecNum::InvalidOperation) { DecNum(1).ulp }
 
   end
 
@@ -119,7 +119,7 @@ class TestUlp < Test::Unit::TestCase
     BinNum.context.exact = true
     assert BinNum(1).ulp.nan?, "No ulps can be computed in exact contexts"
     BinNum.context.traps[BinNum::InvalidOperation] = true
-    assert_raise(BinNum::InvalidOperation) { BinNum(1).ulp }
+    assert_raises(BinNum::InvalidOperation) { BinNum(1).ulp }
 
   end
 

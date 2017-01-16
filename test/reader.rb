@@ -4,7 +4,7 @@
 
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestReader < Test::Unit::TestCase
+class TestReader < Minitest::Test
 
 
   def setup

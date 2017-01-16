@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestComparisons < Test::Unit::TestCase
+class TestComparisons < Minitest::Test
 
 
   def setup
@@ -11,9 +11,9 @@ class TestComparisons < Test::Unit::TestCase
     assert_equal DecNum('1.1').hash, DecNum('1.1').hash
     assert_equal DecNum('1.1').hash, (DecNum('1.0')+DecNum('0.1')).hash
     assert_equal DecNum('1.1',:precision=>10).hash, DecNum('1.1',:precision=>3).hash
-    assert_not_equal DecNum('1.0').hash, DecNum('1.1').hash
-    assert_not_equal DecNum('1.0').hash, 1.0.hash
-    assert_not_equal DecNum('1.0').hash, 1.hash
+    refute_equal DecNum('1.0').hash, DecNum('1.1').hash
+    refute_equal DecNum('1.0').hash, 1.0.hash
+    refute_equal DecNum('1.0').hash, 1.hash
 
     assert DecNum('1.1').eql?(DecNum('1.1'))
     assert DecNum('1.1').eql?(DecNum('1.0')+DecNum('0.1'))

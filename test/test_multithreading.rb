@@ -2,7 +2,7 @@ require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 
 
-class TestMultithreading < Test::Unit::TestCase
+class TestMultithreading < Minitest::Test
 
   def setup
     initialize_context

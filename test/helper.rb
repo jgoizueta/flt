@@ -1,9 +1,15 @@
-require 'test/unit'
+require 'minitest/autorun'
 $: << "." unless $:.include?(".") # for Ruby 1.9.2
 require File.expand_path(File.join(File.dirname(__FILE__),'/../lib/flt'))
 require 'enumerator'
 require 'yaml'
 include Flt
+
+module Minitest::Assertions
+  def assert_nothing_raised(*)
+    yield
+  end
+end
 
 def initialize_context
   DecNum.context = DecNum::ExtendedContext

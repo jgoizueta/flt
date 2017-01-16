@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestToInt < Test::Unit::TestCase
+class TestToInt < Minitest::Test
 
 
   def setup
@@ -16,7 +16,7 @@ class TestToInt < Test::Unit::TestCase
     assert_same(-123, DecNum('-0.0123000E4').to_i)
     assert(-1234567890.eql?(DecNum('-123456789E1').to_i))
     assert(-1234567890.eql?(DecNum('-123456789000E-2').to_i))
-    assert_raise(DecNum::Error) { DecNum.infinity.to_i }
+    assert_raises(DecNum::Error) { DecNum.infinity.to_i }
     assert_nil DecNum.nan.to_i
     assert_same(1, DecNum('1.9').to_i)
     assert_same(-1, DecNum('-1.9').to_i)
@@ -74,10 +74,10 @@ class TestToInt < Test::Unit::TestCase
     assert_equal DecNum('-1234567890'), DecNum('-123456789000E-2').to_integral_exact
     assert DecNum.context.flags[DecNum::Rounded]
     DecNum.context.flags[DecNum::Rounded] = false
-    assert_raise(DecNum::Inexact) { DecNum('1.9').to_integral_exact }
+    assert_raises(DecNum::Inexact) { DecNum('1.9').to_integral_exact }
     assert DecNum.context.flags[DecNum::Rounded]
     DecNum.context.flags[DecNum::Rounded] = false
-    assert_raise(DecNum::Inexact) { DecNum('-1.9').to_integral_exact }
+    assert_raises(DecNum::Inexact) { DecNum('-1.9').to_integral_exact }
     assert DecNum.nan.to_integral_exact.nan?
     assert_equal DecNum.infinity, DecNum.infinity.to_integral_exact
     assert DecNum.context.flags[DecNum::Rounded]

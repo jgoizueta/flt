@@ -1,7 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 require File.dirname(__FILE__) + '/../lib/flt/sugar'
 
-class TestSugar < Test::Unit::TestCase
+class TestSugar < Minitest::Test
 
   def test_pseudo_literals
     assert_equal Flt::DecNum, 10._3223.class
@@ -14,11 +14,11 @@ class TestSugar < Test::Unit::TestCase
                  123456789123._01234567890123456789012345678901234567890123456789
     assert_equal Flt::DecNum('-123456789123.01234567890123456789012345678901234567890123456789'),
                  -123456789123._01234567890123456789012345678901234567890123456789
-    assert_raise(NoMethodError,NameError){3._x}
-    assert_raise(NoMethodError,NameError){3._3233x}
-    assert_raise(NoMethodError,NameError){3._3233x34333}
-    assert_raise(NoMethodError,NameError){3.__}
-    assert_raise(NoMethodError,NameError){3._}
+    assert_raises(NoMethodError,NameError){3._x}
+    assert_raises(NoMethodError,NameError){3._3233x}
+    assert_raises(NoMethodError,NameError){3._3233x34333}
+    assert_raises(NoMethodError,NameError){3.__}
+    assert_raises(NoMethodError,NameError){3._}
     assert_equal Flt::DecNum, 10._32_23.class
     assert_equal Flt::DecNum('10.3223'), 10._32_23
     assert_equal Flt::DecNum('3.01234567890123456789012345678901234567890123456789'),

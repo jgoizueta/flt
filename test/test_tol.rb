@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestTolerance < Test::Unit::TestCase
+class TestTolerance < Minitest::Test
 
 
   def setup

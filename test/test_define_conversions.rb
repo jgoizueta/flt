@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestDefineConversions < Test::Unit::TestCase
+class TestDefineConversions < Minitest::Test
 
 
   def setup
@@ -55,20 +55,20 @@ class TestDefineConversions < Test::Unit::TestCase
       end
     end
 
-    assert_raise(TypeError, RuntimeError) { DecNum('0') == BigDecimal.new('0') }
+    assert_raises(TypeError, RuntimeError) { DecNum('0') == BigDecimal.new('0') }
     unless Num < Numeric
       # BigDecimal#eql? is weird
-      assert_not_equal BigDecimal.new('0'), DecNum('0')
-      assert_not_equal BigDecimal.new('1.2345'), DecNum('1.2345')
-      assert_not_equal BigDecimal.new('-1.2345'), DecNum('-1.2345')
-      assert_not_equal BigDecimal.new('1.2345'), DecNum('0.0012345000E3')
-      assert_raise(TypeError) { BigDecimal.new('7')+DecNum('0.1') }
+      refute_equal BigDecimal.new('0'), DecNum('0')
+      refute_equal BigDecimal.new('1.2345'), DecNum('1.2345')
+      refute_equal BigDecimal.new('-1.2345'), DecNum('-1.2345')
+      refute_equal BigDecimal.new('1.2345'), DecNum('0.0012345000E3')
+      assert_raises(TypeError) { BigDecimal.new('7')+DecNum('0.1') }
     end
-    assert_raise(TypeError, RuntimeError) { DecNum('7')+BigDecimal.new('0.1') }
-    assert_raise(TypeError, RuntimeError) { DecNum(BigDecimal.new('1.1')) }
+    assert_raises(TypeError, RuntimeError) { DecNum('7')+BigDecimal.new('0.1') }
+    assert_raises(TypeError, RuntimeError) { DecNum(BigDecimal.new('1.1')) }
 
     ['0.1', '-0.1', '0.0', '1234567.1234567', '-1234567.1234567', '1.234E7', '1.234E-7'].each do |n|
-      assert_raise(TypeError, RuntimeError) { DecNum(n).convert_to(BigDecimal) }
+      assert_raises(TypeError, RuntimeError) { DecNum(n).convert_to(BigDecimal) }
     end
 
   end

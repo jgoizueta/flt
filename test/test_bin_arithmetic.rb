@@ -2,7 +2,7 @@ require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 # These tests assume that Float arithmetic is correctly rounded
 # Random tests using Float as a reference
-class TestBinArithmetic < Test::Unit::TestCase
+class TestBinArithmetic < Minitest::Test
 
   def setup
     initialize_context

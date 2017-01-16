@@ -108,7 +108,7 @@ def unquote(txt)
   txt
 end
 
-class TestBasic < Test::Unit::TestCase
+class TestBasic < Minitest::Test
 
   def test_dec
     missing = []

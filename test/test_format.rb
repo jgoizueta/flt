@@ -1,6 +1,6 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
-class TestFormat < Test::Unit::TestCase
+class TestFormat < Minitest::Test
 
   def setup
     initialize_context

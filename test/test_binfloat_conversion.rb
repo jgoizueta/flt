@@ -1,7 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 
-class TestBinfloatConversion < Test::Unit::TestCase
+class TestBinfloatConversion < Minitest::Test
 
   def setup
     initialize_context
