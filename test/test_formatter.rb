@@ -1,9 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 
-class TestExact < Minitest::Test
-
-
+class TestFormatter < Minitest::Test
   def setup
     initialize_context
   end
@@ -58,7 +56,7 @@ class TestExact < Minitest::Test
     refute formatter.round_up
   end
 
-def test_binary_to_repeating_decimal_formatter
+  def test_binary_to_repeating_decimal_formatter
     Flt::BinNum.context = Flt::BinNum::IEEEDoubleContext
     formatter = Flt::Support::Formatter.new(BinNum.radix, BinNum.context.etiny, 10, :raise_on_repeat => false)
 

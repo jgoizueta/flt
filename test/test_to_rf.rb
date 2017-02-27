@@ -88,7 +88,7 @@ class TestToRF < Minitest::Test
       assert_equal expected, x.to_s.to_f
 
       relative_error_limit = Float::EPSILON
-      rel_err = (x.to_f - expected).abs/expected.abs
+      # rel_err = (x.to_f - expected).abs/expected.abs
       assert  expected.abs*relative_error_limit > (x.to_f - expected).abs, "#{x.to_f} != #{expected} (#{x})"
     end
   end

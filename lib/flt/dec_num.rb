@@ -1,6 +1,3 @@
-require 'flt/num'
-require 'flt/bigdecimal'
-
 module Flt
 
 # DecNum arbitrary precision floating point number.

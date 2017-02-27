@@ -32,7 +32,7 @@ class TestHexFormat< Minitest::Test
       BinNum.context(BinNum::FloatContext) do
         @hex_test_data.each do |number|
           hex_upcase = "%A" % number
-          hex_downcase = "%a" % number
+          # hex_downcase = "%a" % number
           number = BinNum(number)
           # text = number.to_s(:base => :hex_bin, :all_digits => false,  :output_rounding => BinNum.context.rounding)
           text_up = BinNum.context(:capitals => true){

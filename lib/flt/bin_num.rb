@@ -1,6 +1,3 @@
-require 'flt/num'
-require 'flt/float'
-
 module Flt
 
 class BinNum < Num

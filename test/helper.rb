@@ -102,7 +102,7 @@ end
 
 def float_data
   data_file = File.join(File.dirname(__FILE__) ,'data/float_data.yml')
-  if File.exists?(data_file)
+  if File.exist?(data_file)
     YAML.load(File.read(data_file)).map{|x| [x].pack('H*').unpack('E')[0]}
   else
     srand 349842

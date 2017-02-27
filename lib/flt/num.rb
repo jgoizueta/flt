@@ -18,7 +18,6 @@ require 'flt/support/reader'
 require 'flt/support/formatter'
 require 'flt/support/rationalizer'
 
-require 'bigdecimal'
 require 'forwardable'
 require 'rational'
 require 'monitor'
@@ -216,7 +215,7 @@ class Num < Numeric
   class InvalidOperation < Exception
     def self.handle(context, *args)
       if args.size>0
-        sign, coeff, exp = args.first.split
+        sign, coeff, _exp = args.first.split
         context.num_class.new([sign, coeff, :nan])._fix_nan(context)
       else
         context.num_class.nan
@@ -2418,7 +2417,7 @@ class Num < Numeric
       exp = self.exponent
       dgs = self.digits
       nd = dgs.size # self.number_of_digits
-        while dgs[nd-1]==0
+      while dgs[nd-1]==0
         exp += 1
         nd -= 1
       end
@@ -3900,7 +3899,6 @@ class Num < Numeric
     end
 
     context = define_context(num_context)
-    inexact = true
     rounding ||= context.rounding
     output_rounding ||= rounding
 

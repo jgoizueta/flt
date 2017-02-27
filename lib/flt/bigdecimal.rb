@@ -1,8 +1,5 @@
 # Support classes for homogeneous treatment of BigDecimal and Num values by defining BigDecimal.context
 
-require 'flt/num'
-require 'flt/dec_num'
-
 require 'bigdecimal'
 require 'bigdecimal/math'
 require 'singleton'
@@ -109,13 +106,13 @@ class Flt::BigDecimalContext
   end
 
   def split(x)
-    sgn, d, b, e = x.split
+    sgn, d, _b, e = x.split
     [sgn<0 ? -1 : +1, d.to_i, e-d.size]
   end
 
   # Return the value of the number as an signed integer and a scale.
   def to_int_scale(x)
-    sgn, d, b, e = x.split
+    sgn, d, _b, e = x.split
     c = d.to_i
     [sgn<0 ? -1 : c, -c, e-d.size]
   end

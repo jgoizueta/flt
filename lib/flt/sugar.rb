@@ -26,8 +26,7 @@
 #    puts sin(BigDecimal('0.1'), 20)
 #
 
-require 'flt/float'
-require 'flt/bigdecimal'
+require 'flt'
 require 'flt/d'
 require 'flt/b'
 

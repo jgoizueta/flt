@@ -74,7 +74,7 @@ module Flt
           # for free mode, (any) :nearest rounding is used by default
           Num.convert(Num[eb].Num(sign, f, e), context.num_class, :rounding=>round_mode||:nearest, :all_digits=>all_digits)
         when :fixed
-          if exact_mode = context.exact?
+          if context.exact?
             a,b = [eb, context.radix].sort
             m = (Math.log(b)/Math.log(a)).round
             if b == a**m

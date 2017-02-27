@@ -85,10 +85,6 @@
 #   tol = Tolerance(1, :percent)
 #   puts tol.equal_to?(3.14159, Math::PI)                 # -> true#
 
-require 'flt/num'
-require 'flt/float'
-require 'flt/bigdecimal'
-
 module Flt
 
   # The Tolerance class is a base class for all tolerances.
@@ -398,17 +394,16 @@ module Flt
       when BigDecimal
         if @radix == :native || @radix == 10
           exp = xs.map do |x|
-            sign,digits,base,exp = x.split
+            _sign,digits,_base,exp = x.split
             exp -= 1
             exp -= 1 if digits=="1" # if :low mode
             exp -= FloatingTolerance.ref_adjusted_exp
             exp
           end.send(mode)
-          sign, digits, base, vexp = v.split
+          _sign, digits, _base, vexp = v.split
           BigDecimal.new("0.#{digits}E#{vexp+exp}")
         else
           # assert num_class==BigDecimal && @radix==2
-          prec = 10
           exp = xs.map do |x|
             exp = (Flt::DecNum(x.to_s).ln/Flt::DecNum(2).ln).ceil - 1 # ... if :high mode
             exp -= FloatingTolerance.ref_adjusted_exp

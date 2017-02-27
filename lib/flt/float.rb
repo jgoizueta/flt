@@ -2,9 +2,7 @@
 #
 # The set of constants with Float metadata is also augmented.
 
-require 'flt/num'
 require 'singleton'
-
 
 # Float constants.
 #

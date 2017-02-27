@@ -1,5 +1,3 @@
-require 'flt/dec_num'
-
 module Flt
 
   # Trigonometry functions. The angular units used by these functions can be specified

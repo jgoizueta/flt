@@ -1,5 +1,4 @@
-require 'flt/dec_num'
-require 'flt/bin_num'
+require 'flt'
 require 'flt/trigonometry'
 
 module Flt

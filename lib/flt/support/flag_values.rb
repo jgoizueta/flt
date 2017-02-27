@@ -231,7 +231,7 @@ module Flt
       end
 
       # Sets (makes true) one or more flags (passes as an array)
-      def << (flags)
+      def <<(flags)
         if flags.kind_of?(Array)
           set(*flags)
         else
