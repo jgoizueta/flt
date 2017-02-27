@@ -2,7 +2,9 @@ require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 
 class TestBaseDigits < Minitest::Test
-
+  def setup
+    initialize_context
+  end
 
   def test_number_of_digits_in_other_base
 

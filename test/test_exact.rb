@@ -2,12 +2,13 @@ require File.expand_path(File.join(File.dirname(__FILE__),'helper.rb'))
 
 
 class TestExact < Minitest::Test
-
-
   def setup
     initialize_context
   end
 
+  def teardown
+    initialize_context
+  end
 
   def test_exact_no_traps
 

@@ -5,9 +5,14 @@ class TestNumConstructor < Minitest::Test
 
   def setup
     initialize_context
+    @old_prec = DecNum.context.precision
     DecNum.context.precision = 28
     @dprec5 = DecNum::Context(:precision=>5)
     @bprec5 = BinNum::Context(:precision=>5)
+  end
+
+  def teardown
+    DecNum.context.precision = @old_prec
   end
 
   def test_direct
