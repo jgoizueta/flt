@@ -2703,10 +2703,24 @@ class Num < Numeric
       else
         0.0/0.0
       end
+    elsif zero?
+      @sign*0.0
     else
-      # to_rational.to_f
-      # to_s.to_f
-      (@sign*@coeff*(num_class.radix.to_f**@exp)).to_f
+      f = nil
+      f ||= to_s.to_f if num_class.radix == 10 # very precise, but slow
+      unless f
+        c = @coeff.to_f
+        if c.finite?
+          # This is fast to compute but may introduce roundoff error, and overflow or yield NaN
+          f = if @exp >= 0
+                @sign*c*(num_class.radix.to_f**@exp)
+              else
+                @sign*c/(num_class.radix.to_f**(-@exp))
+              end
+        end
+        f = nil unless f && f.finite?
+      end
+      f ||= to_r.to_f # not so slow, also may introduce roundoff error due to arithmetic
     end
   end
 

@@ -206,7 +206,7 @@ class BinNum < Num
   # Specific to_f conversion TODO: check if it represents an optimization
   if Float::RADIX==2
     def to_f
-      if special?
+      if special? || zero?
         super
       else
         ::Math.ldexp(@sign*@coeff, @exp)
