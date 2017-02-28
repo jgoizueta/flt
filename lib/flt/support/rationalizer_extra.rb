@@ -47,8 +47,8 @@ module Flt
       # is the most efficient method as implemented in RPL.
       # Tony Hutchins has come up with PDR6, an improvement over PDQ2;
       # though benchmarking does not show any speed improvement under Ruby.
-      def rationalize_Horn_Hutchins(x)
-        rationalization(x) do |x, dx|
+      def rationalize_Horn_Hutchins(value)
+        rationalization(value) do |x, dx|
           a,b = num_den(dx)
           n,d = num_den(x)
           pc,ce = n,-d
@@ -76,8 +76,8 @@ module Flt
       # less accurate. We can achieve perfect accuracy as the other methods by doing the
       # substraction and addition with rationals, but then this method becomes less efficient than
       # the others for a low number of iterations (low precision required).
-      def rationalize_Knuth_Goizueta(x)
-        rationalization(x) do |x, dx|
+      def rationalize_Knuth_Goizueta(value)
+        rationalization(value) do |x, dx|
           x = to_r(x)
           dx = to_r(dx)
           xp,xq = num_den(x-dx)
@@ -110,8 +110,8 @@ module Flt
 
       # La siguiente variante realiza una iteración menos si xq<xp y una iteración más
       # si xq>xp.
-      def rationalize_Knuth_Goizueta_b(x)
-        rationalization(x) do |x, dx|
+      def rationalize_Knuth_Goizueta_b(value)
+        rationalization(value) do |x, dx|
           x = to_r(x)
           dx = to_r(dx)
           xq,xp = num_den(x-dx)

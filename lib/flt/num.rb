@@ -471,10 +471,10 @@ class Num < Numeric
       # TODO: consider renaming this to eval
       num_class.context(self) do
         if parameters.empty?
-          num_class.context.instance_eval &blk
+          num_class.context.instance_eval(&blk)
         else
           # needs instance_exe (available in Ruby 1.9, ActiveRecord; TODO: include implementation here)
-          num_class.context.instance_exec *parameters, &blk
+          num_class.context.instance_exec(*parameters, &blk)
         end
       end
     end
@@ -3216,7 +3216,7 @@ class Num < Numeric
 
   # Representation as text of a number: this is an alias of Num#format
   def to_s(*args)
-    format *args
+    format(*args)
   end
 
   # Raises to the power of x, to modulo if given.
@@ -3949,7 +3949,7 @@ class Num < Numeric
       formatter.format(self, @coeff, @exp, rounding, p, all_digits)
       dec_pos,digits = formatter.adjusted_digits(output_rounding)
 
-      ds = digits.map{|d| d.to_s(output_radix)}.join
+      ds = digits.map{|digit| digit.to_s(output_radix)}.join
       n_ds = ds.size
       exp = dec_pos - n_ds
       leftdigits = dec_pos

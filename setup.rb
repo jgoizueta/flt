@@ -104,7 +104,7 @@ class ConfigTable
   def remove(name)
     item = lookup(name)
     @items.delete_if {|i| i.name == name }
-    @table.delete_if {|name, i| i.name == name }
+    @table.delete_if {|iname, i| i.name == name }
     item
   end
 
@@ -280,7 +280,6 @@ class ConfigTable
     'archdir'          => 'librubyverarch',
     'site-ruby-common' => 'siteruby',     # For backward compatibility
     'site-ruby'        => 'siterubyver',  # For backward compatibility
-    'bin-dir'          => 'bindir',
     'bin-dir'          => 'bindir',
     'rb-dir'           => 'rbdir',
     'so-dir'           => 'sodir',

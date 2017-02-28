@@ -93,9 +93,9 @@ module Flt
         define_method mth do |*args|
           is_complex = args.detect{|z| z.kind_of?(Complex)}
           if is_complex || (negative_arg_to_complex && args.first<0)
-            num_class.context(:extra_precision=>extra_prec) do |mth|
-              #Complex.rectangular *blk[mth, *args].map{|v| @context.plus(v)}
-              Complex.rectangular *instance_exec(mth,*args,&blk).map{|v| @context.plus(v)}
+            num_class.context(:extra_precision => extra_prec) do |extra_context|
+              #Complex.rectangular(*blk[extra_context, *args].map{|v| @context.plus(v)})
+              Complex.rectangular(*instance_exec(extra_context, *args, &blk).map{|v| @context.plus(v)})
             end
           else
             @context.send(mth, *args) # Num(@context.send(mth, *args)) ?
@@ -238,7 +238,7 @@ module Flt
       z_is_complex = z.kind_of?(Complex)
       if z_is_complex || z.abs>1
         # z = Complex(1) unless z_is_complex
-        i = Complex(0,@context.num_class[1])
+        # i = Complex(0, @context.num_class[1])
         fix num_class.context(:extra_precision=>3).cmath{ num_class.one_half*ln((1+z)/(1-z)) }
       else
         @context.atanh(z)
@@ -256,6 +256,7 @@ module Flt
     end
 
     def fix_polar(r, theta)
+      re = im = nil
       num_class.context(:extra_precision=>3) do |mth|
         re = r*mth.cos(theta)
         im = r*mth.sin(theta)
@@ -264,7 +265,7 @@ module Flt
     end
 
     def fix(z)
-      fix_rect *z.rectangular
+      fix_rect(*z.rectangular)
     end
 
   end # ComplexContext
@@ -280,9 +281,9 @@ module Flt
         # if ComplexContext is derived from ContextBase: return ComplexContext(self).math(*parameters, &blk)
         num_class.context(self) do
           if parameters.empty?
-            Flt.ComplexContext(num_class.context).instance_eval &blk
+            Flt.ComplexContext(num_class.context).instance_eval(&blk)
           else
-            Flt.xiComplexContext(num_class.context).instance_exec *parameters, &blk
+            Flt.xiComplexContext(num_class.context).instance_exec(*parameters, &blk)
           end
         end
       end
@@ -298,14 +299,14 @@ module Flt
   module DecNum::CMath
     include MathBase
     num_class(DecNum){num_class.ccontext}
-    math_function *Trigonometry.public_instance_methods
+    math_function(*Trigonometry.public_instance_methods)
     math_function :exp, :log, :log2, :log10, :sqrt
   end
 
   module BinNum::CMath
     include MathBase
     num_class(BinNum){num_class.ccontext}
-    math_function *Trigonometry.public_instance_methods
+    math_function(*Trigonometry.public_instance_methods)
     math_function :exp, :log, :log2, :log10, :sqrt
   end
 

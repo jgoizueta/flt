@@ -51,7 +51,7 @@ module Flt
   module DecNum::Math
     include MathBase
     num_class DecNum
-    math_function *Trigonometry.public_instance_methods
+    math_function(*Trigonometry.public_instance_methods)
     math_function :exp, :log, :log2, :log10, :sqrt
   end
 
@@ -59,7 +59,7 @@ module Flt
   module BinNum::Math
     include MathBase
     num_class BinNum
-    math_function *Trigonometry.public_instance_methods
+    math_function(*Trigonometry.public_instance_methods)
     math_function :exp, :log, :log2, :log10, :sqrt
   end
 

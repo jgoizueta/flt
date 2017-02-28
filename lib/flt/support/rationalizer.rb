@@ -115,7 +115,7 @@ module Flt
       end
 
       def self.[](*args)
-        new *args
+        new(*args)
       end
 
       # Rationalization method that finds the fraction with
@@ -129,8 +129,8 @@ module Flt
 
       # This algorithm is derived from exercise 39 of 4.5.3 in
       # "The Art of Computer Programming", by Donald E. Knuth.
-      def rationalize_Knuth(x)
-        rationalization(x) do |x, dx|
+      def rationalize_Knuth(value)
+        rationalization(value) do |x, dx|
           x     = to_r(x)
           dx    = to_r(dx)
           xp,xq = num_den(x-dx)

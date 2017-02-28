@@ -394,17 +394,17 @@ class TestBasic < Minitest::Test
       context = num_class.context
       assert context.nan.nan?
       assert context.zero.zero?
-      assert_equal +1, context.sign(context.zero)
+      assert_equal(+1, context.sign(context.zero))
       assert context.zero(+1).zero?
-      assert_equal +1, context.sign(context.zero(+1))
+      assert_equal(+1, context.sign(context.zero(+1)))
       assert context.zero(-1).zero?
-      assert_equal -1, context.sign(context.zero(-1))
+      assert_equal(-1, context.sign(context.zero(-1)))
       assert context.infinity.infinite?
-      assert_equal +1, context.sign(context.infinity)
+      assert_equal(+1, context.sign(context.infinity))
       assert context.infinity(+1).infinite?
-      assert_equal +1, context.sign(context.infinity(+1))
+      assert_equal(+1, context.sign(context.infinity(+1)))
       assert context.infinity(-1).infinite?
-      assert_equal -1, context.sign(context.infinity(-1))
+      assert_equal(-1, context.sign(context.infinity(-1)))
       assert_equal context.Num(1)/2, context.one_half
     end
   end

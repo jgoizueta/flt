@@ -489,10 +489,10 @@ class Flt::FloatContext
 
   def math(*parameters, &blk)
     if parameters.empty?
-      self.instance_eval &blk
+      self.instance_eval(&blk)
     else
       # needs instance_exe (available in Ruby 1.9, ActiveRecord; TODO: include implementation here)
-      self.instance_exec *parameters, &blk
+      self.instance_exec(*parameters, &blk)
     end
   end
 
