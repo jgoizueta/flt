@@ -52,9 +52,9 @@ def random_num(num_class)
     # generate 5% of subnormals
     f = rand(context.radix**(context.precision-1))
     e = context.etiny
-  elsif rand(20)==0
+  elsif rand(20) == 0
     # and some singular values too
-    if rand(1) == 0
+    if rand(2) == 0
       f = context.radix**context.precision - 1
       f -= rand(3)
     else
@@ -66,7 +66,7 @@ def random_num(num_class)
     f = rand(context.radix**context.precision)
     e = random_integer(context.etiny, context.etop)
   end
-  f = -f if rand(1)==0
+  f = -f if rand(2) == 0
   context.Num(f, e)
 end
 

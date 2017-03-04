@@ -23,12 +23,12 @@ end
 # random angles in radians for sin,cos,tan
 def angle_data(num_class)
   xs = []
-  pi = num_class::Math.send(:half_cycle)
+  pi = num_class.math { half_cycle }
   (-8..8).each do |k|
     x = k*pi/4
     xs += near(x)
   end
-  pi2 = num_class::Math.send(:quarter_cycle)
+  pi2 = num_class.math { quarter_cycle }
   50.times{ xs << random_num_one(num_class)*pi2}
   base = xs.dup
   (2...10).each do |k|
@@ -55,7 +55,7 @@ def random_num_one(num_class=DecNum)
     e = context.etiny
   elsif rand(20)==0
     # and some singular values too
-    if rand(1) == 0
+    if rand(2) == 0
       f = context.radix**context.precision - 1
       f -= rand(3)
     else
@@ -63,7 +63,7 @@ def random_num_one(num_class=DecNum)
       f += rand(3)
     end
     # e = random_integer(context.etiny, context.etop)
-    if rand(1)==0
+    if rand(2) == 0
       e = random_integer(-context.precision-1,-context.precision)
      else
       e = random_integer(-context.precision-10,-context.precision)
@@ -71,13 +71,13 @@ def random_num_one(num_class=DecNum)
   else
     f = rand(context.radix**context.precision)
     # e = random_integer(context.etiny, context.etop)
-    if rand(1)==0
+    if rand(2) == 0
       e = random_integer(-context.precision-1,-context.precision)
      else
       e = random_integer(-context.precision-10,-context.precision)
     end
   end
-  # f = -f if rand(1)==0
+  # f = -f if rand(2) == 0
   context.Num(f, e)
 end
 
