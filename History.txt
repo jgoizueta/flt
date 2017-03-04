@@ -1,3 +1,11 @@
+== 1.5.1 2017-02-28
+
+* Bugfix & optimizations
+  - Num#to_f, BinNum#to_f are more accurate now
+  - Optimized Num#digits using Ruby 2.4 Integer#digits
+  - Optimized number_of_digits using Ruby 2.1 Integer#bit_length
+  - round interface is compatible with Ruby 2.4 options
+
 == 1.5.0 2015-04-06
 
 * New feature
