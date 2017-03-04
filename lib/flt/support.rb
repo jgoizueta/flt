@@ -74,6 +74,8 @@ module Flt
       # Number of bits in binary representation of the positive integer n, or 0 if n == 0.
       def _nbits(x)
         raise  TypeError, "The argument to _nbits should be nonnegative." if x < 0
+        # Ruby 2.1 introduced Integer#bit_length
+        return x.bit_length if x.respond_to? :bit_length
         if x <= MAXIMUM_SMALLISH_INTEGER
           return 0 if x==0
           x.to_s(2).length
