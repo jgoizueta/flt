@@ -2897,8 +2897,14 @@ class Num < Numeric
   end
 
   # Digits of the significand as an array of integers
-  def digits
-    @coeff.to_s(num_class.radix).split('').map{|d| d.to_i} # TODO: optimize in derivided classes
+  if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new('2.4.0')
+    def digits
+      @coeff.is_a?(Integer) ? @coeff.digits(num_class.radix).reverse! : []
+    end
+  else
+    def digits
+      @coeff.to_s(num_class.radix).split('').map{|d| d.to_i}
+    end
   end
 
   # Significand as an integer, unsigned. Synonym of coefficient
