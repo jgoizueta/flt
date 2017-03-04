@@ -3137,21 +3137,36 @@ class Num < Numeric
   #   :power    1E3 1E2  10   1   0.1 1E-2 1E-3 1E-4
   #   :index      0   1   2   3     4    5    6    7
   #   :rindex     7   6   5   4     3    2    1    0
-  def round(opt={})
-    opt = { :places=>opt } if opt.kind_of?(Integer)
+  def round(*args)
+    # Admit first integer argument
+    places = args.shift if args.first.is_a?(Integer)
+    opt = args.shift || {}
+    raise "Invalid arguments for round"  unless args.empty?
+
+    # Support Ruby 2.4-style parameters:
+    half_rounding = opt.delete(:half)
+    case half_rounding
+    when :even
+      opt[:rounding] = :half_even
+    when :up
+      opt[:rounding] = :half_up
+    when :down
+      opt[:rounding] = :half_down
+    end
+
     r = opt[:rounding] || :half_up
     as_int = false
-    if v=(opt[:precision] || opt[:significant_digits])
+    if v = opt[:precision] || opt[:significant_digits]
       prec = v
-    elsif v=(opt[:places])
+    elsif v = opt[:places] || places
       prec = adjusted_exponent + 1 + v
-    elsif v=(opt[:exponent])
+    elsif v = opt[:exponent]
       prec = adjusted_exponent + 1 - v
-    elsif v=(opt[:power])
+    elsif v = opt[:power]
       prec = adjusted_exponent + 1 - num_class.Num(v).adjusted_exponent
-    elsif v=(opt[:index])
+    elsif v = opt[:index]
       prec = i+1
-    elsif v=(opt[:rindex])
+    elsif v = opt[:rindex]
       prec = number_of_digits - v
     else
       prec = adjusted_exponent + 1

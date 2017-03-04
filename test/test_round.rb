@@ -50,6 +50,41 @@ class TestRound < Minitest::Test
 
   end
 
+  def test_ruby_2_4_round
+    assert_equal 100, DecNum('100.5').round(:half => :even)
+    assert_equal 101, DecNum('100.5000001').round(:half => :even)
+    assert_equal 102, DecNum('101.5').round(:half => :even)
+    assert_equal 101, DecNum('101.4999999999').round(:half => :even)
+
+    assert_equal 100, DecNum('100.5').round(:half => :down)
+    assert_equal 101, DecNum('100.5000001').round(:half => :down)
+    assert_equal 101, DecNum('101.5').round(:half => :down)
+    assert_equal 101, DecNum('101.4999999999').round(:half => :down)
+
+    assert_equal 101, DecNum('100.5').round(:half => :up)
+    assert_equal 101, DecNum('100.5000001').round(:half => :up)
+    assert_equal 102, DecNum('101.5').round(:half => :up)
+    assert_equal 101, DecNum('101.4999999999').round(:half => :up)
+
+    assert_equal 101, DecNum('100.5').round(0)
+    assert_equal DecNum('100.5'), DecNum('100.5').round(1)
+    assert_equal 100, DecNum('100.5').round(-1)
+    assert_equal DecNum('100.1235'), DecNum('100.1235'), DecNum('100.12345').round(4)
+
+    assert_equal 100, DecNum('100.5').round(0, :half => :even)
+    assert_equal 101, DecNum('100.5').round(0, :half => :up)
+    assert_equal 100, DecNum('100.5').round(0, :half => :down)
+    assert_equal DecNum('100.5'), DecNum('100.5').round(1, half: :even)
+    assert_equal DecNum('100.5'), DecNum('100.5').round(1, half: :up)
+    assert_equal DecNum('100.5'), DecNum('100.5').round(1, half: :down)
+    assert_equal 100, DecNum('100.5').round(-1, half: :even)
+    assert_equal 100, DecNum('100.5').round(-1, half: :down)
+    assert_equal 100, DecNum('100.5').round(-1, half: :up)
+    assert_equal DecNum('100.1234'), DecNum('100.12345').round(4, half: :even)
+    assert_equal DecNum('100.1235'), DecNum('100.12345').round(4, half: :up)
+    assert_equal DecNum('100.1234'), DecNum('100.12345').round(4, half: :down)
+  end
+
   def detect_rounding(type)
     x = type.new(1)*type.int_radix_power(type.context.precision+1)
     y = x + type.int_radix_power(2)
