@@ -1182,19 +1182,20 @@ class DecNum < Num
       return _div_nearest(_iexp(rem, 10**p), 1000), quot - p + 3
     end
 
-    # number of bits in a nonnegative integer
+    # number of decimal digits in a nonnegative integer
     def _number_of_digits(i)
       raise  TypeError, "The argument to _number_of_digits should be nonnegative." if i < 0
-      if i <= MAXIMUM_SMALLISH_INTEGER || (i > NUMBER_OF_DIGITS_MAX_VALID_LOG)
-        # for short integers this is faster
-        # note that here we return 1 for 0
-        i.to_s.length
+      return 1 if i.zero?
+      nb = _nbits(i)
+      nd1 = ((nb-1)*LOG10_2).floor + 1
+      nd2 = (nb*LOG10_2).floor + 1
+      if nd1 == nd2
+        nd1
       else
-        (::Math.log10(i)+1).floor
+        i >= 10**nd1 ? nd2 : nd1
       end
     end
-    NUMBER_OF_DIGITS_MAX_VALID_LOG = 10**(Float::DIG-1)
-    MAXIMUM_SMALLISH_INTEGER = (2 << 63) - 1
+    LOG10_2 = Math.log10(2)
 
   end # AuxiliarFunctions
 
