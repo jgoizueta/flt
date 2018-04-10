@@ -202,11 +202,16 @@ class BinNum < Num
 
   # Specific to_f conversion TODO: check if it represents an optimization
   if Float::RADIX==2
+    MAX_LDEXP_COEFF = 2**Float::MAX_EXP - 2**(Float::MAX_EXP - Float::MANT_DIG)
     def to_f
       if special? || zero?
         super
       else
-        ::Math.ldexp(@sign*@coeff, @exp)
+        if @coeff < MAX_LDEXP_COEFF
+          ::Math.ldexp(@sign*@coeff, @exp)
+        else
+          super
+        end
       end
     end
   end
