@@ -417,7 +417,7 @@ class Num < Numeric
     # * :ignored_flags : a Flags object with the exceptions to be ignored
     # * :emin, :emax : minimum and maximum adjusted exponents
     # * :elimit : the exponent limits can also be defined by a single value;
-    #   if positive it is taken as emax and emin=1-emax; otherwiae it is
+    #   if positive it is taken as emax and emin=1-emax; otherwise it is
     #   taken as emin and emax=1-emin. Such limits comply with IEEE 754-2008
     # * :capitals : (true or false) to use capitals in text representations
     # * :clamp : (true or false) enables clamping
