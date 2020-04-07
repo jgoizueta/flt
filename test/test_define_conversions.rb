@@ -32,22 +32,22 @@ class TestDefineConversions < Minitest::Test
       DecNum.context.define_conversion_from(BigDecimal) do |x, context|
         DecNum(x.to_s) # or use x.split etc.
       end
-      assert DecNum('0') == BigDecimal.new('0')
-      assert_equal BigDecimal.new('0'), DecNum('0')
-      assert_equal BigDecimal.new('1.2345'), DecNum('1.2345')
-      assert_equal BigDecimal.new('-1.2345'), DecNum('-1.2345')
-      assert_equal BigDecimal.new('1.2345'), DecNum('0.0012345000E3')
-      assert_equal DecNum('7.1'), BigDecimal.new('7')+DecNum('0.1')
-      assert_equal DecNum('7.1'), DecNum('7')+BigDecimal.new('0.1')
-      assert_equal DecNum('1.1'), DecNum(BigDecimal.new('1.1'))
-      assert DecNum(BigDecimal.new('1.1')).is_a?(DecNum)
+      assert DecNum('0') == BigDecimal('0')
+      assert_equal BigDecimal('0'), DecNum('0')
+      assert_equal BigDecimal('1.2345'), DecNum('1.2345')
+      assert_equal BigDecimal('-1.2345'), DecNum('-1.2345')
+      assert_equal BigDecimal('1.2345'), DecNum('0.0012345000E3')
+      assert_equal DecNum('7.1'), BigDecimal('7')+DecNum('0.1')
+      assert_equal DecNum('7.1'), DecNum('7')+BigDecimal('0.1')
+      assert_equal DecNum('1.1'), DecNum(BigDecimal('1.1'))
+      assert DecNum(BigDecimal('1.1')).is_a?(DecNum)
 
       DecNum.context.define_conversion_to(BigDecimal) do |x|
-        BigDecimal.new(x.to_s) # TODO: use x.split and handle special values
+        BigDecimal(x.to_s) # TODO: use x.split and handle special values
       end
 
       ['0.1', '-0.1', '0.0', '1234567.1234567', '-1234567.1234567', '1.234E7', '1.234E-7'].each do |n|
-        f = BigDecimal.new(n)
+        f = BigDecimal(n)
         d = DecNum(n)
         c = d.convert_to(BigDecimal)
         assert c.is_a?(BigDecimal)
@@ -55,17 +55,17 @@ class TestDefineConversions < Minitest::Test
       end
     end
 
-    assert_raises(TypeError, RuntimeError) { DecNum('0') == BigDecimal.new('0') }
+    assert_raises(TypeError, RuntimeError) { DecNum('0') == BigDecimal('0') }
     unless Num < Numeric
       # BigDecimal#eql? is weird
-      refute_equal BigDecimal.new('0'), DecNum('0')
-      refute_equal BigDecimal.new('1.2345'), DecNum('1.2345')
-      refute_equal BigDecimal.new('-1.2345'), DecNum('-1.2345')
-      refute_equal BigDecimal.new('1.2345'), DecNum('0.0012345000E3')
-      assert_raises(TypeError) { BigDecimal.new('7')+DecNum('0.1') }
+      refute_equal BigDecimal('0'), DecNum('0')
+      refute_equal BigDecimal('1.2345'), DecNum('1.2345')
+      refute_equal BigDecimal('-1.2345'), DecNum('-1.2345')
+      refute_equal BigDecimal('1.2345'), DecNum('0.0012345000E3')
+      assert_raises(TypeError) { BigDecimal('7')+DecNum('0.1') }
     end
-    assert_raises(TypeError, RuntimeError) { DecNum('7')+BigDecimal.new('0.1') }
-    assert_raises(TypeError, RuntimeError) { DecNum(BigDecimal.new('1.1')) }
+    assert_raises(TypeError, RuntimeError) { DecNum('7')+BigDecimal('0.1') }
+    assert_raises(TypeError, RuntimeError) { DecNum(BigDecimal('1.1')) }
 
     ['0.1', '-0.1', '0.0', '1234567.1234567', '-1234567.1234567', '1.234E7', '1.234E-7'].each do |n|
       assert_raises(TypeError, RuntimeError) { DecNum(n).convert_to(BigDecimal) }

@@ -30,7 +30,7 @@ class TestComparisons < Minitest::Test
     assert !(DecNum('1.1') == DecNum('1.0'))
     #assert DecNum('1.1') == 1.1
     #assert DecNum('1.0') == 1.0
-    #assert DecNum('1.0') == BigDecimal.new('1.000')
+    #assert DecNum('1.0') == BigDecimal('1.000')
     assert DecNum('1.0') == 1
     assert DecNum('0.1') == Rational(1)/Rational(10)
 

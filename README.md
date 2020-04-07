@@ -361,7 +361,7 @@ DecNum.context.define_conversion_from(BigDecimal) do |x, context|
   DecNum(x.to_s)
 end
 DecNum.context.define_conversion_to(BigDecimal) do |x|
-  BigDecimal.new(x.to_s)
+  BigDecimal(x.to_s)
 end
 ```
 
@@ -369,7 +369,7 @@ Now we can mix `BigDecimals` and `Decimals` in expressions and convert from `Dec
 to `BigDecimal`:
 
 ```ruby
-puts BigDecimal.new('1.1') + DecNum('2.2')       # -> 3.3
+puts BigDecimal('1.1') + DecNum('2.2')       # -> 3.3
 puts DecNum('1.1').convert_to(BigDecimal)        # -> 0.11E1
 ```
 

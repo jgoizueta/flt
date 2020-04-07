@@ -401,7 +401,7 @@ module Flt
             exp
           end.send(mode)
           _sign, digits, _base, vexp = v.split
-          BigDecimal.new("0.#{digits}E#{vexp+exp}")
+          BigDecimal("0.#{digits}E#{vexp+exp}")
         else
           # assert num_class==BigDecimal && @radix==2
           exp = xs.map do |x|

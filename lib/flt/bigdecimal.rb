@@ -23,7 +23,7 @@ class Flt::BigDecimalContext
   def Num(*args)
     args = *args if args.size==1 && args.first.is_a?(Array)
     if args.size > 1
-      BigDecimal.new(Flt::DecNum(*args).to_s)
+      BigDecimal(Flt::DecNum(*args).to_s)
     else
       x = args.first
       case x
@@ -32,7 +32,7 @@ class Flt::BigDecimalContext
       when Rational
         BigDecimal(x.numerator.to_s)/BigDecimal(x.denominator.to_s)
       else
-        BigDecimal.new(x.to_s)
+        BigDecimal(x.to_s)
       end
     end
   end
