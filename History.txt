@@ -1,3 +1,8 @@
+== 1.5.3 2020-04-07
+
+* Bugfix
+  - BigDecimal compatibility with Ruby 2.7
+
 == 1.5.2 2018-04-10
 
 * Bugfix
