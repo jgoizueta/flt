@@ -2706,7 +2706,13 @@ class Num < Numeric
       @sign*0.0
     else
       f = nil
-      f ||= to_s.to_f if num_class.radix == 10 # very precise, but slow
+      if num_class.radix == 10
+        # to_f can emit verbose warnings on overflow/underflow
+        old_verbose, $VERBOSE = $VERBOSE, nil
+        # very precise, but slow
+        f ||= to_s.to_f
+        $VERBOSE = old_verbose
+      end
       unless f
         c = @coeff.to_f
         if c.finite?
