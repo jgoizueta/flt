@@ -1,3 +1,10 @@
+== 1.5.4 2020-04-08
+
+* Bugfix
+  - Allow scaleb when result is valid, e.g. now these are not invalid results (using float-formats):
+    + IEEE_binary256.context.minimum_normal.log10
+    + IEEE_binary256.context.maximum_finite.log10
+
 == 1.5.3 2020-04-07
 
 * Bugfix
