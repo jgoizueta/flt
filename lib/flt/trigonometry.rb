@@ -134,8 +134,9 @@ module Flt
       rev_sign = false
       s = nil
       num_class.context(self) do |local_context|
-        local_context.precision += 3 # extra digits for intermediate steps
+        local_context.precision += 2 # extra digits for intermediate steps
         x,k,pi_2 = local_context.reduce_angle2(x,2)
+        local_context.precision += 2
         rev_sign = true if k>1
         if k % 2 == 0
           x = pi_2 - x
@@ -161,9 +162,10 @@ module Flt
       sign = x.sign
       s = nil
       num_class.context(self) do |local_context|
-        local_context.precision += 3 # extra digits for intermediate steps
+        local_context.precision += 2 # extra digits for intermediate steps
         x = x.copy_sign(+1) if sign<0
         x,k,pi_2 = local_context.reduce_angle2(x,2)
+        local_context.precision += 2
         sign = -sign if k>1
         x = pi_2 - x if k % 2 == 1
         x = local_context.to_rad(x)
