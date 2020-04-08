@@ -2470,21 +2470,25 @@ class Num < Numeric
 
   # Adds a value to the exponent.
   def scaleb(other, context=nil)
-
     context = define_context(context)
     other = _convert(other)
     ans = _check_nans(context, other)
     return ans if ans
     return context.exception(InvalidOperation) if other.infinite? || other.exponent != 0
+    exp_inc = other.to_i
     unless context.exact?
       liminf = -2 * (context.emax + context.precision)
       limsup =  2 * (context.emax + context.precision)
-      i = other.to_i
-      return context.exception(InvalidOperation) if !((liminf <= i) && (i <= limsup))
+      if finite?
+        # Allow scaling a finite number which is originally out of the range
+        # of the context if the end result is within it
+        liminf = [context.etiny - @exp, liminf].min
+        limsup = [context.etop - @exp, limsup].max
+      end
+      return context.exception(InvalidOperation) if !((liminf <= exp_inc) && (exp_inc <= limsup))
     end
     return Num(self) if infinite?
-    return Num(@sign, @coeff, @exp+i)._fix(context)
-
+    return Num(@sign, @coeff, @exp + exp_inc)._fix(context)
   end
 
   # Naive implementation of exponential and logarithm functions; should be replaced
