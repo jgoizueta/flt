@@ -2907,7 +2907,7 @@ class Num < Numeric
   end
 
   # Digits of the significand as an array of integers
-  if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new('2.4.0')
+  if Gem::Version.new(RUBY_VERSION.dup) >= Gem::Version.new('2.4.0')
     def digits
       @coeff.is_a?(Integer) ? @coeff.digits(num_class.radix).reverse! : []
     end
