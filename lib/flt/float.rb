@@ -252,9 +252,9 @@ class Flt::FloatContext
     comparison = x <=> y
     return x.copy_sign(y) if comparison == 0
     if comparison == -1
-      result = x.next_plus(context)
+      x.next_plus(context)
     else # comparison == 1
-      result = x.next_minus(context)
+      x.next_minus(context)
     end
   end
 
