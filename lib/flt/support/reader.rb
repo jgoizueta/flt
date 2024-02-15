@@ -162,7 +162,7 @@ module Flt
             z0 = Math.ldexp(f,e)
           elsif eb==10
             unless Flt.float_correctly_rounded?
-              min_exp_norm, max_exp_norm = Reader.float_min_max_adj_exp(eb, true)
+              min_exp_norm, _max_exp_norm = Reader.float_min_max_adj_exp(eb, true)
               @good_approx = false
               return nil if e <= min_exp_norm
             end
@@ -170,7 +170,7 @@ module Flt
           else
             ff = f
             ee = e
-            min_exp_norm, max_exp_norm = Reader.float_min_max_adj_exp(eb, true)
+            min_exp_norm, _max_exp_norm = Reader.float_min_max_adj_exp(eb, true)
             if e <= min_exp_norm
               # avoid loss of precision due to gradual underflow
               return nil if e <= min_exp
